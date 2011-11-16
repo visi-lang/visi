@@ -1,0 +1,8 @@
+//
+// Prefix header for all source files of the 'Visi' target in the 'Visi' project
+//
+
+#ifdef __OBJC__
+    #import <Foundation/Foundation.h>
+    #import <UIKit/UIKit.h>
+#endif

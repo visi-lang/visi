@@ -1,0 +1,31 @@
+Name: Visi
+Version: 0.1
+Synopsis: A simple language and IDE for the iPad
+Description: A simple language and IDE for the iPad
+Build-type: Simple
+Cabal-Version: >= 1.6
+
+        
+
+Executable Visi
+    Main-Is: Main.hs
+    GHC-Options: -threaded
+    extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface
+    include-dirs: Classes
+    Frameworks:
+        Foundation
+        UIKit
+        QuartzCore
+        OpenGLES
+    Hs-Source-Dirs: haskell
+    Other-Modules: Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, Visi.Snark
+    Build-Depends:
+        base >= 4,
+        old-time,
+        mtl,
+        random,
+        array,
+        haskell98,
+        parsec >= 3,
+        containers,
+        pretty
