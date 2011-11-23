@@ -1,4 +1,4 @@
-module Visi.Snark where
+module VisiPro.Snark where
 
 import Foreign.Ptr
 import Foreign.C

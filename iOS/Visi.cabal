@@ -17,7 +17,7 @@ Executable Visi
         UIKit
         QuartzCore
         OpenGLES
-    Hs-Source-Dirs: haskell
+    Hs-Source-Dirs: haskell, ../core/src
     Other-Modules: Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, Visi.Snark
     Build-Depends:
         base >= 4,

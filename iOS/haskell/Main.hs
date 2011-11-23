@@ -24,7 +24,7 @@ import Foreign.C.Types
  *
  * ***** END LICENSE BLOCK ***** -}
 
-import Visi.Snark -- Must include this module to make sure the symbols get loaded
+import VisiPro.Snark -- Must include this module to make sure the symbols get loaded
 
 foreign import ccall safe "openWindow" openWindow :: IO CInt
 
