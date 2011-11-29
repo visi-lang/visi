@@ -1,0 +1,18 @@
+Name:                Visi
+Version:             0.1
+Description:         Visi language and testbed
+License:             OtherLicense
+License-file:        LICENSE
+Author:              David Pollak
+Maintainer:          dpp@visi.pro
+Build-Type:          Simple
+Cabal-Version:       >=1.2
+
+Executable visi
+  Main-is:           Foo.hs
+  GHC-Options: -threaded
+  extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface
+  Build-Depends:     base,
+                     containers,
+                     pretty,
+                     parsec

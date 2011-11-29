@@ -325,7 +325,7 @@ typeToAllVars _ _ = AllTypeVars Map.empty
 -- | Given an expression, find all the type variables in the expression
 collectVars :: (Maybe LetId) -> Expression -> AllTypeVars
 collectVars li e@(LetExp _ _ t1 exp) = (typeToAllVars (fixTp li t1) e) `mergeATV` (collectVars li exp)
-collectVars li e@(FuncExp _ t1 t2 exp) = (typeToAllVars (fixTp li t1) e) `mergeATV` (typeToAllVars (fixTp li t2) e) `mergeATV` (collectVars li exp)
+-- collectVars li e@(FuncExp _ t1 t2 exp) = (typeToAllVars (fixTp li t1) e) `mergeATV` (typeToAllVars (fixTp li t2) e) `mergeATV` (collectVars li exp)
 collectVars li e@(Apply letId t1 t2 e1 e2) = (typeToAllVars (fixApply letId t1) e2) `mergeATV` 
                                     (typeToAllVars (fixApply letId t2) e) `mergeATV` (collectVars (Just letId) e1)
                                     `mergeATV` (collectVars (Just letId) e2)
@@ -387,7 +387,7 @@ collectSubs scope atv (Group exprs t1 exp) =
         foldMe name (SinkExp _ _ t1 expr) map = Map.insert name t1 map
         foldMe name (SourceExp _ _ t1) map = Map.insert name t1 map
         foldMe name (BuiltIn _ t1 _) map = Map.insert name t1 map in
-    let scope' = Map.foldWithKey foldMe scope exprs in
+    let scope' = Map.foldrWithKey foldMe scope exprs in
     let doAnExp curAtv exp = fst $ collectSubs scope' curAtv exp in
     let atv' = List.foldl' doAnExp atv $ Map.elems exprs in
     let (atv'', tret) = collectSubs scope' atv' exp in

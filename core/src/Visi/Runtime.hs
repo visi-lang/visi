@@ -40,7 +40,6 @@ import qualified Text.PrettyPrint as PP
 import Data.IORef
 import Control.Concurrent.Chan
 import Control.Exception
-import Control.OldException
 
 -- | The visi runtime... an interface between abstract systems and the current system
 -- | Right now, we only support a single app, but we'll expand to multiple running apps
@@ -137,7 +136,7 @@ threadRunApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCall
             runLoop Map.empty
             ) 
           (\e -> do
-                   errorCallback $ show (e :: Control.OldException.Exception)
+                   errorCallback $ show (e :: ErrorCall)
                    writeIORef runningApp Nothing
                    return ()) -- find & send sources and sinks or type errors
           
@@ -186,7 +185,7 @@ eval1 sourceVars scope (SourceExp _ (FuncName name) _) =
         Just(v) -> v
         _ -> UndefinedValue
         
-eval1 _ _ what = error $ "Yikes... don't know how to deal with: " ++ show what
+-- eval1 _ _ what = error $ "Yikes... don't know how to deal with: " ++ show what
 --                  | Group !(Map.Map FuncName Expression) Type !Expression
 
 
