@@ -1,1 +1,3 @@
-runhaskell  -XFlexibleContexts Foo.hs 
+# runhaskell  -XFlexibleContexts Foo.hs 
+
+time runhaskell  -XFlexibleContexts Tests.hs 

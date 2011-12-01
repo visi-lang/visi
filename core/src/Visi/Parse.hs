@@ -42,11 +42,11 @@ import qualified Data.List as List
 data TIState = TIState {tiSupply :: !Int} deriving (Show)
 type MParser = Parsec String TIState
 
-parseLine :: String -> Expression
-parseLine str = exp
-                where exp :: Expression
-                      exp = right $ runParser line (TIState{tiSupply = 0}) str str
+-- | parse a line of input
+parseLine :: String -> Either ParseError Expression
+parseLine str = runParser line (TIState{tiSupply = 0}) str str
 
+-- | parse many lines of input and return a List of expressions
 parseLines :: String -> Either ParseError [Expression]
 parseLines str = runParser doLines (TIState{tiSupply = 0}) str str
 
@@ -85,14 +85,16 @@ visiDef = emptyDef{ commentStart = "{-"
                   , reservedNames = ["if", "then", "else", "let", "source", "sink"]
                   }
 
-TokenParser{ parens = m_parens
+(TokenParser{ parens = m_parens
             , identifier = m_identifier
             , reservedOp = m_reservedOp
             , reserved = m_reserved
             , semiSep1 = m_semiSep1
             , stringLiteral = m_stringLiteral
             , integer = m_integer
-            , whiteSpace = m_whiteSpace } = m_makeTokenParser visiDef
+            , whiteSpace = m_whiteSpace }
+            ,m_singleLineComment
+            ,m_multiLineComment) = m_makeTokenParser visiDef
 
 
 line :: MParser Expression
@@ -110,7 +112,7 @@ doLines = blankLines >> stmtparser <* (do
       stmtparser = many(blankLines >> line <* blankLines)
 
 
-mySpace = do try(char ' ') <|> try(char '\t') <?> "Space"
+mySpace = do try(char ' ') <|> try(char '\t') <|> m_singleLineComment <|> m_multiLineComment <?> "Space"
              return ()
 
 mySpaces = do many mySpace
@@ -323,7 +325,7 @@ newTyVar prefix = do s <- getState
 m_makeTokenParser :: (Stream s m Char)
                 => GenLanguageDef s u m -> GenTokenParser s u m
 m_makeTokenParser languageDef
-    = TokenParser{ identifier = identifier
+    = (TokenParser{ identifier = identifier
                  , reserved = reserved
                  , operator = operator
                  , reservedOp = reservedOp
@@ -356,6 +358,8 @@ m_makeTokenParser languageDef
                  , commaSep = commaSep
                  , commaSep1 = commaSep1
                  }
+                 ,oneLineComment
+                 ,multiLineComment)
     where
 
     -----------------------------------------------------------

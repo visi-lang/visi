@@ -15,4 +15,5 @@ Executable visi
   Build-Depends:     base,
                      containers,
                      pretty,
-                     parsec
+                     parsec,
+                     HUnit
