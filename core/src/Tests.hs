@@ -58,17 +58,46 @@ testOMatic lst =
             
 myTests = 
     [
-      ("a = 1 // simple assignment", checkparse, psuccess)
-      ,("f a = a + 1 // function definition", checkparse, psuccess)
+      ("a = 1 // simple assignment\n", checkparse, psuccess 1)
+      ,("f a = a + 1 // function definition", checkparse, psuccess 1)
       ,("f 33 = 44 // constant in parameter position", checkparse, pfailure)
       ,("f a = a {- a multiline example -}\n\
-       \f b = b", checkparse, psuccess)
-      ,("f a = if a then 3 else 4 {-if/then/else-}", checkparse, psuccess)
-      ,("f a b c = f (1 + 2) 3 q w // multiple parameters to a function", checkparse, pfailure)
+       \f b = b", checkparse, psuccess 2)
+      ,("f a = if a then 3 else 4 {-if/then/else-}", checkparse, psuccess 1)
+      ,("f a b c = f (1 + 2) 3 q w // multiple parameters to a function", checkparse, psuccess 1)
+      ,("add41 v = v + 41", checkparse, psuccess 1)
+      ,("\"Answer\" = add41 1", checkparse, psuccess 1)
+      ,("and = p1 && p2", checkparse, psuccess 1)
+      ,("\"Greeting\" = \"Hello, World!\" // Sink a constant String", checkparse, psuccess 1)
+      ,("\"And\" = p1 && p2\n\
+         \?p1\n\
+         \?p2", checkparse, psuccess 3)
+      ,("\"Age\" = 2011 - birthYear\n\
+         \?birthYear // birthYear infered as Number", checkparse, psuccess 2)
+      ,("{- A big multi-line expression -}\n\
+         \total = subtotal + tax\n\
+         \tax = taxable * taxRate\n\
+         \subtotal = taxable + nonTaxable\n\n\n\
+         \\"Total\" = total // sink the total\n\
+         \\"Tax\" = tax // sink the tax\n\
+         \?taxRate // source the tax rate\n\
+         \?taxable\n\
+         \?nonTaxable", checkparse, psuccess 8)
+      ,("{- and indented line should fail -}\n\
+         \total = subtotal + tax\n\
+         \tax = taxable * taxRate\n\
+         \subtotal = taxable + nonTaxable\n\n\n\
+         \   \"Total\" = total // sink the total\n\
+         \\"Tax\" = tax // sink the tax\n\
+         \?taxRate // source the tax rate\n\
+         \?taxable\n\
+         \?nonTaxable", checkparse, pfailure)
     ]
 
-psuccess p = case p of 
-              (Right _) -> Right ()
+-- | test that the string parses and there are cnt expressions
+psuccess cnt p = case p of 
+              (Right ar) | (length ar) == cnt -> Right ()
+              (Right ar) -> Left $ "Expected " ++ show cnt ++ " but got " ++ (show $ length ar) ++ " expressions"
               (Left msg) -> Left $ show msg
 
 pfailure p = case p of 

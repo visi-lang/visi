@@ -85,16 +85,13 @@ visiDef = emptyDef{ commentStart = "{-"
                   , reservedNames = ["if", "then", "else", "let", "source", "sink"]
                   }
 
-(TokenParser{ parens = m_parens
+TokenParser{ parens = m_parens
             , identifier = m_identifier
             , reservedOp = m_reservedOp
             , reserved = m_reserved
             , semiSep1 = m_semiSep1
             , stringLiteral = m_stringLiteral
-            , integer = m_integer
-            , whiteSpace = m_whiteSpace }
-            ,m_singleLineComment
-            ,m_multiLineComment) = m_makeTokenParser visiDef
+            , whiteSpace = m_whiteSpace } = m_makeTokenParser visiDef
 
 
 line :: MParser Expression
@@ -112,11 +109,12 @@ doLines = blankLines >> stmtparser <* (do
       stmtparser = many(blankLines >> line <* blankLines)
 
 
-mySpace = do try(char ' ') <|> try(char '\t') <|> m_singleLineComment <|> m_multiLineComment <?> "Space"
+{-mySpace = do try(char ' ') <|> try(char '\t') {- <|> m_singleLineComment <|> m_multiLineComment -} <?> "Space"
              return ()
+-}
 
-mySpaces = do many mySpace
-              return ()
+mySpaces = try(m_whiteSpace) {-do many mySpace
+              return ()-}
 
 blankLine =
             do
@@ -212,9 +210,11 @@ expression = try( oprFuncExp ) <|>
                                digits <- many1 $ oneOf "0123456789"
                                return $ dec : digits
                    numConstExp = do
+                                  mySpaces
                                   optMin <- optionMaybe(char '-')
                                   digits <- many1 $ oneOf "0123456789"
-                                  optDec <- optionMaybe $ decMore                                  
+                                  optDec <- optionMaybe $ decMore
+                                  mySpaces
                                   return $ ValueConst $ DoubleValue $ 
                                     read $ case (optMin, digits, optDec) of
                                              (Nothing, d, Nothing) -> d
@@ -325,7 +325,7 @@ newTyVar prefix = do s <- getState
 m_makeTokenParser :: (Stream s m Char)
                 => GenLanguageDef s u m -> GenTokenParser s u m
 m_makeTokenParser languageDef
-    = (TokenParser{ identifier = identifier
+    = TokenParser{ identifier = identifier
                  , reserved = reserved
                  , operator = operator
                  , reservedOp = reservedOp
@@ -358,8 +358,6 @@ m_makeTokenParser languageDef
                  , commaSep = commaSep
                  , commaSep1 = commaSep1
                  }
-                 ,oneLineComment
-                 ,multiLineComment)
     where
 
     -----------------------------------------------------------
