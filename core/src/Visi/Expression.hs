@@ -42,7 +42,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
 import Visi.Util
--- import Control.Monad.Error
+import Control.Monad.Error
 
 newtype LetId = LetId String deriving (Eq, Ord, Show)
 
@@ -130,31 +130,30 @@ data TVarInfo = TVarInfo String !Expression (Set.Set Type)! TypeSeen deriving (S
 
 {- ----------------- functions ------------------------- -}
 {- t1 mustBe equal to t2 -}
-mustBe :: String -> Type -> Type -> AllTypeVars -> AllTypeVars
+mustBe :: String -> Type -> Type -> AllTypeVars -> ThrowsError AllTypeVars
 {-
 mustBe _ t1 t2 atv@(AllTypeVars map) | trace info False = error "Foo"
             where info = "mustBe " ++ magic t1 ++ " t2 "++ magic t2
                   magic (TVar name) = "TVar " ++ name ++ " " ++ show (map Map.! name)
                   magic t = show t
 -}
-mustBe _ t1 t2 atv | t1 == t2 = atv -- they are already the same
-mustBe _ t1 t2 atv | (isTParam t1) && (isTPrim t2) = atv
--- mustBe _ t1 t2 atv | (isTParam t2) && (isTPrim t1) = atv
+mustBe _ t1 t2 atv | t1 == t2 = return atv -- they are already the same
+mustBe _ t1 t2 atv | (isTParam t1) && (isTPrim t2) = return atv
 mustBe whre ot1@(TVar t1) ot2@(TVar t2) atv@(AllTypeVars map) | bothMust =
   case (ts1, ts2) of 
-    (t1, t2) | t1 == t2 -> atv
-    (ts1, ts2) | (isVar ts1) && (isPrim ts2) -> AllTypeVars $ Map.insert t1 revised map
+    (t1, t2) | t1 == t2 -> return atv
+    (ts1, ts2) | (isVar ts1) && (isPrim ts2) -> return $ AllTypeVars $ Map.insert t1 revised map
              where revised = case (vtrace ("L1: " ++ show t1) (map Map.! t1)) of
                                TVarInfo name exp set _ -> TVarInfo name exp set ts2
-    (ts1, ts2) | (isPrim ts1) && (isVar ts2) -> AllTypeVars $ Map.insert t2 revised map
+    (ts1, ts2) | (isPrim ts1) && (isVar ts2) -> return $ AllTypeVars $ Map.insert t2 revised map
              where revised = case (vtrace ("L2: " ++ show t2) (map Map.! t2)) of
                                TVarInfo name exp set _ -> TVarInfo name exp set ts1
-    (ts1, ts2) | (isVar ts1) && (isVar ts2) -> atv -- trace ("hmmm... merge "++t1++" and "++t2) atv -- FIXME do something more??
-    _ -> error $ "BothMust " ++ show ts1 ++ " " ++ show ts2
+    (ts1, ts2) | (isVar ts1) && (isVar ts2) -> return atv -- trace ("hmmm... merge "++t1++" and "++t2) atv -- FIXME do something more??
+    _ -> throwError $ TypeError $ "BothMust " ++ show ts1 ++ " " ++ show ts2
   where ts1 = typeSeen t1 map
         ts2 = vtrace ("T2 is: " ++ whre) (typeSeen t2 map)
         bothMust = (isMust ts1) && (isMust ts2)
-mustBe whre t1 t2 _ | fixedType t1 && fixedType t2 = error $ "disimislar fixed types " ++ show t1 ++ 
+mustBe whre t1 t2 _ | fixedType t1 && fixedType t2 = throwError $ TypeError $ "disimislar fixed types " ++ show t1 ++ 
                                                           " and " ++ show t2 ++ " in " ++ whre
 -- mustBe whre t1 t2 atv | fixedType t1 && isTvar t2 = mustBe ("Reverse " ++ whre) t2 t1 atv
 mustBe whre ot1@(TVar t1) t2 atv@(AllTypeVars map) = 

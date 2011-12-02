@@ -1,5 +1,7 @@
 module Visi.Util (flatten, VisiError(TypeError), ThrowsError, vtrace) where
 
+import Control.Monad.Error
+
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
  *
@@ -33,6 +35,20 @@ vtrace :: String -> a -> a
 vtrace _ a = a
 -- vtrace msg a = trace msg a
 
-data VisiError = TypeError String deriving (Show, Eq)
+data VisiError = 
+    TypeError String 
+    | DefaultError String
+    deriving (Eq)
 
 type ThrowsError = Either VisiError
+
+-- | Convert the error to a String
+showError :: VisiError -> String
+showError (TypeError str) = "Type error: " ++ str
+showError (DefaultError str) = "Uncategorized error: " ++ str
+
+instance Show VisiError where show = showError
+
+instance Error VisiError where
+    noMsg = DefaultError "An error has occurred"
+    strMsg = DefaultError
