@@ -129,6 +129,30 @@ data TVarInfo = TVarInfo String !Expression (Set.Set Type)! TypeSeen deriving (S
 
 
 {- ----------------- functions ------------------------- -}
+-- | Look up a type variable
+findType :: Type -> AllTypeVars -> ThrowsError TVarInfo
+findType (TVar t1) (AllTypeVars map) = 
+    case Map.lookup t1 map of
+        (Just v) -> return v
+        _ -> throwError $ TypeError $ "Cannot find type var: " ++ t1
+findType tv _ = throwError $ TypeError $ "Trying to look up " ++ (show tv) ++ " but it's not a Type Variable"
+
+setTVIType (TVarInfo name exp set _) newType = TVarInfo name exp set newType
+
+setATV (TVar t1) newTV (AllTypeVars map) = return $ AllTypeVars $ Map.insert t1 newTV map
+setATV theType _ _ = throwError $ TypeError $ "Trying to update a type variable, but got " ++ (show theType)
+
+testBothMust ot1 ot2 atv =
+    case runIt of
+        (Left _) -> False
+        (Right ret) -> ret
+    where runIt =
+                do
+                  ts1 <- typeSeen ot1 atv
+                  ts2 <- typeSeen ot2 atv
+                  let bothMust = (isMust ts1) && (isMust ts2)
+                  return bothMust
+
 {- t1 mustBe equal to t2 -}
 mustBe :: String -> Type -> Type -> AllTypeVars -> ThrowsError AllTypeVars
 {-
@@ -138,52 +162,67 @@ mustBe _ t1 t2 atv@(AllTypeVars map) | trace info False = error "Foo"
                   magic t = show t
 -}
 mustBe _ t1 t2 atv | t1 == t2 = return atv -- they are already the same
-mustBe _ t1 t2 atv | (isTParam t1) && (isTPrim t2) = return atv
-mustBe whre ot1@(TVar t1) ot2@(TVar t2) atv@(AllTypeVars map) | bothMust =
-  case (ts1, ts2) of 
-    (t1, t2) | t1 == t2 -> return atv
-    (ts1, ts2) | (isVar ts1) && (isPrim ts2) -> return $ AllTypeVars $ Map.insert t1 revised map
-             where revised = case (vtrace ("L1: " ++ show t1) (map Map.! t1)) of
-                               TVarInfo name exp set _ -> TVarInfo name exp set ts2
-    (ts1, ts2) | (isPrim ts1) && (isVar ts2) -> return $ AllTypeVars $ Map.insert t2 revised map
-             where revised = case (vtrace ("L2: " ++ show t2) (map Map.! t2)) of
-                               TVarInfo name exp set _ -> TVarInfo name exp set ts1
-    (ts1, ts2) | (isVar ts1) && (isVar ts2) -> return atv -- trace ("hmmm... merge "++t1++" and "++t2) atv -- FIXME do something more??
-    _ -> throwError $ TypeError $ "BothMust " ++ show ts1 ++ " " ++ show ts2
-  where ts1 = typeSeen t1 map
-        ts2 = vtrace ("T2 is: " ++ whre) (typeSeen t2 map)
-        bothMust = (isMust ts1) && (isMust ts2)
+mustBe _ t1 t2 atv | (isTParam t1) && (isTPrim t2) = return atv -- If they are both type parameters... punt -- FIXME
+mustBe whre ot1 ot2 atv | testBothMust ot1 ot2 atv =
+  do
+      ts1 <- typeSeen ot1 atv
+      ts2 <- typeSeen ot2 atv
+      let bothMust = (isMust ts1) && (isMust ts2)
+      case (ts1, ts2) of 
+        (t1, t2) | t1 == t2 -> return atv
+        (ts1, ts2) | (isVar ts1) && (isPrim ts2) -> 
+            do
+                foundTInfo <- findType ot1 atv
+                let newTypeVarInfo = setTVIType foundTInfo ts2
+                setATV ot1 newTypeVarInfo atv
+        (ts1, ts2) | (isPrim ts1) && (isVar ts2) ->
+            do
+                foundInfo <- findType ot2 atv
+                let newTypeVarInfo = setTVIType foundInfo ts1
+                setATV ot2 newTypeVarInfo atv
+        (ts1, ts2) | (isVar ts1) && (isVar ts2) -> return atv -- trace ("hmmm... merge "++t1++" and "++t2) atv -- FIXME do something more??
+        _ -> throwError $ TypeError $ "BothMust " ++ show ts1 ++ " " ++ show ts2
+
+        
 mustBe whre t1 t2 _ | fixedType t1 && fixedType t2 = throwError $ TypeError $ "disimislar fixed types " ++ show t1 ++ 
                                                           " and " ++ show t2 ++ " in " ++ whre
 -- mustBe whre t1 t2 atv | fixedType t1 && isTvar t2 = mustBe ("Reverse " ++ whre) t2 t1 atv
-mustBe whre ot1@(TVar t1) t2 atv@(AllTypeVars map) = 
-    let cur = vtrace ("MB1: " ++ show t1) (map Map.! t1) in
-    let (atv'', revised) = case cur of 
-                    TVarInfo name exp set NoType -> 
-                        (atv, TVarInfo name exp (t2 `Set.insert` set) (MustBe t2))
-                    TVarInfo name exp set (MustBe (TPrim _)) ->
-                        (mustBe ("Reverse "++whre) t2 ot1 atv, cur)
-                    TVarInfo name exp set (MustBe ot) | ot == t2 -> 
-                        (atv, TVarInfo name exp (t2 `Set.insert` set) (MustBe t2))
-                    TVarInfo name exp set (MustBe tv@(TVar tvn)) ->
-                      let atv' = mustBe whre tv t2 atv in
-                      (atv', TVarInfo name exp (tv `Set.insert` set) (MustBe t2))
-                    TVarInfo name _ set what -> error $ "Trying to make " ++ name ++ " set " ++
-                                                  show set ++ " and what " ++ show what ++ 
-                                                  " must be " ++ show t2 ++ " in " ++ whre
-        in
-    let mapSigma = case atv'' of AllTypeVars m -> m in
-    let map' = Map.insert t1 revised mapSigma in
-    let ret = reviseAllTypes t2 ot1 $ AllTypeVars map' in
-    ret
-mustBe from (TFun f1 f2) (TFun f1' f2') atv = mustBe ("Outer tfun "++from) f1 f1' $ mustBe ("Inner tfun "++from) f2 f2' atv
+mustBe whre ot1@(TVar _) ot2 atv@(AllTypeVars map) = 
+    do 
+        cur <- findType ot1 atv
+        (atv', revised) <- case cur of
+                                TVarInfo name exp set NoType -> 
+                                    return $ (atv, TVarInfo name exp (ot2 `Set.insert` set) (MustBe ot2))
+                                TVarInfo name exp set (MustBe (TPrim _)) ->
+                                    do
+                                        newATV <- mustBe ("Reverse "++whre) ot2 ot1 atv
+                                        return $ (newATV, cur)
+                                TVarInfo name exp set (MustBe ot) | ot == ot2 -> 
+                                    return $ (atv, TVarInfo name exp (ot2 `Set.insert` set) (MustBe ot2))
+                                TVarInfo name exp set (MustBe tv@(TVar tvn)) ->
+                                      do
+                                          atv' <- mustBe whre tv ot2 atv
+                                          return $ (atv', TVarInfo name exp (tv `Set.insert` set) (MustBe ot2))
+                                      
+                                TVarInfo name _ set what -> throwError $ TypeError $ "Trying to make " ++ name ++ " set " ++
+                                                              show set ++ " and what " ++ show what ++ 
+                                                              " must be " ++ show ot2 ++ " in " ++ whre
+        atv'' <- setATV ot1 revised atv'
+        return atv''
+
+mustBe from (TFun f1 f2) (TFun f1' f2') atv = 
+    do
+        atv' <- mustBe ("Inner tfun "++from) f2 f2' atv
+        atv'' <- mustBe ("Outer tfun "++from) f1 f1' atv'
+        return atv''
+        
 mustBe whre t1 t2@(TVar tv2) atv@(AllTypeVars map) =
        let tv2Info = vtrace ("MB2: " ++ show tv2) (map Map.! tv2) in
        case infoType tv2Info of 
          Right(t, exp) ->  mustBe (whre ++ ", expression: " ++ show exp) t1 t atv
          Left True -> mustBe (whre ++ " known parameter type") t2 t1 atv
          _ -> error $ "From: " ++ whre ++ " Unable to unify " ++ show t1 ++ " with " ++ show tv2Info
-mustBe whre t1 t2 _ = error $ "From: " ++ whre ++ " Unable to unify (fall through) " ++ show t1 ++ " with " ++ show t2
+mustBe whre t1 t2 _ = throwError $ TypeError $ "From: " ++ whre ++ " Unable to unify (fall through) " ++ show t1 ++ " with " ++ show t2
 
 fixedType (TPrim _) = True
 fixedType _ = False
@@ -194,8 +233,13 @@ isTvar _ = False
 isMust (MustBe _) = True
 isMust _ = False
 
-typeSeen name map = case vtrace ("TS: "++ show name ++ " in " ++ show map) (map Map.! name) of
-         (TVarInfo _ _ _ ret) -> ret
+-- | Given a Type Variable, what is the type we've seen it to be?
+typeSeen :: Type -> AllTypeVars -> ThrowsError TypeSeen
+typeSeen tvar atv = 
+    do
+        atv <- findType tvar atv
+        return $ case atv of
+                    (TVarInfo _ _ _ ret) -> ret
 
 isPrim (MustBe (TPrim _)) = True
 isPrim _ = False
@@ -306,7 +350,7 @@ mergeATV (AllTypeVars m1) (AllTypeVars m2) = AllTypeVars $ m1 `Map.union` m2
 
 -- | in the Apply has a type parameter, convert it to a type variable
 fixApply :: LetId -> Type -> Type
-fixApply (LetId id) (TParam p) = vtrace ("FixApp: "++p) (TVar $ p ++ id)
+fixApply (LetId id) (TParam p) = (TVar $ p ++ id)
 fixApply li (TFun t1 t2) = TFun (fixApply li t1) (fixApply li t2)
 fixApply _ t = t
 
@@ -341,31 +385,42 @@ collectVars li e@(FuncExp paramName pt rt exp) = (typeToAllVars (fixTp li pt) e)
 -- FIXME Are there any other expressions we want to look at?
 collectVars li e = vtrace ("Missed " ++ show e ++ "/" ++ show li) (AllTypeVars Map.empty)
 
-collectSubs :: VarScope -> AllTypeVars -> Expression -> (AllTypeVars, Type)
-collectSubs scope atv (ValueConst v) = (atv, valuePrim v)
-collectSubs scope atv (BuiltIn _ t _) = (atv, t)
-collectSubs scope atv (SourceExp _ _ t) = (atv, t)
+-- | collect all the type variable substitutions
+collectSubs :: VarScope -> AllTypeVars -> Expression -> ThrowsError (AllTypeVars, Type)
+collectSubs scope atv (ValueConst v) = return (atv, valuePrim v)
+collectSubs scope atv (BuiltIn _ t _) = return (atv, t)
+collectSubs scope atv (SourceExp _ _ t) = return (atv, t)
 collectSubs scope atv (LetExp _ name t1 exp) = 
     let scope' = Map.insert name t1 scope in
-    let (atv', t1') = collectSubs scope' atv exp in
-    (mustBe ("Let " ++ show name) t1 t1' atv', t1')  
+    do
+        (atv', t1') <- collectSubs scope' atv exp
+        atv'' <- mustBe ("Let " ++ show name) t1 t1' atv'
+        return (atv'', t1')  
 collectSubs scope atv (SinkExp _ name t1 exp) = 
     let scope' = Map.insert name t1 scope in
-    let (atv', t1') = collectSubs scope' atv exp in
-    (mustBe ("Sink " ++ show name) t1 t1' atv', t1')
+    do
+        (atv', t1') <- collectSubs scope' atv exp
+        atv'' <- mustBe ("Sink " ++ show name) t1 t1' atv'
+        return (atv'', t1')
 collectSubs scope atv (Var t1 funcName) =
-    let varType = (vtrace ("CS: "++ show scope) (scope Map.! funcName)) in
-    (mustBe ("other var "++show funcName) t1 varType atv, varType)
+    do
+        varType <- justOr (Map.lookup funcName scope) (throwError $ TypeError $ "Can't find " ++ show funcName ++ " in current scope")
+        atv' <- mustBe ("other var "++show funcName) t1 varType atv
+        return (atv', varType)
  --     mustBe ("Var " ++ show funcName) t1 varType atv, varType) -- FIXME -- is this right?
 collectSubs scope atv (FuncExp paramName pt rt exp) =
     let scope' = Map.insert paramName pt scope in
-    let (atv', rt') = collectSubs scope' atv exp in
-    (mustBe ("Func " ++ show paramName) rt rt' atv', TFun pt rt')
+    do
+        (atv', rt') <- collectSubs scope' atv exp
+        atv'' <- mustBe ("Func " ++ show paramName) rt rt' atv'
+        return (atv'', TFun pt rt')
+{- FIXME roll into the Error monad thingy
 collectSubs scope atv (Apply letId t1' t2' exp1 exp2) =
     let t1 = fixApply letId t1' in
     let t2 = fixApply letId t2' in
-    let (satv, st) = collectSubs scope atv exp1 in
-    let (atv', TFun funParam funRet) = (satv,case st of
+    do
+        (satv, st) <- collectSubs scope atv exp1
+        (atv', TFun funParam funRet) = (satv,case st of
                                                (TVar tv) -> case getTypeInfo tv atv of
                                                               (TVarInfo _ _ _ (MustBe t)) -> t
                                                               snark -> error $ "Oh no... it a " ++ show snark ++
@@ -381,15 +436,24 @@ collectSubs scope atv (Apply letId t1' t2' exp1 exp2) =
                  mustBe "Return type" (fixApply letId t2) (fixApply letId funRet) $
                  mustBe "func param" (fixApply letId t1) (fixApply letId funParam) atv'' in
     (atv''', funRet)
+-}
 collectSubs scope atv (Group exprs t1 exp) =
     let foldMe name (LetExp _ _ t1 _) map = Map.insert name t1 map
         foldMe name (SinkExp _ _ t1 expr) map = Map.insert name t1 map
         foldMe name (SourceExp _ _ t1) map = Map.insert name t1 map
         foldMe name (BuiltIn _ t1 _) map = Map.insert name t1 map in
     let scope' = Map.foldrWithKey foldMe scope exprs in
-    let doAnExp curAtv exp = fst $ collectSubs scope' curAtv exp in
-    let atv' = List.foldl' doAnExp atv $ Map.elems exprs in
-    let (atv'', tret) = collectSubs scope' atv' exp in
-    (mustBe "Group" t1 tret atv'', tret)
+    let doAnExp curAtv exp = 
+                        do
+                            atv' <- curAtv
+                            (ret, _) <- collectSubs scope' atv' exp
+                            return ret
+                        in
+    let atv' = List.foldl' doAnExp (return atv) $ Map.elems exprs in
+    do
+        innerAtv <- atv'
+        (atv'', tret) <- collectSubs scope' innerAtv exp
+        retAtv <- mustBe "Group" t1 tret atv''
+        return (retAtv, tret)
 
 

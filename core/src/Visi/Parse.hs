@@ -34,7 +34,7 @@ import Text.Parsec.Language
 
 import Data.Char ( isAlpha, toLower, toUpper, isSpace, digitToInt )
 import Data.List ( nub, sort )
-
+import Visi.Util
 import Visi.Expression
 import qualified Data.Map as Map
 import qualified Data.List as List
@@ -43,13 +43,17 @@ data TIState = TIState {tiSupply :: !Int} deriving (Show)
 type MParser = Parsec String TIState
 
 -- | parse a line of input
-parseLine :: String -> Either ParseError Expression
-parseLine str = runParser line (TIState{tiSupply = 0}) str str
+parseLine :: String -> Either VisiError Expression
+parseLine str = case runParser line (TIState{tiSupply = 0}) str str of
+                  Left(err) -> Left(ParsingError err)
+                  Right(res) -> Right(res)
 
 -- | parse many lines of input and return a List of expressions
-parseLines :: String -> Either ParseError [Expression]
-parseLines str = runParser doLines (TIState{tiSupply = 0}) str str
-
+parseLines :: String -> Either VisiError [Expression]
+parseLines str = case runParser doLines (TIState{tiSupply = 0}) str str of
+                    Left(err) -> Left(ParsingError err)
+                    Right(res) -> Right(res)
+                    
 
 mkGroup :: [Expression] -> Expression
 mkGroup expLst = Group (Map.fromList $ expLst >>= funcName) (TPrim PrimDouble) (ValueConst $ DoubleValue 1.0)
@@ -64,12 +68,6 @@ funcName exp@(BuiltIn name _ _) = [(name, exp)]
 funcName exp@(SinkExp _ name _ _) = [(name, exp)]
 funcName exp@(SourceExp _ name _) = [(name, exp)]
 funcName _ = []
-
-
-
-
-right (Right r) = r
-right (Left err) = error $ "Parse problem: " ++ (show err)
 
 
 visiDef = emptyDef{ commentStart = "{-"

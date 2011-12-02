@@ -1,6 +1,7 @@
-module Visi.Util (flatten, VisiError(TypeError), ThrowsError, vtrace) where
+module Visi.Util (flatten, VisiError(TypeError, ParsingError), ThrowsError, vtrace, justOr) where
 
 import Control.Monad.Error
+import Text.Parsec
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -37,8 +38,9 @@ vtrace _ a = a
 
 data VisiError = 
     TypeError String 
+    | ParsingError ParseError
     | DefaultError String
-    deriving (Eq)
+    -- deriving (Eq)
 
 type ThrowsError = Either VisiError
 
@@ -52,3 +54,7 @@ instance Show VisiError where show = showError
 instance Error VisiError where
     noMsg = DefaultError "An error has occurred"
     strMsg = DefaultError
+    
+justOr thing err = case thing of
+                    (Just v) -> return v
+                    _ -> err

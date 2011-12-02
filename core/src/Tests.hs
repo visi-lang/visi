@@ -28,52 +28,62 @@ import Text.Printf
  * ***** END LICENSE BLOCK ***** -}
 
 import Visi.Util
-import Visi.Runtime
+-- import Visi.Runtime
 import Visi.Expression
 import Visi.Parse
+import Visi.Executor
+import Control.Monad.Error
 
-import Test.HUnit
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.List as List
+import Text.Parsec.Error
 
 main :: IO ()
 main = 
     do
-        _ <- testOMatic myTests
-        return ()
+        l1 <- testOMatic syntaxTests
+        let allL = l1
+        mapM_ (snd) allL
+        let errs = foldr (+) 0 $ map fst allL
+        putStrLn $ "Ran " ++ (show $ length allL) ++ " tests, " ++ (show errs) ++ " errors"
  
 -- testOMatic a b => [(a, a -> b, b)] :: IO ()
 testOMatic lst = 
     do 
       l2 <- mapM runTest lst
-      mapM_ (snd) l2
+      return l2
+      {-
       let errs = foldr (+) 0 $ map fst l2
       putStrLn $ "Ran " ++ (show $ length lst) ++ " tests, " ++ (show errs) ++ " errors"
       -- putStrLn "Dude"
-    where runTest (param, func, test) = 
-            do
-                res <- func param
-                let res' = test res
-                return $ case res' of
-                            (Left msg)-> (1, putStrLn $ "Failed " ++ (show param) ++ " error " ++ msg)
-                            _ -> (0, return ())
-            
-myTests = 
+        -}
+runTest (param, func) = 
+        do
+            let res = func param
+            return $ case res of
+                        (Left msg)-> (1, putStrLn $ "Failed " ++ (show param) ++ " error " ++ msg)
+                        _ -> (0, return ())
+                            
+-- syntaxTests :: ([(String, String -> Either VisiError a, Either VisiError a -> Either String ())])
+syntaxTests = 
     [
-      ("a = 1 // simple assignment\n", checkparse, psuccess 1)
-      ,("f a = a + 1 // function definition", checkparse, psuccess 1)
-      ,("f 33 = 44 // constant in parameter position", checkparse, pfailure)
+      ("a = 1 // simple assignment\n", psuccess 1 . checkparse)
+      ,("f a = a + 1 // function definition", psuccess 1 . checkparse)
+      ,("f 33 = 44 // constant in parameter position", pfailure . checkparse)
       ,("f a = a {- a multiline example -}\n\
-       \f b = b", checkparse, psuccess 2)
-      ,("f a = if a then 3 else 4 {-if/then/else-}", checkparse, psuccess 1)
-      ,("f a b c = f (1 + 2) 3 q w // multiple parameters to a function", checkparse, psuccess 1)
-      ,("add41 v = v + 41", checkparse, psuccess 1)
-      ,("\"Answer\" = add41 1", checkparse, psuccess 1)
-      ,("and = p1 && p2", checkparse, psuccess 1)
-      ,("\"Greeting\" = \"Hello, World!\" // Sink a constant String", checkparse, psuccess 1)
+       \f b = b", psuccess 2 . checkparse)
+      ,("f a = if a then 3 else 4 {-if/then/else-}", psuccess 1 . checkparse)
+      ,("f a b c = f (1 + 2) 3 q w // multiple parameters to a function", psuccess 1 . checkparse)
+      ,("add41 v = v + 41", psuccess 1 . checkparse)
+      ,("\"Answer\" = add41 1", psuccess 1 . checkparse)
+      ,("and = p1 && p2", psuccess 1 . checkparse)
+      ,("\"Greeting\" = \"Hello, World!\" // Sink a constant String", psuccess 1 . checkparse)
       ,("\"And\" = p1 && p2\n\
          \?p1\n\
-         \?p2", checkparse, psuccess 3)
+         \?p2", psuccess 3 . checkparse)
       ,("\"Age\" = 2011 - birthYear\n\
-         \?birthYear // birthYear infered as Number", checkparse, psuccess 2)
+         \?birthYear // birthYear infered as Number", psuccess 2 . checkparse)
       ,("{- A big multi-line expression -}\n\
          \total = subtotal + tax\n\
          \tax = taxable * taxRate\n\
@@ -82,7 +92,7 @@ myTests =
          \\"Tax\" = tax // sink the tax\n\
          \?taxRate // source the tax rate\n\
          \?taxable\n\
-         \?nonTaxable", checkparse, psuccess 8)
+         \?nonTaxable", psuccess 8 . checkparse)
       ,("{- and indented line should fail -}\n\
          \total = subtotal + tax\n\
          \tax = taxable * taxRate\n\
@@ -91,7 +101,11 @@ myTests =
          \\"Tax\" = tax // sink the tax\n\
          \?taxRate // source the tax rate\n\
          \?taxable\n\
-         \?nonTaxable", checkparse, pfailure)
+         \?nonTaxable", pfailure . checkparse)
+      ,("f = 3", testTypes [("f", TPrim PrimDouble)] . checktype)
+      ,("f = 3\n\
+        \f2 = \"Hello\"", testTypes [("f", TPrim PrimDouble)
+                                     ,("f2", TPrim PrimStr)] . checktype)
     ]
 
 -- | test that the string parses and there are cnt expressions
@@ -104,9 +118,33 @@ pfailure p = case p of
               (Left _) -> Right ()
               (Right _) -> Left "Should have failed"
 
--- checkparse :: String -> IO TResult
-checkparse str = 
-    return $ parseLines str
+-- checkparse :: (Error e) => String -> e
+checkparse str = parseLines str
 
-        
-        
+-- testTypes :: [(String, Type)] -> ThrowsError (Map.Map String Type) -> Either String ()
+testTypes listOStuff res = 
+    case res of 
+        (Left err) -> Left $ show err
+        (Right typeMap) -> 
+          let testIt (funcName, expType) = 
+                case Map.lookup funcName typeMap of
+                  (Just t) | t == expType -> Right ()
+                  (Just t) -> Left $ "Type Mismatch for "++ funcName ++" expected " ++ show expType ++ " got " ++ show t
+                  _ -> Left $ "Not function "++ funcName ++ " defined"
+                in
+          let res = List.map testIt listOStuff in
+          let collapseLeft x (Right _) = x
+              collapseLeft (Right _) x = x
+              collecteLeft (Left msg) (Left m2) = Left $ msg ++ ", " ++ m2 in
+          List.foldl' collapseLeft (Right ()) res
+
+checktype str =
+    do
+        exps <- parseLines str
+        let allExp = builtInExp ++ exps
+        let grp = mkGroup allExp
+        let typeVars = collectVars Nothing grp
+        (atv, t) <- collectSubs Map.empty typeVars grp
+        let (atv', lets) = resolveLets grp atv
+        let typeMap = Map.fromList lets
+        return $ typeMap
