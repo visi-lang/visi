@@ -62,7 +62,7 @@ runTest (param, func) =
         do
             let res = func param
             return $ case res of
-                        (Left msg)-> (1, putStrLn $ "Failed " ++ (show param) ++ " error " ++ msg)
+                        (Just msg)-> (1, putStrLn $ "Failed " ++ (show param) ++ " error " ++ msg)
                         _ -> (0, return ())
                             
 -- syntaxTests :: ([(String, String -> Either VisiError a, Either VisiError a -> Either String ())])
@@ -110,13 +110,13 @@ syntaxTests =
 
 -- | test that the string parses and there are cnt expressions
 psuccess cnt p = case p of 
-              (Right ar) | (length ar) == cnt -> Right ()
-              (Right ar) -> Left $ "Expected " ++ show cnt ++ " but got " ++ (show $ length ar) ++ " expressions"
-              (Left msg) -> Left $ show msg
+              (Right ar) | (length ar) == cnt -> Nothing
+              (Right ar) -> Just $ "Expected " ++ show cnt ++ " but got " ++ (show $ length ar) ++ " expressions"
+              (Left msg) -> Just $ show msg
 
 pfailure p = case p of 
-              (Left _) -> Right ()
-              (Right _) -> Left "Should have failed"
+              (Left _) -> Nothing
+              (Right _) -> Just "Should have failed"
 
 -- checkparse :: (Error e) => String -> e
 checkparse str = parseLines str
@@ -124,19 +124,19 @@ checkparse str = parseLines str
 -- testTypes :: [(String, Type)] -> ThrowsError (Map.Map String Type) -> Either String ()
 testTypes listOStuff res = 
     case res of 
-        (Left err) -> Left $ show err
+        (Left err) -> Just $ show err
         (Right typeMap) -> 
           let testIt (funcName, expType) = 
                 case Map.lookup funcName typeMap of
-                  (Just t) | t == expType -> Right ()
-                  (Just t) -> Left $ "Type Mismatch for "++ funcName ++" expected " ++ show expType ++ " got " ++ show t
-                  _ -> Left $ "Not function "++ funcName ++ " defined"
+                  (Just t) | t == expType -> Nothing
+                  (Just t) -> Just $ "Type Mismatch for "++ funcName ++" expected " ++ show expType ++ " got " ++ show t
+                  _ -> Just $ "Not function "++ funcName ++ " defined"
                 in
           let res = List.map testIt listOStuff in
-          let collapseLeft x (Right _) = x
-              collapseLeft (Right _) x = x
-              collecteLeft (Left msg) (Left m2) = Left $ msg ++ ", " ++ m2 in
-          List.foldl' collapseLeft (Right ()) res
+          let collapseLeft x Nothing = x
+              collapseLeft Nothing x = x
+              collecteLeft (Just msg) (Just m2) = Just $ msg ++ ", " ++ m2 in
+          List.foldl' collapseLeft Nothing res
 
 checktype str =
     do
