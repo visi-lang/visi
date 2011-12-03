@@ -43,6 +43,7 @@ import qualified Data.Set as Set
 import qualified Data.List as List
 import Visi.Util
 import Control.Monad.Error
+import Control.Applicative
 
 newtype LetId = LetId String deriving (Eq, Ord, Show)
 
@@ -414,29 +415,17 @@ collectSubs scope atv (FuncExp paramName pt rt exp) =
         (atv', rt') <- collectSubs scope' atv exp
         atv'' <- mustBe ("Func " ++ show paramName) rt rt' atv'
         return (atv'', TFun pt rt')
-{- FIXME roll into the Error monad thingy
 collectSubs scope atv (Apply letId t1' t2' exp1 exp2) =
-    let t1 = fixApply letId t1' in
-    let t2 = fixApply letId t2' in
     do
+        let t1 = fixApply letId t1'
+        let t2 = fixApply letId t2'
         (satv, st) <- collectSubs scope atv exp1
-        (atv', TFun funParam funRet) = (satv,case st of
-                                               (TVar tv) -> case getTypeInfo tv atv of
-                                                              (TVarInfo _ _ _ (MustBe t)) -> t
-                                                              snark -> error $ "Oh no... it a " ++ show snark ++
-                                                                            " t1 " ++ show t1 ++
-                                                                            " t2 " ++ show t2 ++
-                                                                            " exp1 " ++ show exp1 ++
-                                                                            " exp2 " ++ show exp2 ++
-                                                                            " satv " ++ show satv ++
-                                                                            " st " ++ show st
-                                               x -> x) in
-    let (atv'', paramType) = collectSubs scope atv' exp2 in
-    let atv''' = mustBe "Pushing the param type back [fixed]" (fixApply letId paramType) (fixApply letId t1) $
-                 mustBe "Return type" (fixApply letId t2) (fixApply letId funRet) $
-                 mustBe "func param" (fixApply letId t1) (fixApply letId funParam) atv'' in
-    (atv''', funRet)
--}
+        (funParam, funRet) <- (resolvedOr st (\v -> v |- (\t -> findType t atv) |- tvarMust)) |- expectFuncType
+        (atv'', paramType) <- collectSubs scope satv exp2
+        atv''' <- mustBe "func param" (fixApply letId t1) (fixApply letId funParam) atv'' |-
+                  mustBe "Pushing the param type back [fixed]" (fixApply letId paramType) (fixApply letId t1) |-
+                  mustBe "Return type" (fixApply letId t2) (fixApply letId funRet)
+        return (atv''', funRet)
 collectSubs scope atv (Group exprs t1 exp) =
     let foldMe name (LetExp _ _ t1 _) map = Map.insert name t1 map
         foldMe name (SinkExp _ _ t1 expr) map = Map.insert name t1 map
@@ -455,5 +444,20 @@ collectSubs scope atv (Group exprs t1 exp) =
         (atv'', tret) <- collectSubs scope' innerAtv exp
         retAtv <- mustBe "Group" t1 tret atv''
         return (retAtv, tret)
+-- collectSubs _ _ exp = throwError $ TypeError $ "Trying to collectSubs but can't collect them for " ++ show exp
 
+resolvedOr tv@(TVar _) f = f $ Right tv
+resolvedOr t _ = Right t
 
+(|-) :: Either b a -> (a -> Either b c) -> Either b c
+(Right a) |- f = f a
+(Left b) |- _ = Left b
+
+expectFuncType (TFun a b) = Right $ (a,b)
+expectFuncType t = throwError $ TypeError $ "Looking for a Function, but got type " ++ show t
+
+asTVar (TVar tv) = Right tv
+asTVar t = throwError $ TypeError $ "Looking for a Type Variable, but got " ++ show t
+
+tvarMust (TVarInfo _ _ _ (MustBe t)) = Right t
+tvarMust (TVarInfo name _ _ found) = throwError $ TypeError $ "Trying to resolve the type for " ++ name ++ " but only got " ++ show found

@@ -104,6 +104,9 @@ syntaxTests =
          \?nonTaxable", pfailure . checkparse)
       ,("f = 3", testTypes [("f", TPrim PrimDouble)] . checktype)
       ,("f = 3\n\
+        \f2 n = f + n", testTypes [("f", TPrim PrimDouble)
+                                  ,("f2", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
+      ,("f = 3\n\
         \f2 = \"Hello\"", testTypes [("f", TPrim PrimDouble)
                                      ,("f2", TPrim PrimStr)] . checktype)
     ]
