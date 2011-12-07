@@ -391,7 +391,7 @@ prune atv t = return $ (atv, t)
 
 isgeneric nongen atv tv@(TVar _) =
     do
-        (atv', oi) <- occursin (Set.elems nongen) atv tv
+        (atv', oi) <- vtrace ("isgeneric for "++show tv++" nongen "++show nongen) occursin (Set.elems nongen) atv tv
         return $ vtrace ("Isgeneric for "++show tv++ " is "++ show oi) (atv', not oi)
 isgeneric nongen atv _ = return (atv, False)
 
@@ -427,7 +427,7 @@ fresh' :: Nongen -> AllTypeVars -> Type -> (Map.Map Type Type) -> ThrowsError (A
 fresh' nongen atv t map =
     do
         (atv', t') <- prune atv t
-        case t' of
+        case vtrace ("In fresh for " ++ show t') t' of
             (TVar _) -> 
               do
                   (atv'', gen) <- isgeneric nongen atv' t'
@@ -436,7 +436,7 @@ fresh' nongen atv t map =
                                       _ -> let (atv''', ntv) = newVariable atv'' in
                                            let map' = Map.insert t' ntv map in
                                            return (atv''', ntv, map')
-                  if gen then updateMap
+                  if gen then vtrace ("Fresh gen type for " ++ show t' ++ " is " ++ show updateMap) updateMap
                       else return (atv'', t', map)
             (TFun t1 t2) ->
               do
@@ -466,28 +466,32 @@ analyze scope nongen atv (SourceExp _ _ t) = return (atv, t)
 analyze scope nongen atv (LetExp _ name t1 exp) = 
     do
         let scope' = Map.insert name t1 scope
-        (atv', rt) <- analyze scope' nongen atv exp
-        atv'' <- unify atv' t1 rt
-        return (atv'', t1)
+        (atv', rt) <- analyze scope' (Set.insert t1 nongen) atv exp
+        atv'' <- vtrace "Let Unify" unify atv' t1 rt
+        (atv''', t1') <- prune atv'' t1
+        return (atv''', t1')
 analyze scope nongen atv (SinkExp _ name t1 exp) = 
     do
         let scope' = Map.insert name t1 scope
         (atv', rt) <- analyze scope' nongen atv exp
         atv'' <- unify atv' t1 rt
-        return (atv'', t1)
+        (atv''', t1') <- prune atv'' t1
+        return (atv''', t1')
 analyze scope nongen atv (FuncExp paramName pt rt exp) =
     do
         let scope' = Map.insert paramName pt scope
         (atv', rt') <- analyze scope' (Set.insert pt nongen) atv exp
-        atv'' <- unify atv' rt rt'
-        return (atv'', TFun pt rt')
+        atv'' <- vtrace "func exp unify" unify atv' rt rt'
+        (atv''', pt') <- prune atv'' pt
+        return (atv''', TFun pt' rt')
 analyze scope nongen atv (Apply letId t1 t2 exp1 exp2) =
     do
         (atv', funType) <- vtrace ("Appy " ++ show letId) analyze scope nongen atv exp1
-        (atv'', argType) <- analyze scope nongen atv' exp2
-        atv''' <- unify atv'' (TFun argType t2) funType
-        atv'''' <- unify atv''' t1 funType
-        return (atv'''', t2)
+        (atv'', argType) <- vtrace "Appy 2" analyze scope nongen atv' exp2
+        atv''' <- vtrace "Apply3" unify atv'' (TFun argType t2) funType
+        -- atv'''' <- vtrace ("Apply4 unify " ++ show t1 ++ " and " ++ show funType) unify atv''' t1 funType
+        (atv'''', t2') <- prune atv''' t2
+        return $ vtrace ("Dappy "++show t2') (atv'''', t2')
 analyze scope nongen atv (Group exprs t1 exp) =
     let foldMe name (LetExp _ _ t1 _) map = Map.insert name t1 map
         foldMe name (SinkExp _ _ t1 expr) map = Map.insert name t1 map
@@ -520,7 +524,7 @@ unify atv t1 t2 =
                       else do
                              tvi <- findType a atv3
                              setATV a (setTVIType tvi $ Just b) atv3
-            (o, v@(TVar _)) -> unify atv'' v o
+            (o, v@(TVar _)) -> vtrace "Backward unify" unify atv'' v o
             ((TFun p1 r1), (TFun p2 r2)) ->
               do
                   atv''' <- vtrace ("Mr yak 1 "++ show t1' ++ " and " ++ show t2') unify atv'' p1 p2
@@ -534,7 +538,7 @@ unify atv t1 t2 =
 unifyPair eAtv (t1, t2) =
     do
         atv <- eAtv
-        unify atv t1 t2
+        vtrace "Unify pair" unify atv t1 t2
 
 
 -- | collect all the type variable substitutions

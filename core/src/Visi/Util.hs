@@ -34,8 +34,8 @@ flatten x = x >>= (\a -> a)
 
 -- | Trace that you can disable
 vtrace :: String -> a -> a
--- vtrace _ a = a
-vtrace msg a = trace msg a
+vtrace _ a = a
+-- vtrace msg a = trace msg a
 
 data VisiError = 
     TypeError String 

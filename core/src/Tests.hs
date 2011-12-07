@@ -102,6 +102,7 @@ syntaxTests =
          \?taxRate // source the tax rate\n\
          \?taxable\n\
          \?nonTaxable", pfailure . checkparse)
+         
       ,("f = 3", testTypes [("f", TPrim PrimDouble)] . checktype)
       ,("f = 3\n\
         \f2 n = f + n", testTypes [("f", TPrim PrimDouble)
@@ -114,17 +115,25 @@ syntaxTests =
       ,("f n = n & \"hi\"", testTypes [("f", TFun (TPrim PrimStr) (TPrim PrimStr))] . checktype)
       ,("q n = n", testTypes [("q", TPrim PrimDouble)] . checktype)
       ,("f n = if true then n else n + 1", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
-     {- ,("f n = if true then n else f (n + 1)", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype) -}
-     {-
+      ,("f n = if true then n else f (n + 1)", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
+     
       ,("f n = if true then n else (n + 1)\n\
         \f2 n = if true then n else (n & \"foo\")", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))
                                                               ,("f2", TFun (TPrim PrimStr) (TPrim PrimStr))] . checktype)
-    -}
-    {-
      ,("f n = n & \"hi\"\n\
         \q n = n", testTypes [("f", TFun (TPrim PrimStr) (TPrim PrimStr))
                              ,("q", TPrim PrimDouble)] . checktype)
-                             -}
+                             
+     ,("{- and indented line should fail -}\n\
+         \total = subtotal + tax\n\
+         \tax = taxable * taxRate\n\
+         \subtotal = taxable + nonTaxable\n\n\n\
+         \\"Total\" = total // sink the total\n\
+         \\"Tax\" = tax // sink the tax\n\
+         \?taxRate // source the tax rate\n\
+         \?taxable\n\
+         \?nonTaxable", testTypes [("tax", TPrim PrimDouble)
+                                  ,("taxable", TPrim PrimDouble)] . checktype)                             
     ]
 
 -- | test that the string parses and there are cnt expressions
