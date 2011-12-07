@@ -220,8 +220,7 @@ expression = try( oprFuncExp ) <|>
                                              (Just(_), d, Just(rest)) -> '-' : (d ++ rest)
                                              (_, d, Just(rest)) -> (d ++ rest)
                    zeroFuncExp = do funcName <- try(m_identifier) <?> "Looking for a variable"
-                                    t1 <- newTyVar "V"
-                                    return $ Var t1 (FuncName funcName)
+                                    return $ Var (FuncName funcName)
                    ifElseExp = do
                                 m_reserved "if"
                                 mySpaces
@@ -240,7 +239,7 @@ expression = try( oprFuncExp ) <|>
                                 return $ Apply letId theType theType 
                                            (Apply letId theType (TFun theType theType)
                                             (Apply letId (TPrim PrimBool) (ifType theType) 
-                                                       (Var (buildType theType) (FuncName "$ifelse"))
+                                                       (Var (FuncName "$ifelse"))
                                                        boolExp) trueExp) falseExp
                    funcParamExp = do
                                   funcName <- try(m_identifier)
@@ -248,10 +247,9 @@ expression = try( oprFuncExp ) <|>
                                   rest <- many1(try(oprFuncExp) <|> try(parenExp) <|> 
                                                 try(zeroFuncExp) <|> try(constExp) <?> "parameter")
                                   restWithVars <- mapM makeVars rest
-                                  funcType <- newTyVar "FuncType"
                                   letId <- newLetId funcName
                                   let buildApply exp (exp2, t1, t2) =  Apply letId t1 t2 exp exp2
-                                  return $ List.foldl' buildApply (Var funcType (FuncName funcName)) restWithVars
+                                  return $ List.foldl' buildApply (Var (FuncName funcName)) restWithVars
                                   where makeVars exp = do t1 <- newTyVar "ApplyParam"
                                                           t2 <- newTyVar "RetType"
                                                           return (exp, t1, t2)
@@ -269,10 +267,9 @@ expression = try( oprFuncExp ) <|>
                                 t2 <- newTyVar "OAt2"
                                 t3 <- newTyVar "OAt3"
                                 t4 <- newTyVar "OAt4"
-                                t5 <- newTyVar "OAt5"
                                 letId <- newLetId $ "binary" ++ opr
                                 right <- try(expression) <?> "Looking for right side of exp"
-                                return $ Apply letId t1 t2 (Apply letId t3 t4 (Var t5 (FuncName opr)) left) right
+                                return $ Apply letId t1 t2 (Apply letId t3 t4 (Var (FuncName opr)) left) right
 
 newLetId prefix =
     do

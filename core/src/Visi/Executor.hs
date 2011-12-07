@@ -68,7 +68,7 @@ eval1 sourceVars scope (Apply _ _ _ e1 e2) =
      let (FuncValue exp) = eval sourceVars scope e1 in
      let param = eval sourceVars scope e2 in
      exp(param)
-eval1 sourceVars scope (Var _ funcName) = eval sourceVars scope $ scope Map.! funcName
+eval1 sourceVars scope (Var funcName) = eval sourceVars scope $ scope Map.! funcName
 eval1 sourceVars scope (BuiltIn _ _ func) = FuncValue func
 eval1 sourceVars scope (ValueConst v) = v
 eval1 sourceVars scope (SourceExp _ (FuncName name) _) = 
@@ -100,8 +100,9 @@ boolTrue = LetExp (LetId "boolTrue") (FuncName "true") (TPrim PrimBool) (ValueCo
 boolFalse :: Expression
 boolFalse = LetExp (LetId "boolFalse") (FuncName "false") (TPrim PrimBool) (ValueConst $ BoolValue False)
 
+ifTVar = TVar "IfElse"
 builtInIf :: Expression
-builtInIf = BuiltIn (FuncName "$ifelse") (TFun (TPrim PrimBool) (TFun (TParam "IfA") (TFun (TParam "IfA") (TParam "IfA"))))  ifThing
+builtInIf = BuiltIn (FuncName "$ifelse") (TFun (TPrim PrimBool) (TFun ifTVar (TFun ifTVar ifTVar)))  ifThing
              where ifThing :: Value -> Value
                    ifThing (BoolValue v) = FuncValue ifElse
                         where ifElse true = FuncValue $ elseThing true

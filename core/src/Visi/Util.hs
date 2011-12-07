@@ -1,7 +1,8 @@
-module Visi.Util (flatten, VisiError(TypeError, ParsingError), ThrowsError, vtrace, justOr) where
+module Visi.Util (flatten, VisiError(TypeError, ParsingError), ThrowsError, vtrace, justOr, (|-)) where
 
 import Control.Monad.Error
 import Text.Parsec
+import Debug.Trace
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -33,8 +34,8 @@ flatten x = x >>= (\a -> a)
 
 -- | Trace that you can disable
 vtrace :: String -> a -> a
-vtrace _ a = a
--- vtrace msg a = trace msg a
+-- vtrace _ a = a
+vtrace msg a = trace msg a
 
 data VisiError = 
     TypeError String 
@@ -58,3 +59,7 @@ instance Error VisiError where
 justOr thing err = case thing of
                     (Just v) -> return v
                     _ -> err
+                    
+(|-) :: Either b a -> (a -> Either b c) -> Either b c
+(Right a) |- f = f a
+(Left b) |- _ = Left b

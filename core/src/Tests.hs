@@ -109,6 +109,22 @@ syntaxTests =
       ,("f = 3\n\
         \f2 = \"Hello\"", testTypes [("f", TPrim PrimDouble)
                                      ,("f2", TPrim PrimStr)] . checktype)
+
+      ,("f n = n + 1", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
+      ,("f n = n & \"hi\"", testTypes [("f", TFun (TPrim PrimStr) (TPrim PrimStr))] . checktype)
+      ,("q n = n", testTypes [("q", TPrim PrimDouble)] . checktype)
+      ,("f n = if true then n else n + 1", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
+     {- ,("f n = if true then n else f (n + 1)", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype) -}
+     {-
+      ,("f n = if true then n else (n + 1)\n\
+        \f2 n = if true then n else (n & \"foo\")", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))
+                                                              ,("f2", TFun (TPrim PrimStr) (TPrim PrimStr))] . checktype)
+    -}
+    {-
+     ,("f n = n & \"hi\"\n\
+        \q n = n", testTypes [("f", TFun (TPrim PrimStr) (TPrim PrimStr))
+                             ,("q", TPrim PrimDouble)] . checktype)
+                             -}
     ]
 
 -- | test that the string parses and there are cnt expressions
@@ -146,8 +162,11 @@ checktype str =
         exps <- parseLines str
         let allExp = builtInExp ++ exps
         let grp = mkGroup allExp
-        let typeVars = collectVars Nothing grp
+        let typeVars = collectVars grp
+        (atv, t) <- vtrace ("Analyzing "++str) analyze Map.empty Set.empty typeVars grp
+        {-
         (atv, t) <- collectSubs Map.empty typeVars grp
-        let (atv', lets) = resolveLets grp atv
+        -}
+        (atv', lets) <- vtrace ("Checking:\n" ++ str ++"\n atv " ++ show atv) resolveLets grp atv
         let typeMap = Map.fromList lets
-        return $ typeMap
+        return typeMap
