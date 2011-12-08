@@ -103,9 +103,15 @@ setATV theType _ = throwError $ TypeError $ "Trying to update a type variable, b
 
 instnce (TVarInfo _ _ i) = i
 
+-- gettype _ nongen (FuncName name) | vtrace ("Gettyoe for " ++ name ++ " Nongen " ++ show nongen) False = error "Never"
 gettype scope nongen name =
     case Map.lookup name scope of
-        (Just t) -> fresh nongen t
+        (Just t) -> 
+           do
+               t' <- prune t
+               ret <- fresh nongen t'
+               -- return $ vtrace ("Returning " ++ show ret) ret
+               return ret
         _ -> throwError $ TypeError $ "Could not find " ++ show name ++ " in scope"
 
 fresh nongen tpe = 
@@ -164,7 +170,7 @@ unify t1 t2 =
             (a@(TVar _), b) ->
                 do
                     oit <- occursInType a b
-                    if oit then throwError $ TypeError $  "Recursive Unification of " ++ show a ++ " abd " ++ show b
+                    if oit then throwError $ TypeError $  "Recursive Unification of " ++ show a ++ " and " ++ show b
                         else do
                             tvi <- findTVI a
                             updateType a b
@@ -176,7 +182,8 @@ unify t1 t2 =
             (a@(TOper n1 p1),b@(TOper n2 p2)) ->
                 if n1 /= n2 || (length p1) /= (length p2) then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
                     else mapM_ (\(a,b) -> unify a b) $ zip p1 p2
-            _ -> return ()
+            (a, b) | a == b -> return ()
+            (a, b) -> throwError $ TypeError $ "Failed to unify " ++ show a ++ " & " ++ show b
 
 prune tv@(TVar _) =
     do
@@ -252,7 +259,7 @@ calcType scope nongen e@(LetExp _ name t1 exp) =
         putCurExp e
         t1' <- createTypeVar e t1
         let scope' = Map.insert name t1' scope
-        rt <- calcType scope' nongen {-(Set.insert t1' nongen) -} exp
+        rt <- calcType scope' (Set.insert t1' nongen) exp
         unify t1' rt
         t1'' <- prune t1'
         return t1''
@@ -273,7 +280,7 @@ calcType scope nongen e@(FuncExp paramName pt _ exp) =
         rt <- calcType scope' (Set.insert pt' nongen) exp
         pt'' <- prune pt'
         return $ function pt'' rt
-calcType scope nongen e@(Apply letId t1 _ exp1 exp2) =
+calcType scope nongen e@(Apply letId _ t1 exp1 exp2) =
     do
         putCurExp e
         t1' <- createTypeVar e t1
@@ -285,11 +292,22 @@ calcType scope nongen (Group exprs _ exp) =
     do
         let it name e t1 = do
                                 t1' <- createTypeVar e t1
-                                return (name, t1')        
+                                return (name, t1', isNongen e)        
         pairs <- mapM (processExp it) $ Map.assocs exprs
-        let scope' = scope `Map.union` (Map.fromList pairs)
-        mapM_ (calcType scope' nongen) $ Map.elems exprs
+        let scope' = scope `Map.union` (Map.fromList $ map nv pairs)
+        -- all the source expressions are *NOT* generic. We need to
+        -- know what the actual types are
+        let nongen' = nongen `Set.union` (Set.fromList (pairs >>= genPull))
+        mapM_ (calcType scope' nongen') $ Map.elems exprs
         return $ TOper "na" []
+
+genPull (_, t, True) = [t]
+genPull _ = []
+
+isNongen (LetExp _ _ _ (SourceExp _ _ t1)) = True
+isNongen e = False
+
+nv (name, value, _) = (name, value)
 
 processExp it (name, e@(LetExp _ _ t1 _)) = it name e t1
 processExp it (name, e@(SinkExp _ _ t1 _)) = it name e t1
@@ -300,16 +318,9 @@ processTypes :: Expression -> StateThrow [(String, Type)]
 processTypes e@(Group exprs _ _) =
     do
         calcType Map.empty Set.empty e
+        calcType Map.empty Set.empty e -- have to run it twice to unify all the types
         let nameType (FuncName name) e t = do
                                     t' <- prune t
                                     return (name, t')            
         ret <- mapM (processExp nameType) $ Map.assocs exprs
         return ret
-
--- foo :: Expression -> ThrowsError String
-foo _ = 
-    do
-        ati <- findTVI $ TVar "moo"
-        s <- getATV
-        -- put $ Map.insert "foo" "bar" s
-        return "Hi"

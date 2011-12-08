@@ -63,7 +63,7 @@ runTest (param, func) =
         do
             let res = func param
             return $ case res of
-                        (Just msg)-> (1, putStrLn $ "Failed " ++ (show param) ++ " error " ++ msg)
+                        (Just msg)-> (1, putStrLn $ "Failed " ++ param ++ " error " ++ msg)
                         _ -> (0, return ())
                             
 -- syntaxTests :: ([(String, String -> Either VisiError a, Either VisiError a -> Either String ())])
@@ -103,30 +103,37 @@ syntaxTests =
          \?taxRate // source the tax rate\n\
          \?taxable\n\
          \?nonTaxable", pfailure . checkparse)
-      ,("f = 3\n\
-        \d = f & \"hi\"", testTypes [("f", TPrim PrimDouble)
-                                    ,("d", TPrim PrimDouble)] . checktype)
-      ,("f = 3", testTypes [("f", TPrim PrimDouble)] . checktype)
-      ,("f = 3\n\
-        \f2 n = f + n", testTypes [("f", TPrim PrimDouble)
-                                  ,("f2", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
-      ,("f = 3\n\
-        \f2 = \"Hello\"", testTypes [("f", TPrim PrimDouble)
-                                     ,("f2", TPrim PrimStr)] . checktype)
 
-      ,("f n = n + 1", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
-      ,("f n = n & \"hi\"", testTypes [("f", TFun (TPrim PrimStr) (TPrim PrimStr))] . checktype)
-      ,("q n = n", testTypes [("q", TPrim PrimDouble)] . checktype)
-      ,("f n = if true then n else n + 1", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
-      ,("f n = if true then n else f (n + 1)", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))] . checktype)
+      ,("f = 3 & \"hi\"", failsTyper . checktype)
+      ,("f = 3\n\
+        \d = f & \"hi\"", failsTyper . checktype)
+      ,("f = 3", testTypes [("f", testPrimDouble)] . checktype)
+      ,("f = 3\n\
+        \f2 n = f + n", testTypes [("f", testPrimDouble)
+                                  ,("f2", testDoubleFunc)] . checktype)
+      ,("f = 3\n\
+        \f2 = \"Hello\"", testTypes [("f", testPrimDouble)
+                                     ,("f2", testPrimStr)] . checktype)
+
+      ,("f n = n + 1", testTypes [("f", testDoubleFunc)] . checktype)
+      ,("f n = n & \"hi\"", testTypes [("f", testStrFunc)] . checktype)
+      ,("q n = n", testTypes [("q", testGenFunc)] . checktype)
+
+      ,("q n = n\n\
+        \f n = if true then n else (q n)", testTypes [("q", testGenFunc)
+                                                      ,("f", testGenFunc)] . checktype)
+
+      ,("f n = if true then n else (n + 1)", testTypes [("f", testDoubleFunc)] . checktype)
+
+      ,("f n = if true then n else (f (n + 1))", testTypes [("f", testDoubleFunc)] . checktype)
      
       ,("f n = if true then n else (n + 1)\n\
-        \f2 n = if true then n else (n & \"foo\")", testTypes [("f", TFun (TPrim PrimDouble) (TPrim PrimDouble))
-                                                              ,("f2", TFun (TPrim PrimStr) (TPrim PrimStr))] . checktype)
+        \f2 n = if true then n else (n & \"foo\")", testTypes [("f", testDoubleFunc)
+                                                              ,("f2", testStrFunc)] . checktype)
      ,("f n = n & \"hi\"\n\
-        \q n = n", testTypes [("f", TFun (TPrim PrimStr) (TPrim PrimStr))
-                             ,("q", TPrim PrimDouble)] . checktype)
-                             
+        \q n = n", testTypes [("f", testStrFunc)
+                             ,("q", testGenFunc)] . checktype)
+
      ,("{- and indented line should fail -}\n\
          \total = subtotal + tax\n\
          \tax = taxable * taxRate\n\
@@ -135,9 +142,24 @@ syntaxTests =
          \\"Tax\" = tax // sink the tax\n\
          \?taxRate // source the tax rate\n\
          \?taxable\n\
-         \?nonTaxable", testTypes [("tax", TPrim PrimDouble)
-                                  ,("taxable", TPrim PrimDouble)] . checktype)                             
+         \?nonTaxable", testTypes [("tax", testPrimDouble)
+                                  ,("taxable", testPrimDouble)] . checktype)
+
     ]
+
+testGenFunc _ (TFun (TVar t1) (TVar t2)) | t1 == t2 = Nothing
+testGenFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
+
+testT t1 n t2 =
+  if t1 == t2 then Nothing else Just $ "In: " ++ n ++ " Expecting: " ++ show t1 ++ " but got " ++ show t2
+
+testPrimDouble = testT $ TPrim PrimDouble
+
+testPrimStr = testT $ TPrim PrimStr
+
+testDoubleFunc = testT $ TFun (TPrim PrimDouble) (TPrim PrimDouble)
+
+testStrFunc = testT $ TFun (TPrim PrimStr) (TPrim PrimStr)
 
 -- | test that the string parses and there are cnt expressions
 psuccess cnt p = case p of 
@@ -152,15 +174,17 @@ pfailure p = case p of
 -- checkparse :: (Error e) => String -> e
 checkparse str = parseLines str
 
--- testTypes :: [(String, Type)] -> ThrowsError (Map.Map String Type) -> Either String ()
+failsTyper (Left err) = Nothing
+failsTyper (Right types) = Just $ "Expected a type error, but got " ++ show types
+
+-- testTypes :: [(String, String -> Type -> Maybe String)] -> ThrowsError (Map.Map String Type) -> Either String ()
 testTypes listOStuff res = 
     case res of 
         (Left err) -> Just $ show err
         (Right typeMap) -> 
           let testIt (funcName, expType) = 
                 case Map.lookup funcName typeMap of
-                  (Just t) | t == expType -> Nothing
-                  (Just t) -> Just $ "Type Mismatch for "++ funcName ++" expected " ++ show expType ++ " got " ++ show t
+                  (Just t) -> expType funcName t
                   _ -> Just $ "Not function "++ funcName ++ " defined"
                 in
           let res = List.map testIt listOStuff in
@@ -174,14 +198,6 @@ checktype str =
         exps <- parseLines str
         let allExp = builtInExp ++ exps
         let grp = mkGroup allExp
-        {-
-        let typeVars = collectVars grp
-        (atv, t) <- vtrace ("Analyzing "++str) analyze Map.empty Set.empty typeVars grp
-        {-
-        (atv, t) <- collectSubs Map.empty typeVars grp
-        -}
-        (atv', lets) <- vtrace ("Checking:\n" ++ str ++"\n atv " ++ show atv) resolveLets grp atv
-        -}
         lets <- collectTypes grp
         let typeMap = Map.fromList lets
         return typeMap
