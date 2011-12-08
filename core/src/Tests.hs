@@ -32,6 +32,7 @@ import Visi.Util
 import Visi.Expression
 import Visi.Parse
 import Visi.Executor
+import Visi.Typer
 import Control.Monad.Error
 
 import qualified Data.Map as Map
@@ -102,7 +103,9 @@ syntaxTests =
          \?taxRate // source the tax rate\n\
          \?taxable\n\
          \?nonTaxable", pfailure . checkparse)
-         
+      ,("f = 3\n\
+        \d = f & \"hi\"", testTypes [("f", TPrim PrimDouble)
+                                    ,("d", TPrim PrimDouble)] . checktype)
       ,("f = 3", testTypes [("f", TPrim PrimDouble)] . checktype)
       ,("f = 3\n\
         \f2 n = f + n", testTypes [("f", TPrim PrimDouble)
@@ -164,18 +167,21 @@ testTypes listOStuff res =
           let collapseLeft x Nothing = x
               collapseLeft Nothing x = x
               collecteLeft (Just msg) (Just m2) = Just $ msg ++ ", " ++ m2 in
-          List.foldl' collapseLeft Nothing res
+          List.foldr collapseLeft Nothing res
 
 checktype str =
     do
         exps <- parseLines str
         let allExp = builtInExp ++ exps
         let grp = mkGroup allExp
+        {-
         let typeVars = collectVars grp
         (atv, t) <- vtrace ("Analyzing "++str) analyze Map.empty Set.empty typeVars grp
         {-
         (atv, t) <- collectSubs Map.empty typeVars grp
         -}
         (atv', lets) <- vtrace ("Checking:\n" ++ str ++"\n atv " ++ show atv) resolveLets grp atv
+        -}
+        lets <- collectTypes grp
         let typeMap = Map.fromList lets
         return typeMap
