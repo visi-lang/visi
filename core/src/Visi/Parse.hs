@@ -169,7 +169,7 @@ normalFunc = do
               return $ LetExp letId (FuncName name) ft wholeExp
               where makeVars param = do pt <- newTyVar "p"
                                         return (FuncName param, pt)
-                    foldFunc (funcName, pt) (exp, rt) = (FuncExp funcName pt exp, TFun pt rt)
+                    foldFunc (funcName, pt) (exp, rt) = (FuncExp funcName pt exp, tFun pt rt)
 
 letDef :: MParser Expression
 letDef = do name <- m_identifier
@@ -180,8 +180,8 @@ letDef = do name <- m_identifier
             letId <- newLetId "Let"
             return $ LetExp letId (FuncName name) t1 exp
 
-buildType t = TFun (TPrim PrimBool) $ ifType t
-ifType t = (TFun t (TFun t t))
+buildType t = tFun (TPrim PrimBool) $ ifType t
+ifType t = (tFun t (tFun t t))
 
 
 -- expression :: GenParser Char TIState Expression
@@ -237,7 +237,7 @@ expression = try( oprFuncExp ) <|>
                                 theType <- newTyVar "IfElse"
                                 letId <- newLetId "IfElse"
                                 return $ Apply letId theType 
-                                           (Apply letId (TFun theType theType)
+                                           (Apply letId (tFun theType theType)
                                             (Apply letId (ifType theType) 
                                                        (Var (FuncName "$ifelse"))
                                                        boolExp) trueExp) falseExp

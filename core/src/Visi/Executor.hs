@@ -85,14 +85,14 @@ builtInExp = boolTrue : boolFalse : builtInConcat : builtInIf : builtInAdd :
              builtInReverse : builtInEq :
              builtInLen : builtInShow : []
 
-funcDoubleDouble = TFun (TPrim PrimDouble) (TPrim PrimDouble)
-funcDoubleDoubleDouble = TFun (TPrim PrimDouble) funcDoubleDouble
+funcDoubleDouble = tFun (TPrim PrimDouble) (TPrim PrimDouble)
+funcDoubleDoubleDouble = tFun (TPrim PrimDouble) funcDoubleDouble
 
-funcBoolBool = TFun (TPrim PrimBool) (TPrim PrimBool)
-funcBoolBoolBool = TFun (TPrim PrimBool) funcBoolBool
+funcBoolBool = tFun (TPrim PrimBool) (TPrim PrimBool)
+funcBoolBoolBool = tFun (TPrim PrimBool) funcBoolBool
 
-funcStrStr = TFun (TPrim PrimStr) (TPrim PrimStr)
-funcStrStrStr = TFun (TPrim PrimStr) funcStrStr
+funcStrStr = tFun (TPrim PrimStr) (TPrim PrimStr)
+funcStrStrStr = tFun (TPrim PrimStr) funcStrStr
 
 boolTrue :: Expression
 boolTrue = LetExp (LetId "boolTrue") (FuncName "true") (TPrim PrimBool) (ValueConst $ BoolValue True)
@@ -102,7 +102,7 @@ boolFalse = LetExp (LetId "boolFalse") (FuncName "false") (TPrim PrimBool) (Valu
 
 ifTVar = TVar "IfElse##"
 builtInIf :: Expression
-builtInIf = BuiltIn (FuncName "$ifelse") (TFun (TPrim PrimBool) (TFun ifTVar (TFun ifTVar ifTVar)))  ifThing
+builtInIf = BuiltIn (FuncName "$ifelse") (tFun (TPrim PrimBool) (tFun ifTVar (tFun ifTVar ifTVar)))  ifThing
              where ifThing :: Value -> Value
                    ifThing (BoolValue v) = FuncValue ifElse
                         where ifElse true = FuncValue $ elseThing true
@@ -124,7 +124,7 @@ builtInAdd = BuiltIn (FuncName "+") funcDoubleDoubleDouble addThing
 
 eqVar = TVar "Eq##"
 builtInEq :: Expression
-builtInEq = BuiltIn (FuncName "==") (TFun eqVar (TFun eqVar $ TPrim PrimBool)) eqThing
+builtInEq = BuiltIn (FuncName "==") (tFun eqVar (tFun eqVar $ TPrim PrimBool)) eqThing
              where eqThing :: Value -> Value
                    eqThing v = FuncValue partialEq
                      where partialEq :: Value -> Value
@@ -197,16 +197,16 @@ builtInMult = BuiltIn (FuncName "*") funcDoubleDoubleDouble multThing
                            partialMult _ = UndefinedValue
 
 builtInLen :: Expression
-builtInLen = BuiltIn (FuncName "len") (TFun (TPrim PrimStr) (TPrim PrimDouble)) lenThing
+builtInLen = BuiltIn (FuncName "len") (tFun (TPrim PrimStr) (TPrim PrimDouble)) lenThing
              where lenThing (StrValue str) = DoubleValue $ fromIntegral $ length str
                    lenThing _ = UndefinedValue
 
 builtInReverse :: Expression
-builtInReverse = BuiltIn (FuncName "reverse") (TFun (TPrim PrimStr) (TPrim PrimStr)) revThing
+builtInReverse = BuiltIn (FuncName "reverse") (tFun (TPrim PrimStr) (TPrim PrimStr)) revThing
                  where revThing (StrValue str) = StrValue $ reverse str
                        revThing _ = UndefinedValue
 
 builtInShow :: Expression
-builtInShow = BuiltIn (FuncName "show") (TFun (TPrim PrimDouble) (TPrim PrimStr)) showThing
+builtInShow = BuiltIn (FuncName "show") (tFun (TPrim PrimDouble) (TPrim PrimStr)) showThing
              where showThing (DoubleValue int) = StrValue $ show int
                    showThing _ = UndefinedValue

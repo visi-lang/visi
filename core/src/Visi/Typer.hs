@@ -138,11 +138,6 @@ fresh' nongen t =
                                             putTypeMap map'
                                             return ntv
                   if gen then updateMap else return t'
-            TFun t1 t2 ->
-              do
-                  t1' <- fresh' nongen t1
-                  t2' <- fresh' nongen t2
-                  return $ TFun t1' t2'
             (TOper name args) ->
               do
                   args' <- mapM (fresh' nongen) args
@@ -175,10 +170,6 @@ unify t1 t2 =
                             tvi <- findTVI a
                             updateType a b
             (o, v@(TVar _)) -> unify v o
-            (TFun p1 r1, TFun p2 r2) ->
-                do
-                    unify p1 p2
-                    unify r1 r2
             (a@(TOper n1 p1),b@(TOper n2 p2)) ->
                 if n1 /= n2 || (length p1) /= (length p2) then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
                     else mapM_ (\(a,b) -> unify a b) $ zip p1 p2
@@ -195,11 +186,6 @@ prune tv@(TVar _) =
                   updateType tv t'
                   return t'
             _ -> return tv
-prune (TFun p r) =
-    do
-        p' <- prune p
-        r' <- prune r
-        return $ TFun p' r'
 prune (TOper name params) =
     do
         params' <- mapM prune params
@@ -223,12 +209,8 @@ occursInType t1 t2 =
         t2' <- prune t2
         case t2' of
             v | v == t1 -> return True
-            -- TFun v1 v2 -> occursIn [v1, v2] t1
-            TFun p r -> occursIn [p, r] t1
             TOper _ args -> occursIn args t1
             _ -> return False
-
-function t1 t2 = TFun t1 t2 -- TOper "->" [t1, t2]
 
 createTypeVar e tv@(TVar t1)  = 
     do
@@ -238,11 +220,6 @@ createTypeVar e tv@(TVar t1)  =
             _ -> do
                    setATV tv $ TVarInfo t1 e Nothing
                    prune tv
-createTypeVar e (TFun p r) =
-    do
-        p' <- createTypeVar e p
-        r' <- createTypeVar e r
-        prune $ TFun p r
 createTypeVar e (TOper n p) =
     do
         p' <- mapM (createTypeVar e) p
@@ -279,14 +256,14 @@ calcType scope nongen e@(FuncExp paramName pt exp) =
         let scope' = Map.insert paramName pt' scope
         rt <- calcType scope' (Set.insert pt' nongen) exp
         pt'' <- prune pt'
-        return $ function pt'' rt
+        return $ tFun pt'' rt
 calcType scope nongen e@(Apply letId t1 exp1 exp2) =
     do
         putCurExp e
         t1' <- createTypeVar e t1
         funType <- calcType scope nongen exp1
         argType <- calcType scope nongen exp2
-        unify (function argType t1') funType
+        unify (tFun argType t1') funType
         prune t1'
 calcType scope nongen (Group exprs _ exp) =
     do

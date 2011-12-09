@@ -140,7 +140,7 @@ syntaxTests =
                               ,("b", testGenXFunc)
                               ,("c", testGenXFunc)] . checktype)
 
-     ,("a n = n == 1", testTypes [("a", (testT $ TFun (TPrim PrimDouble) (TPrim PrimBool)))] . checktype)
+     ,("a n = n == 1", testTypes [("a", (testT $ tFun (TPrim PrimDouble) (TPrim PrimBool)))] . checktype)
 
      ,("a n = n == 1\n\
        \b = a true", failsTyper . checktype)
@@ -190,10 +190,10 @@ syntaxTests =
 
     ]
 
-testGenFunc _ (TFun (TVar t1) (TVar t2)) | t1 == t2 = Nothing
+testGenFunc _ (TOper funcOperName [(TVar t1), (TVar t2)]) | t1 == t2 = Nothing
 testGenFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
 
-testGenXFunc _ (TFun (TVar t1) (TVar t2)) = Nothing
+testGenXFunc _ (TOper funcOperName [(TVar t1), (TVar t2)]) = Nothing
 testGenXFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
 
 testT t1 n t2 =
@@ -203,9 +203,9 @@ testPrimDouble = testT $ TPrim PrimDouble
 
 testPrimStr = testT $ TPrim PrimStr
 
-testDoubleFunc = testT $ TFun (TPrim PrimDouble) (TPrim PrimDouble)
+testDoubleFunc = testT $ tFun (TPrim PrimDouble) (TPrim PrimDouble)
 
-testStrFunc = testT $ TFun (TPrim PrimStr) (TPrim PrimStr)
+testStrFunc = testT $ tFun (TPrim PrimStr) (TPrim PrimStr)
 
 -- | test that the string parses and there are cnt expressions
 psuccess cnt p = case p of 
