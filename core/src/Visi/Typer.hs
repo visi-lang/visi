@@ -1,4 +1,4 @@
-module Visi.Typer (collectTypes) where
+module Visi.Typer (collectTypes, buildLetScope) where
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -272,7 +272,7 @@ calcType scope nongen e@(SinkExp _ name t1 exp) =
         unify t1' rt
         t1'' <- prune t1'
         return t1''
-calcType scope nongen e@(FuncExp paramName pt _ exp) =
+calcType scope nongen e@(FuncExp paramName pt exp) =
     do
         putCurExp e
         pt' <- createTypeVar e pt
@@ -280,7 +280,7 @@ calcType scope nongen e@(FuncExp paramName pt _ exp) =
         rt <- calcType scope' (Set.insert pt' nongen) exp
         pt'' <- prune pt'
         return $ function pt'' rt
-calcType scope nongen e@(Apply letId _ t1 exp1 exp2) =
+calcType scope nongen e@(Apply letId t1 exp1 exp2) =
     do
         putCurExp e
         t1' <- createTypeVar e t1
@@ -308,6 +308,12 @@ isNongen (LetExp _ _ _ (SourceExp _ _ t1)) = True
 isNongen e = False
 
 nv (name, value, _) = (name, value)
+
+
+-- | Take an Expression which should be a Group and turn it into a scope of top level expressions
+buildLetScope :: Expression -> LetScope
+buildLetScope (Group exprs _ _) = exprs
+buildLetScope _ = Map.empty
 
 processExp it (name, e@(LetExp _ _ t1 _)) = it name e t1
 processExp it (name, e@(SinkExp _ _ t1 _)) = it name e t1

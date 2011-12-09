@@ -49,6 +49,7 @@ type ThrowsError = Either VisiError
 showError :: VisiError -> String
 showError (TypeError str) = "Type error: " ++ str
 showError (DefaultError str) = "Uncategorized error: " ++ str
+showError (ParsingError pe) = show pe
 
 instance Show VisiError where show = showError
 

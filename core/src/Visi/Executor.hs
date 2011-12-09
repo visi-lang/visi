@@ -1,4 +1,4 @@
-module Visi.Executor (builtInExp) where
+module Visi.Executor (builtInExp, eval) where
     
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -62,9 +62,9 @@ eval sourceVars scope exp =
 
 eval1 :: SourceVars -> LetScope -> Expression -> Value
 eval1 sourceVars scope (LetExp _ funcName _ exp) = eval sourceVars scope exp -- error $ "Crap got a let!! " ++ show funcName -- eval scope exp
-eval1 sourceVars scope (FuncExp funcName p r exp) = FuncValue doFuncApply
+eval1 sourceVars scope (FuncExp funcName p exp) = FuncValue doFuncApply
      where doFuncApply v = eval sourceVars (Map.insert funcName (ValueConst v) scope) exp
-eval1 sourceVars scope (Apply _ _ _ e1 e2) =
+eval1 sourceVars scope (Apply _ _ e1 e2) =
      let (FuncValue exp) = eval sourceVars scope e1 in
      let param = eval sourceVars scope e2 in
      exp(param)
@@ -82,7 +82,7 @@ eval1 sourceVars scope (SourceExp _ (FuncName name) _) =
 
 builtInExp = boolTrue : boolFalse : builtInConcat : builtInIf : builtInAdd : 
              builtInMult : builtInSub : builtInDiv : builtInAnd : builtInOr :
-             builtInReverse :
+             builtInReverse : builtInEq :
              builtInLen : builtInShow : []
 
 funcDoubleDouble = TFun (TPrim PrimDouble) (TPrim PrimDouble)
@@ -100,7 +100,7 @@ boolTrue = LetExp (LetId "boolTrue") (FuncName "true") (TPrim PrimBool) (ValueCo
 boolFalse :: Expression
 boolFalse = LetExp (LetId "boolFalse") (FuncName "false") (TPrim PrimBool) (ValueConst $ BoolValue False)
 
-ifTVar = TVar "IfElse"
+ifTVar = TVar "IfElse##"
 builtInIf :: Expression
 builtInIf = BuiltIn (FuncName "$ifelse") (TFun (TPrim PrimBool) (TFun ifTVar (TFun ifTVar ifTVar)))  ifThing
              where ifThing :: Value -> Value
@@ -121,6 +121,14 @@ builtInAdd = BuiltIn (FuncName "+") funcDoubleDoubleDouble addThing
                    addThing _ = FuncValue partialAdd
                      where partialAdd :: Value -> Value
                            partialAdd _ = UndefinedValue
+
+eqVar = TVar "Eq##"
+builtInEq :: Expression
+builtInEq = BuiltIn (FuncName "==") (TFun eqVar (TFun eqVar $ TPrim PrimBool)) eqThing
+             where eqThing :: Value -> Value
+                   eqThing v = FuncValue partialEq
+                     where partialEq :: Value -> Value
+                           partialEq v' = BoolValue $ v == v'
 
 builtInAnd :: Expression
 builtInAnd = BuiltIn (FuncName "&&") funcBoolBoolBool andThing

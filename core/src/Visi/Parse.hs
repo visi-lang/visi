@@ -169,7 +169,7 @@ normalFunc = do
               return $ LetExp letId (FuncName name) ft wholeExp
               where makeVars param = do pt <- newTyVar "p"
                                         return (FuncName param, pt)
-                    foldFunc (funcName, pt) (exp, rt) = (FuncExp funcName pt rt exp, TFun pt rt)
+                    foldFunc (funcName, pt) (exp, rt) = (FuncExp funcName pt exp, TFun pt rt)
 
 letDef :: MParser Expression
 letDef = do name <- m_identifier
@@ -236,9 +236,9 @@ expression = try( oprFuncExp ) <|>
                                 mySpaces
                                 theType <- newTyVar "IfElse"
                                 letId <- newLetId "IfElse"
-                                return $ Apply letId theType theType 
-                                           (Apply letId theType (TFun theType theType)
-                                            (Apply letId (TPrim PrimBool) (ifType theType) 
+                                return $ Apply letId theType 
+                                           (Apply letId (TFun theType theType)
+                                            (Apply letId (ifType theType) 
                                                        (Var (FuncName "$ifelse"))
                                                        boolExp) trueExp) falseExp
                    funcParamExp = do
@@ -248,11 +248,10 @@ expression = try( oprFuncExp ) <|>
                                                 try(zeroFuncExp) <|> try(constExp) <?> "parameter")
                                   restWithVars <- mapM makeVars rest
                                   letId <- newLetId funcName
-                                  let buildApply exp (exp2, t1, t2) =  Apply letId t1 t2 exp exp2
+                                  let buildApply exp (exp2, t2) =  Apply letId t2 exp exp2
                                   return $ List.foldl' buildApply (Var (FuncName funcName)) restWithVars
-                                  where makeVars exp = do t1 <- newTyVar "ApplyParam"
-                                                          t2 <- newTyVar "RetType"
-                                                          return (exp, t1, t2)
+                                  where makeVars exp = do t2 <- newTyVar "RetType"
+                                                          return (exp, t2)
                                         
                    allButOpr = try( parenExp) <|> try(ifElseExp) <|> try(funcParamExp) <|> 
                                try(zeroFuncExp) <|> try(constExp) <?>
@@ -261,7 +260,7 @@ expression = try( oprFuncExp ) <|>
                    oprFuncExp = do
                                 left <- try(allButOpr)
                                 mySpaces
-                                opr <- many1 $ oneOf "+-*/&|"
+                                opr <- many1 $ oneOf "+-*/&|=><!?"
                                 mySpaces
                                 t1 <- newTyVar "OAt1"
                                 t2 <- newTyVar "OAt2"
@@ -269,7 +268,7 @@ expression = try( oprFuncExp ) <|>
                                 t4 <- newTyVar "OAt4"
                                 letId <- newLetId $ "binary" ++ opr
                                 right <- try(expression) <?> "Looking for right side of exp"
-                                return $ Apply letId t1 t2 (Apply letId t3 t4 (Var (FuncName opr)) left) right
+                                return $ Apply letId t2 (Apply letId t4 (Var (FuncName opr)) left) right
 
 newLetId prefix =
     do

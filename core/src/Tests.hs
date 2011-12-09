@@ -134,21 +134,67 @@ syntaxTests =
         \q n = n", testTypes [("f", testStrFunc)
                              ,("q", testGenFunc)] . checktype)
 
-     ,("{- and indented line should fail -}\n\
-         \total = subtotal + tax\n\
-         \tax = taxable * taxRate\n\
-         \subtotal = taxable + nonTaxable\n\n\n\
-         \\"Total\" = total // sink the total\n\
-         \\"Tax\" = tax // sink the tax\n\
-         \?taxRate // source the tax rate\n\
-         \?taxable\n\
-         \?nonTaxable", testTypes [("tax", testPrimDouble)
-                                  ,("taxable", testPrimDouble)] . checktype)
+     ,("a n = b n\n\
+       \b n = c n\n\
+       \c n = a n", testTypes [("a", testGenXFunc)
+                              ,("b", testGenXFunc)
+                              ,("c", testGenXFunc)] . checktype)
+
+     ,("a n = n == 1", testTypes [("a", (testT $ TFun (TPrim PrimDouble) (TPrim PrimBool)))] . checktype)
+
+     ,("a n = n == 1\n\
+       \b = a true", failsTyper . checktype)
+
+     ,("a n = \"foo\" == 1", failsTyper . checktype)
+
+
+     ,("a n = b n\n\
+       \b n = c n\n\
+       \c n = a n\n\
+       \d n = a n", testTypes [("a", testGenXFunc)
+                              ,("b", testGenXFunc)
+                              ,("c", testGenXFunc)
+                              ,("d", testGenXFunc)] . checktype)
+
+     ,("fact n = if n == 0 then 1 else n * fact n - 1",
+                  testTypes [("fact", testDoubleFunc)] . checktype)
+
+     ,("fact n = if n == 0 then 1 else n * fact n - 1\n\
+       \res = fact 10",
+                  testResults [("res", DoubleValue 3628800)] . checkResults)
+
+     ,("fact n = if n == 0 then 1 else n * fact n - 1\n\
+       \res = fact 10\n\
+       \good = goodorbad true\n\
+       \bad = goodorbad false\n\
+       \goodorbad v = if v then \"good\" else \"bad\"",
+                  testResults [("res", DoubleValue 3628800)
+                              ,("good", StrValue "good")
+                              ,("bad", StrValue "bad")] . checkResults)
+
+     ,("res = \"10\"",
+                  testResults [("res", StrValue "10")] . checkResults)
+
+
+     ,("total = subtotal + tax\n\
+       \tax = taxable * taxRate\n\
+       \subtotal = taxable + nonTaxable\n\n\n\
+       \\"Total\" = total // sink the total\n\
+       \\"Tax\" = tax // sink the tax\n\
+       \?taxRate // source the tax rate\n\
+       \?taxable\n\
+       \?nonTaxable", testTypes [("tax", testPrimDouble)
+                                ,("taxable", testPrimDouble)] . checktype)
+
+
 
     ]
 
 testGenFunc _ (TFun (TVar t1) (TVar t2)) | t1 == t2 = Nothing
 testGenFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
+
+testGenXFunc _ (TFun (TVar t1) (TVar t2)) = Nothing
+testGenXFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
 
 testT t1 n t2 =
   if t1 == t2 then Nothing else Just $ "In: " ++ n ++ " Expecting: " ++ show t1 ++ " but got " ++ show t2
@@ -174,7 +220,7 @@ pfailure p = case p of
 -- checkparse :: (Error e) => String -> e
 checkparse str = parseLines str
 
-failsTyper (Left err) = Nothing
+failsTyper (Left (TypeError _)) = Nothing
 failsTyper (Right types) = Just $ "Expected a type error, but got " ++ show types
 
 -- testTypes :: [(String, String -> Type -> Maybe String)] -> ThrowsError (Map.Map String Type) -> Either String ()
@@ -188,10 +234,11 @@ testTypes listOStuff res =
                   _ -> Just $ "Not function "++ funcName ++ " defined"
                 in
           let res = List.map testIt listOStuff in
-          let collapseLeft x Nothing = x
-              collapseLeft Nothing x = x
-              collecteLeft (Just msg) (Just m2) = Just $ msg ++ ", " ++ m2 in
           List.foldr collapseLeft Nothing res
+
+collapseLeft x Nothing = x
+collapseLeft Nothing x = x
+collapseLeft (Just msg) (Just m2) = Just $ msg ++ ", " ++ m2
 
 checktype str =
     do
@@ -201,3 +248,25 @@ checktype str =
         lets <- collectTypes grp
         let typeMap = Map.fromList lets
         return typeMap
+
+testResults list res =
+  case res of
+    Left err -> Just $ show err
+    Right grp ->
+      let exprs = buildLetScope grp in
+      let testIt (funcName, expVal) = case eval Map.empty exprs $ Var $ FuncName funcName of
+                                          v | expVal == v -> Nothing
+                                          v -> Just $ "Funcname " ++ funcName ++ " yielded " ++ show v ++ " expected " ++ show expVal
+      in
+      let res = List.map testIt list in
+      List.foldr collapseLeft Nothing res
+
+
+
+checkResults str =
+  do
+    exps <- parseLines str
+    let allExp = builtInExp ++ exps
+    let grp = mkGroup allExp
+    lets <- collectTypes grp
+    return grp

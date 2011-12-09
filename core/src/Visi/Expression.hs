@@ -9,9 +9,7 @@ module Visi.Expression (
                            FuncName(FuncName), 
                            LetId(LetId),
                            Prim(PrimDouble, PrimBool, PrimStr),
-                           valuePrim, collectVars, collectSubs, resolveLets, thread,
-                           loopSet, flatten, letScope, mm,
-                           analyze,
+                           valuePrim,
                            Value(DoubleValue, StrValue, BoolValue, FuncValue, UndefinedValue)) where
 
 {- ***** BEGIN LICENSE BLOCK *****
@@ -50,8 +48,8 @@ newtype LetId = LetId String deriving (Eq, Ord, Show)
 data Expression = LetExp LetId FuncName Type !Expression 
                   | SinkExp LetId FuncName Type !Expression
                   | SourceExp LetId FuncName Type
-                  | FuncExp FuncName Type Type !Expression
-                  | Apply LetId Type Type Expression !Expression
+                  | FuncExp FuncName Type !Expression
+                  | Apply LetId Type Expression !Expression
                   | Var FuncName
                   | BuiltIn FuncName Type (Value -> Value)
                   | ValueConst Value
@@ -73,10 +71,9 @@ instance Show FuncName where
 
 instance Show Expression where
   show (LetExp _ (FuncName name) t1 exp) = "let " ++ name ++ " = " ++ show exp ++ " :: " ++ show t1
-  show (Apply _ t2 t3 (Apply _ t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ name ++ " " ++ show right
-  show (FuncExp (FuncName param) pt rt exp) = "func " ++ param ++ " = " ++ show exp ++ " :: " ++ 
-                                                              show pt ++ " -> " ++ show rt
-  show (Apply _ _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
+  show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ name ++ " " ++ show right
+  show (FuncExp (FuncName param) rt exp) = "func " ++ param ++ " = " ++ show exp ++ " :: " ++ show rt
+  show (Apply _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
   show (Var (FuncName name)) = name
   show (ValueConst v) = show v
   show (Group map _ _) = "Group " ++ show map
@@ -108,6 +105,12 @@ data Value = DoubleValue Double
              | UndefinedValue
              | FuncValue (Value -> Value)
 
+instance Eq Value where
+  DoubleValue d == DoubleValue d' = d == d'
+  StrValue d == StrValue d' = d == d'
+  BoolValue d == BoolValue d' = d == d'
+  _ == _ = False
+
 instance Show Value where
     show (DoubleValue i) = show i
     show (StrValue i) = show i
@@ -124,6 +127,7 @@ data TVarInfo = TVarInfo String !Expression (Maybe Type) deriving (Show)
 
 
 {- ----------------- functions ------------------------- -}
+{-
 -- | Look up a type variable
 findType :: Type -> AllTypeVars -> ThrowsError TVarInfo
 findType (TVar t1) (AllTypeVars map) = 
@@ -610,3 +614,4 @@ asTVar t = throwError $ TypeError $ "Looking for a Type Variable, but got " ++ s
 
 tvarMust (TVarInfo _ _ (Just t)) = Right t
 tvarMust (TVarInfo name _ found) = throwError $ TypeError $ "Trying to resolve the type for " ++ name ++ " but only got " ++ show found
+-}
