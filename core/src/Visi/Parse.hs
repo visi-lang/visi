@@ -310,6 +310,7 @@ expression = try( oprFuncExp ) <|>
                                "All but Opr"
 --                   oprFuncExp :: GenParser Char TIState Expression
                    oprFuncExp = do
+                                mySpaces
                                 left <- try(allButOpr)
                                 mySpaces
                                 opr <- many1 $ oneOf "+-*/&|=><!?"

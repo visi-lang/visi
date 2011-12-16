@@ -115,7 +115,8 @@ syntaxTests =
         \  timesb\n\
         \app v f = f v\n\
         \q = f 8\n\
-        \res = app 9 (app 8 q) - ((f 8) 8 9)\n", testResults [("res", DoubleValue 576)] . checkResults)
+        \z = f 10\n\
+        \res = (app 9 (app 8 q)) - ((z 8 9) + (z 1 1))\n", testResults [("res", DoubleValue (-154))] . checkResults)
 
       ,("a = 1 // simple assignment\n", psuccess 1 . checkparse)
 
