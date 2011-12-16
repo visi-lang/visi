@@ -42,12 +42,14 @@ calcSources :: [Expression] -> [(String, String)]
 calcSources exprs = 
     exprs >>= sinker
     where sinker (SourceExp _ (FuncName name) (TVar tv)) = [(name, tv)]
-          sinker (LetExp _ _ _ expr) = calcSources [expr]
+          sinker (LetExp _ _ _ _ expr) = calcSources [expr]
           sinker _ = []
 
 {-                        SinkExp LetId FuncName Type !Expression
                           | SourceExp LetId FuncName Type             
 -}
+
+updateScope (LetExp _ funcName _ _ exp) curScope = Map.insert funcName exp curScope
 
 maybeChan :: Maybe a -> (a -> IO ()) -> IO ()
 maybeChan (Just param) f = f param
@@ -61,7 +63,8 @@ eval sourceVars scope exp =
      res -- trace ("Eval "++show exp++" res "++show res) res
 
 eval1 :: SourceVars -> LetScope -> Expression -> Value
-eval1 sourceVars scope (LetExp _ funcName _ exp) = eval sourceVars scope exp -- error $ "Crap got a let!! " ++ show funcName -- eval scope exp
+eval1 sourceVars scope (LetExp _ funcName _ _ exp) = eval sourceVars scope exp
+eval1 sourceVars scope (InnerLet _ letExp actualExp) = eval sourceVars (updateScope letExp scope) actualExp
 eval1 sourceVars scope (FuncExp funcName p exp) = FuncValue doFuncApply
      where doFuncApply v = eval sourceVars (Map.insert funcName (ValueConst v) scope) exp
 eval1 sourceVars scope (Apply _ _ e1 e2) =
@@ -95,10 +98,10 @@ funcStrStr = tFun (TPrim PrimStr) (TPrim PrimStr)
 funcStrStrStr = tFun (TPrim PrimStr) funcStrStr
 
 boolTrue :: Expression
-boolTrue = LetExp (LetId "boolTrue") (FuncName "true") (TPrim PrimBool) (ValueConst $ BoolValue True)
+boolTrue = LetExp (LetId "boolTrue") (FuncName "true") False (TPrim PrimBool) (ValueConst $ BoolValue True)
 
 boolFalse :: Expression
-boolFalse = LetExp (LetId "boolFalse") (FuncName "false") (TPrim PrimBool) (ValueConst $ BoolValue False)
+boolFalse = LetExp (LetId "boolFalse") (FuncName "false") False (TPrim PrimBool) (ValueConst $ BoolValue False)
 
 ifTVar = TVar "IfElse##"
 builtInIf :: Expression

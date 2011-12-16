@@ -39,18 +39,18 @@ import Visi.Expression
 import qualified Data.Map as Map
 import qualified Data.List as List
 
-data TIState = TIState {tiSupply :: !Int} deriving (Show)
+data TIState = TIState {tiSupply :: Int, tiDepth :: Int} deriving (Show)
 type MParser = Parsec String TIState
 
 -- | parse a line of input
 parseLine :: String -> Either VisiError Expression
-parseLine str = case runParser line (TIState{tiSupply = 0}) str str of
+parseLine str = case runParser line (TIState{tiSupply = 0, tiDepth = 0}) str str of
                   Left(err) -> Left(ParsingError err)
                   Right(res) -> Right(res)
 
 -- | parse many lines of input and return a List of expressions
 parseLines :: String -> Either VisiError [Expression]
-parseLines str = case runParser doLines (TIState{tiSupply = 0}) str str of
+parseLines str = case runParser doLines (TIState{tiSupply = 0, tiDepth = 0}) str str of
                     Left(err) -> Left(ParsingError err)
                     Right(res) -> Right(res)
                     
@@ -63,7 +63,7 @@ mkString _ [s] = s
 mkString sep (h:t) = h ++ sep ++ (mkString sep t)
 
 funcName :: Expression -> [(FuncName, Expression)]
-funcName exp@(LetExp _ name _ _) = [(name, exp)]
+funcName exp@(LetExp _ name _ _ _) = [(name, exp)]
 funcName exp@(BuiltIn name _ _) = [(name, exp)]
 funcName exp@(SinkExp _ name _ _) = [(name, exp)]
 funcName exp@(SourceExp _ name _) = [(name, exp)]
@@ -123,7 +123,20 @@ blankLines = many blankLine
 
 eol :: MParser ()
 eol = do char '\n'
+         toGrab <- curDepth
+         consumeN (toGrab - 1) $ char ' '
          return ()
+
+consumeN n _ | n <= 0 = return ()
+consumeN n exp =
+  do
+    exp
+    consumeN (n - 1) exp
+
+curDepth =
+  do
+    st <- getState
+    return $ tiDepth st
 
 funcDef :: MParser Expression
 funcDef = try(sinkFunc) <|> try(normalFunc) <|> try(sourceFunc) <?> "Function Definition"
@@ -137,11 +150,45 @@ sinkFunc =
       mySpaces
       char '='
       mySpaces
-      exp <- expression
+      exp <- expressionOrLetAndExp
       mySpaces
       rt <- newTyVar "Sink"
       letId <- newLetId "SinkLet"
       return $ SinkExp letId (FuncName sinkName) rt exp
+
+consumeUntilNotWhitespaceOrEOL :: MParser ()
+consumeUntilNotWhitespaceOrEOL = try(consumeUntilNotWhitespaceOrEOL' <|> mySpaces)
+
+consumeUntilNotWhitespaceOrEOL' :: MParser ()
+consumeUntilNotWhitespaceOrEOL' =
+  do
+    mySpaces
+    eol
+    many consumeUntilNotWhitespaceOrEOL
+    mySpaces
+    return ()
+
+expressionOrLetAndExp :: MParser Expression
+expressionOrLetAndExp = 
+  do
+    consumeUntilNotWhitespaceOrEOL
+    col <- curColumn
+    dep <- curDepth
+    (if col > dep then runDepth col ((letAndThenExp col) <|> expression <?> "Looking for let + exp or exp") else parserFail "Incorrect indentation")
+
+letAndThenExp atCol =
+  do
+
+    letExp <- try(normalFunc) <|> try(letDef)
+    try(eol)
+    consumeUntilNotWhitespaceOrEOL
+    curCol <- curColumn
+    expr <- (if curCol /= atCol then parserFail "Expressions not lined up"
+                                                  else try(letAndThenExp atCol) <|> expression)
+    tpe <- newTyVar "innerlet"
+    return $ InnerLet tpe letExp expr
+
+
 
 sourceFunc =
     do
@@ -152,7 +199,7 @@ sourceFunc =
       tpe <- newTyVar "source"
       letId <- newLetId "SourceLet"
       seLetId <- newLetId "SourceExp"
-      return $ LetExp letId (FuncName sourceName) tpe $ SourceExp seLetId (FuncName sourceName) tpe
+      return $ LetExp letId (FuncName sourceName) False tpe $ SourceExp seLetId (FuncName sourceName) tpe
 
 normalFunc = do 
               name <- m_identifier
@@ -160,25 +207,30 @@ normalFunc = do
               mySpaces
               char '='
               mySpaces
-              exp <- expression
+              exp <- expressionOrLetAndExp
               mySpaces
               rt <- newTyVar "r"
               letId <- newLetId "normal"
               pTypes <- mapM makeVars param
               let (wholeExp, ft) = foldr foldFunc (exp, rt) pTypes
-              return $ LetExp letId (FuncName name) ft wholeExp
+              return $ LetExp letId (FuncName name) True ft wholeExp
               where makeVars param = do pt <- newTyVar "p"
                                         return (FuncName param, pt)
                     foldFunc (funcName, pt) (exp, rt) = (FuncExp funcName pt exp, tFun pt rt)
 
 letDef :: MParser Expression
-letDef = do name <- m_identifier
-            char '='
-            mySpaces
-            exp <- expression
-            t1 <- newTyVar "L"
-            letId <- newLetId "Let"
-            return $ LetExp letId (FuncName name) t1 exp
+letDef = 
+  do
+    curCol <- curColumn
+    name <- m_identifier
+    mySpaces
+    char '='
+    mySpaces
+    exp <- expressionOrLetAndExp
+    mySpaces
+    t1 <- newTyVar "L"
+    letId <- newLetId "Let"
+    return $ LetExp letId (FuncName name) False t1 exp
 
 buildType t = tFun (TPrim PrimBool) $ ifType t
 ifType t = (tFun t (tFun t t))
@@ -270,11 +322,28 @@ expression = try( oprFuncExp ) <|>
                                 right <- try(expression) <?> "Looking for right side of exp"
                                 return $ Apply letId t2 (Apply letId t4 (Var (FuncName opr)) left) right
 
+curColumn :: MParser Int
+curColumn =
+  do
+    pos <- getPosition
+    let sc = sourceColumn pos
+    return sc
+
 newLetId prefix =
     do
       s <- getState
       setState s{tiSupply = tiSupply s + 1}
       return $ LetId (prefix ++ (show (tiSupply s)))
+
+runDepth d c =
+  do
+    curr <- getState
+    let cd = tiDepth curr
+    setState curr{tiDepth = d}
+    res <- c
+    nCurr <- getState
+    setState nCurr{tiDepth = cd}
+    return res
 
 newTyVar prefix = do s <- getState
                      setState s{tiSupply = tiSupply s + 1}

@@ -1,5 +1,5 @@
 module Visi.Expression ( 
-                            Expression(LetExp, FuncExp, Apply,
+                            Expression(LetExp, InnerLet, FuncExp, Apply,
                                        SinkExp, SourceExp,
                                        Var, BuiltIn, ValueConst,
                                        Group),
@@ -45,15 +45,18 @@ import Data.Char
 
 newtype LetId = LetId String deriving (Eq, Ord, Show)
 
-data Expression = LetExp LetId FuncName Type !Expression 
-                  | SinkExp LetId FuncName Type !Expression
+type CanBeGeneric = Bool
+
+data Expression = LetExp LetId FuncName CanBeGeneric Type Expression
+                  | InnerLet Type Expression Expression -- defines a Let plus an expression to be evaluated in the scope of the Let
+                  | SinkExp LetId FuncName Type Expression
                   | SourceExp LetId FuncName Type
-                  | FuncExp FuncName Type !Expression
-                  | Apply LetId Type Expression !Expression
+                  | FuncExp FuncName Type Expression
+                  | Apply LetId Type Expression Expression
                   | Var FuncName
                   | BuiltIn FuncName Type (Value -> Value)
                   | ValueConst Value
-                  | Group !(Map.Map FuncName Expression) Type !Expression
+                  | Group (Map.Map FuncName Expression) Type Expression
 
 data Type = TVar String
             | TPrim Prim
@@ -67,7 +70,7 @@ instance Show FuncName where
   show (FuncName name) = name
 
 -- | The name of the function operator
-funcOperName = "➜"
+funcOperName = "->"
 
 -- | create a type that represents a Function
 tFun t1 t2 = TOper funcOperName [t1,t2]
@@ -75,7 +78,8 @@ tFun t1 t2 = TOper funcOperName [t1,t2]
 startsWithLetter (a:b) = isLetter a
 
 instance Show Expression where
-  show (LetExp _ (FuncName name) t1 exp) = "let " ++ name ++ " = " ++ show exp ++ " :: " ++ show t1
+  show (LetExp _ (FuncName name) _ t1 exp) = "let " ++ name ++ " = " ++ show exp ++ " :: " ++ show t1
+  show (InnerLet _ letExp evalExp) = show letExp ++ "\n" ++ show evalExp
   show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ name ++ " " ++ show right
   show (FuncExp (FuncName param) rt exp) = "func " ++ param ++ " = " ++ show exp ++ " :: " ++ show rt
   show (Apply _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"

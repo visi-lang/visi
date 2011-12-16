@@ -144,12 +144,16 @@ fresh' nongen t =
                   return $ TOper name args'
             _ -> return t'
 
+synthetic = "synthetic"
+
+synthLen = length synthetic
+
 newVariable =
     do
       atv <- getATV
       curExp <- getCurExp
       let len = Map.size atv
-      let name = "synthetic"++show len
+      let name = synthetic++show len
       let nv = TVarInfo name curExp Nothing
       let t = TVar name
       setATV t nv
@@ -231,12 +235,12 @@ calcType scope nongen (Var funcName) = gettype scope nongen funcName
 calcType scope nongen (ValueConst v) = return $ valuePrim v
 calcType scope nongen (BuiltIn _ t _) = prune t
 calcType scope nongen (SourceExp _ _ t) = prune t
-calcType scope nongen e@(LetExp _ name t1 exp) = 
+calcType scope nongen e@(LetExp _ name canBeGen t1 exp) = 
     do
         putCurExp e
         t1' <- createTypeVar e t1
         let scope' = Map.insert name t1' scope
-        rt <- calcType scope' (Set.insert t1' nongen) exp
+        rt <- calcType scope' (if canBeGen then nongen else Set.insert t1' nongen) exp
         unify t1' rt
         t1'' <- prune t1'
         return t1''
@@ -265,6 +269,15 @@ calcType scope nongen e@(Apply letId t1 exp1 exp2) =
         argType <- calcType scope nongen exp2
         unify (tFun argType t1') funType
         prune t1'
+calcType scope nongen (InnerLet t letExp actualExp) = 
+    do
+        let (LetExp _ name canBeGen t1 exp) = letExp
+        t1' <- createTypeVar exp t1
+        t' <- createTypeVar actualExp t
+        let scope' = Map.insert name t1' scope
+        calcType scope' nongen letExp
+        ret <- calcType scope' nongen actualExp
+        prune ret
 calcType scope nongen (Group exprs _ exp) =
     do
         let it name e t1 = do
@@ -281,7 +294,7 @@ calcType scope nongen (Group exprs _ exp) =
 genPull (_, t, True) = [t]
 genPull _ = []
 
-isNongen (LetExp _ _ _ (SourceExp _ _ t1)) = True
+isNongen (LetExp _ _ _ _ (SourceExp _ _ t1)) = True
 isNongen e = False
 
 nv (name, value, _) = (name, value)
@@ -292,18 +305,34 @@ buildLetScope :: Expression -> LetScope
 buildLetScope (Group exprs _ _) = exprs
 buildLetScope _ = Map.empty
 
-processExp it (name, e@(LetExp _ _ t1 _)) = it name e t1
+processExp it (name, e@(LetExp _ _ _ t1 _)) = it name e t1
 processExp it (name, e@(SinkExp _ _ t1 _)) = it name e t1
 processExp it (name, e@(SourceExp _ _ t1)) = it name e t1
 processExp it (name, e@(BuiltIn _ t1 _)) = it name e t1
 
-processTypes :: Expression -> StateThrow [(String, Type)]
-processTypes e@(Group exprs _ _) =
+-- we have to repeated run the typer to get all the synthetic variables resolved
+processTypes' :: Expression -> [(String, Type)] -> StateThrow [(String, Type)]
+processTypes' e@(Group exprs _ _) org =
     do
         calcType Map.empty Set.empty e
-        calcType Map.empty Set.empty e -- have to run it twice to unify all the types
         let nameType (FuncName name) e t = do
                                     t' <- prune t
                                     return (name, t')            
         ret <- mapM (processExp nameType) $ Map.assocs exprs
-        return ret
+        if testEq org ret then return ret else processTypes' e ret
+
+testEq [] [] = True
+testEq [] _ = False
+testEq _ [] = False
+testEq ((n1, t1):r1) ((n2, t2):r2) = if (n1 == n2) && (testTypeEq t1 t2) then testEq r1 r2 else False
+
+testTypeEq (TVar n1) (TVar n2) = n1 == n2 || ((take synthLen n1) == synthetic && (take synthLen n2) == synthetic)
+testTypeEq (TOper n1 r1) (TOper n2 r2) = if n1 == n2 && (length r1) == (length r2) then List.foldl' testPairTypeEq True (zip r1 r2)  else False
+testTypeEq t1 t2 = t1 == t2
+
+testPairTypeEq b (t1, t2) = b && (testTypeEq t1 t2)
+
+
+processTypes :: Expression -> StateThrow [(String, Type)]
+processTypes e = processTypes' e []
+

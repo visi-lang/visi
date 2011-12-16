@@ -69,7 +69,36 @@ runTest (param, func) =
 -- syntaxTests :: ([(String, String -> Either VisiError a, Either VisiError a -> Either String ())])
 syntaxTests = 
     [
-      ("a = 1 // simple assignment\n", psuccess 1 . checkparse)
+      ("f n = \n\
+       \  v = 33\n\
+       \  n + v\n", psuccess 1 . checkparse)
+
+      ,("f n = \n\
+       \  v = 33\n\
+       \  n + v\n", testTypes [("f", testDoubleFunc)] . checktype)
+
+      ,("f n = \n\
+       \  v = 33\n\
+       \  n + v\n\
+       \res = f 3\n", testResults [("res", DoubleValue 36)] . checkResults)       
+
+
+      ,("f n = \n\
+       \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
+       \  fact n\n\
+       \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
+
+      ,("f n = \n\
+       \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
+       \  app n fact\n\
+       \app v f = f v\n\
+       \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
+
+      ,("a = 1 // simple assignment\n", psuccess 1 . checkparse)
+
+      ,("f n = \n\
+        \  33\n", psuccess 1 . checkparse)
+
       ,("f a = a + 1 // function definition", psuccess 1 . checkparse)
       ,("f 33 = 44 // constant in parameter position", pfailure . checkparse)
       ,("f a = a {- a multiline example -}\n\
@@ -140,6 +169,10 @@ syntaxTests =
                               ,("b", testGenXFunc)
                               ,("c", testGenXFunc)] . checktype)
 
+     ,("plus41 n = n + 41\n\
+       \p41 = plus41\n\
+       \f = p41 1\n", testTypes [("f", testPrimDouble)] . checktype)
+
      ,("a n = n == 1", testTypes [("a", (testT $ tFun (TPrim PrimDouble) (TPrim PrimBool)))] . checktype)
 
      ,("a n = n == 1\n\
@@ -185,8 +218,6 @@ syntaxTests =
        \?taxable\n\
        \?nonTaxable", testTypes [("tax", testPrimDouble)
                                 ,("taxable", testPrimDouble)] . checktype)
-
-
 
     ]
 
