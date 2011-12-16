@@ -88,11 +88,34 @@ syntaxTests =
        \  fact n\n\
        \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
 
-      ,("f n = \n\
+      ,("f n = {- Test partially applied functions -}\n\
        \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
        \  app n fact\n\
        \app v f = f v\n\
        \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
+
+
+      ,("fact n = n & \"hello\" {-  propper scoping this fact is not the inner fact -}\n\
+        \f n = {- Test partially applied functions -}\n\
+        \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
+        \  app n fact\n\
+        \app v f = f v\n\
+        \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
+
+      ,("fact n = n & \"hello\" // propper scoping this fact is not the inner fact \n\
+        \f n = {- test that the function closes over local scope -}\n\
+        \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
+        \  moo = fact n {- This is the local reference to 'n' -}\n\
+        \  moo\n\
+        \app v f = f v\n\
+        \res = f 7\n", testResults [("res", DoubleValue 5040.0)] . checkResults)
+
+      ,("f b = {- test that the function closes over local scope -}\n\
+        \  timesb n m = n * b * m\n\
+        \  timesb\n\
+        \app v f = f v\n\
+        \q = f 8\n\
+        \res = app 9 (app 8 q)\n", testResults [("res", DoubleValue 576)] . checkResults)
 
       ,("a = 1 // simple assignment\n", psuccess 1 . checkparse)
 
