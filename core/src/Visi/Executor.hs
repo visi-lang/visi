@@ -1,4 +1,4 @@
-module Visi.Executor (builtInExp, eval) where
+module Visi.Executor (builtInExp, eval, maybeChan, calcSources, calcSinks) where
     
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -32,17 +32,20 @@ import Visi.Expression
 import Visi.Parse
 import Visi.Util
  
-calcSinks :: [Expression] -> [(String, Expression, String)]
-calcSinks exprs = 
+ -- | give a list of Expressions and a map of function name to type, return the function name
+ -- | the expression and the type
+calcSinks :: [Expression] ->  Map.Map String Type -> [(String, Expression, Type)]
+calcSinks exprs map = 
     exprs >>= sinker
-    where sinker (SinkExp _ (FuncName name) (TVar tv) expr) = [(name, expr, tv)]
+    where sinker (SinkExp _ (FuncName name) _ expr) = [(name, expr, map Map.! name)]
           sinker _ = []
 
-calcSources :: [Expression] -> [(String, String)]
-calcSources exprs = 
+-- | given a list of Expressions, the expression to Type Map, return the name and type
+calcSources :: [Expression] -> Map.Map String Type -> [(String, Type)]
+calcSources exprs map = 
     exprs >>= sinker
-    where sinker (SourceExp _ (FuncName name) (TVar tv)) = [(name, tv)]
-          sinker (LetExp _ _ _ _ expr) = calcSources [expr]
+    where sinker (SourceExp _ (FuncName name) _) = [(name, map Map.! name)]
+          sinker (LetExp _ _ _ _ expr) = calcSources [expr] map
           sinker _ = []
 
 {-                        SinkExp LetId FuncName Type !Expression

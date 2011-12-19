@@ -16,4 +16,5 @@ Executable visi
                      containers,
                      pretty,
                      parsec,
+                     mtl,
                      HUnit
