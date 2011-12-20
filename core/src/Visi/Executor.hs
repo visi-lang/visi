@@ -28,20 +28,21 @@ module Visi.Executor (builtInExp, eval, maybeChan, calcSources, calcSinks) where
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
+import qualified Data.Text as T
 import Visi.Expression
 import Visi.Parse
 import Visi.Util
  
  -- | give a list of Expressions and a map of function name to type, return the function name
  -- | the expression and the type
-calcSinks :: [Expression] ->  Map.Map String Type -> [(String, Expression, Type)]
+calcSinks :: [Expression] ->  Map.Map T.Text Type -> [(T.Text, Expression, Type)]
 calcSinks exprs map = 
     exprs >>= sinker
     where sinker (SinkExp _ (FuncName name) _ expr) = [(name, expr, map Map.! name)]
           sinker _ = []
 
 -- | given a list of Expressions, the expression to Type Map, return the name and type
-calcSources :: [Expression] -> Map.Map String Type -> [(String, Type)]
+calcSources :: [Expression] -> Map.Map T.Text Type -> [(T.Text, Type)]
 calcSources exprs map = 
     exprs >>= sinker
     where sinker (SourceExp _ (FuncName name) _) = [(name, map Map.! name)]
@@ -58,7 +59,7 @@ maybeChan :: Maybe a -> (a -> IO ()) -> IO ()
 maybeChan (Just param) f = f param
 maybeChan _ _ = return ()
 
-type SourceVars = Map.Map String Value
+type SourceVars = Map.Map T.Text Value
 
 eval :: SourceVars -> LetScope -> Expression -> Value
 eval sourceVars scope exp = 
@@ -101,14 +102,14 @@ funcStrStr = tFun (TPrim PrimStr) (TPrim PrimStr)
 funcStrStrStr = tFun (TPrim PrimStr) funcStrStr
 
 boolTrue :: Expression
-boolTrue = LetExp (LetId "boolTrue") (FuncName "true") False (TPrim PrimBool) (ValueConst $ BoolValue True)
+boolTrue = LetExp (LetId $ T.pack "boolTrue") (FuncName $ T.pack "true") False (TPrim PrimBool) (ValueConst $ BoolValue True)
 
 boolFalse :: Expression
-boolFalse = LetExp (LetId "boolFalse") (FuncName "false") False (TPrim PrimBool) (ValueConst $ BoolValue False)
+boolFalse = LetExp (LetId $ T.pack "boolFalse") (FuncName $ T.pack "false") False (TPrim PrimBool) (ValueConst $ BoolValue False)
 
-ifTVar = TVar "IfElse##"
+ifTVar = TVar $ T.pack "IfElse##"
 builtInIf :: Expression
-builtInIf = BuiltIn (FuncName "$ifelse") (tFun (TPrim PrimBool) (tFun ifTVar (tFun ifTVar ifTVar)))  ifThing
+builtInIf = BuiltIn (FuncName $ T.pack "$ifelse") (tFun (TPrim PrimBool) (tFun ifTVar (tFun ifTVar ifTVar)))  ifThing
              where ifThing :: Value -> Value
                    ifThing (BoolValue v) = FuncValue ifElse
                         where ifElse true = FuncValue $ elseThing true
@@ -118,7 +119,7 @@ builtInIf = BuiltIn (FuncName "$ifelse") (tFun (TPrim PrimBool) (tFun ifTVar (tF
                            elseThing true false = UndefinedValue
 
 builtInAdd :: Expression
-builtInAdd = BuiltIn (FuncName "+") funcDoubleDoubleDouble addThing
+builtInAdd = BuiltIn (FuncName $ T.pack "+") funcDoubleDoubleDouble addThing
              where addThing :: Value -> Value
                    addThing (DoubleValue v) = FuncValue partialAdd
                      where partialAdd :: Value -> Value
@@ -128,16 +129,16 @@ builtInAdd = BuiltIn (FuncName "+") funcDoubleDoubleDouble addThing
                      where partialAdd :: Value -> Value
                            partialAdd _ = UndefinedValue
 
-eqVar = TVar "Eq##"
+eqVar = TVar $ T.pack "Eq##"
 builtInEq :: Expression
-builtInEq = BuiltIn (FuncName "==") (tFun eqVar (tFun eqVar $ TPrim PrimBool)) eqThing
+builtInEq = BuiltIn (FuncName $ T.pack "==") (tFun eqVar (tFun eqVar $ TPrim PrimBool)) eqThing
              where eqThing :: Value -> Value
                    eqThing v = FuncValue partialEq
                      where partialEq :: Value -> Value
                            partialEq v' = BoolValue $ v == v'
 
 builtInAnd :: Expression
-builtInAnd = BuiltIn (FuncName "&&") funcBoolBoolBool andThing
+builtInAnd = BuiltIn (FuncName $ T.pack "&&") funcBoolBoolBool andThing
              where andThing :: Value -> Value
                    andThing (BoolValue v) = FuncValue partialAnd
                      where partialAnd :: Value -> Value
@@ -148,7 +149,7 @@ builtInAnd = BuiltIn (FuncName "&&") funcBoolBoolBool andThing
                            partialAnd _ = UndefinedValue
 
 builtInOr :: Expression
-builtInOr  = BuiltIn (FuncName "||") funcBoolBoolBool orThing
+builtInOr  = BuiltIn (FuncName $ T.pack "||") funcBoolBoolBool orThing
              where orThing :: Value -> Value
                    orThing (BoolValue v) = FuncValue partialOr
                      where partialOr :: Value -> Value
@@ -159,18 +160,18 @@ builtInOr  = BuiltIn (FuncName "||") funcBoolBoolBool orThing
                            partialOr _ = UndefinedValue
 
 builtInConcat :: Expression
-builtInConcat = BuiltIn (FuncName "&") funcStrStrStr catThing
+builtInConcat = BuiltIn (FuncName $ T.pack "&") funcStrStrStr catThing
              where catThing :: Value -> Value
                    catThing (StrValue v) = FuncValue partialCat
                      where partialCat :: Value -> Value
-                           partialCat (StrValue v') = StrValue $ v ++ v'
+                           partialCat (StrValue v') = StrValue $ v `T.append` v'
                            partialCat _ = UndefinedValue
                    catThing _= FuncValue partialCat
                      where partialCat :: Value -> Value
                            partialCat _ = UndefinedValue
 
 builtInSub :: Expression
-builtInSub = BuiltIn (FuncName "-") funcDoubleDoubleDouble subThing
+builtInSub = BuiltIn (FuncName $ T.pack "-") funcDoubleDoubleDouble subThing
              where subThing :: Value -> Value
                    subThing (DoubleValue v) = FuncValue partialSub
                      where partialSub :: Value -> Value
@@ -181,7 +182,7 @@ builtInSub = BuiltIn (FuncName "-") funcDoubleDoubleDouble subThing
                            partialSub _ = UndefinedValue
 
 builtInDiv :: Expression
-builtInDiv = BuiltIn (FuncName "/") funcDoubleDoubleDouble divThing
+builtInDiv = BuiltIn (FuncName $ T.pack "/") funcDoubleDoubleDouble divThing
              where divThing :: Value -> Value
                    divThing (DoubleValue v) = FuncValue partialDiv
                      where partialDiv :: Value -> Value
@@ -192,7 +193,7 @@ builtInDiv = BuiltIn (FuncName "/") funcDoubleDoubleDouble divThing
                            partialDiv _ = UndefinedValue
 
 builtInMult :: Expression
-builtInMult = BuiltIn (FuncName "*") funcDoubleDoubleDouble multThing
+builtInMult = BuiltIn (FuncName $ T.pack "*") funcDoubleDoubleDouble multThing
               where multThing :: Value -> Value
                     multThing (DoubleValue v) = FuncValue partialMult
                      where partialMult :: Value -> Value
@@ -203,16 +204,16 @@ builtInMult = BuiltIn (FuncName "*") funcDoubleDoubleDouble multThing
                            partialMult _ = UndefinedValue
 
 builtInLen :: Expression
-builtInLen = BuiltIn (FuncName "len") (tFun (TPrim PrimStr) (TPrim PrimDouble)) lenThing
-             where lenThing (StrValue str) = DoubleValue $ fromIntegral $ length str
+builtInLen = BuiltIn (FuncName $ T.pack "len") (tFun (TPrim PrimStr) (TPrim PrimDouble)) lenThing
+             where lenThing (StrValue str) = DoubleValue $ fromIntegral $ T.length str
                    lenThing _ = UndefinedValue
 
 builtInReverse :: Expression
-builtInReverse = BuiltIn (FuncName "reverse") (tFun (TPrim PrimStr) (TPrim PrimStr)) revThing
-                 where revThing (StrValue str) = StrValue $ reverse str
+builtInReverse = BuiltIn (FuncName $ T.pack "reverse") (tFun (TPrim PrimStr) (TPrim PrimStr)) revThing
+                 where revThing (StrValue str) = StrValue $ T.reverse str
                        revThing _ = UndefinedValue
 
 builtInShow :: Expression
-builtInShow = BuiltIn (FuncName "show") (tFun (TPrim PrimDouble) (TPrim PrimStr)) showThing
-             where showThing (DoubleValue int) = StrValue $ show int
+builtInShow = BuiltIn (FuncName $ T.pack "show") (tFun (TPrim PrimDouble) (TPrim PrimStr)) showThing
+             where showThing (DoubleValue int) = StrValue $ T.pack $ show int
                    showThing _ = UndefinedValue

@@ -10,7 +10,7 @@ Cabal-Version:       >=1.2
 
 Executable visi
   Main-is:           Foo.hs
-  GHC-Options: -threaded
+  GHC-Options: -threaded -no-hs-main
   extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface
   Build-Depends:     base,
                      containers,

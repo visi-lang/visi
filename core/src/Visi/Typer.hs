@@ -27,6 +27,7 @@ module Visi.Typer (collectTypes, buildLetScope) where
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
+import qualified Data.Text as T
 import Visi.Util
 import Visi.Expression 
 import Control.Monad.Error
@@ -36,14 +37,14 @@ import Control.Monad.State
 -- | An implementation based on http://dysphoria.net/2009/06/28/hindley-milner-type-inference-in-scala/
 type Nongen = Set.Set Type
 
-type TypeVars = Map.Map String TVarInfo
+type TypeVars = Map.Map T.Text TVarInfo
 type TypeMap = Map.Map Type Type
 type StateThrow = StateT (TypeVars, TypeMap ,Expression) ThrowsError
 
-collectTypes :: Expression -> ThrowsError [(String, Type)]
+collectTypes :: Expression -> ThrowsError [(T.Text, Type)]
 collectTypes exp = 
     do
-        (a, s) <- runStateT (processTypes exp) (Map.empty, Map.empty, Var $ FuncName "Starting")
+        (a, s) <- runStateT (processTypes exp) (Map.empty, Map.empty, Var $ FuncName $ T.pack "Starting")
         return a
         
 getATV :: StateThrow TypeVars
@@ -84,7 +85,7 @@ findTVI (TVar t1)  =
         map <- getATV
         case Map.lookup t1 map of
             (Just v) -> return v
-            _ -> throwError $ TypeError $ "Cannot find type var: " ++ t1
+            _ -> throwError $ TypeError $ "Cannot find type var: " ++ T.unpack t1
 findTVI tv = throwError $ TypeError $ "Trying to look up " ++ (show tv) ++ " but it's not a Type Variable"
 
 setTVIType (TVarInfo name exp _) newType = TVarInfo name exp $ newType
@@ -144,16 +145,16 @@ fresh' nongen t =
                   return $ TOper name args'
             _ -> return t'
 
-synthetic = "synthetic"
+synthetic = T.pack "synthetic"
 
-synthLen = length synthetic
+synthLen = T.length synthetic
 
 newVariable =
     do
       atv <- getATV
       curExp <- getCurExp
       let len = Map.size atv
-      let name = synthetic++show len
+      let name = T.pack $ (T.unpack synthetic ++ show len)
       let nv = TVarInfo name curExp Nothing
       let t = TVar name
       setATV t nv
@@ -289,7 +290,7 @@ calcType scope nongen (Group exprs _ exp) =
         -- know what the actual types are
         let nongen' = nongen `Set.union` (Set.fromList (pairs >>= genPull))
         mapM_ (calcType scope' nongen') $ Map.elems exprs
-        return $ TOper "na" []
+        return $ (TOper $ T.pack "na") []
 
 genPull (_, t, True) = [t]
 genPull _ = []
@@ -311,7 +312,7 @@ processExp it (name, e@(SourceExp _ _ t1)) = it name e t1
 processExp it (name, e@(BuiltIn _ t1 _)) = it name e t1
 
 -- we have to repeated run the typer to get all the synthetic variables resolved
-processTypes' :: Expression -> [(String, Type)] -> StateThrow [(String, Type)]
+processTypes' :: Expression -> [(T.Text, Type)] -> StateThrow [(T.Text, Type)]
 processTypes' e@(Group exprs _ _) org =
     do
         calcType Map.empty Set.empty e
@@ -326,13 +327,13 @@ testEq [] _ = False
 testEq _ [] = False
 testEq ((n1, t1):r1) ((n2, t2):r2) = if (n1 == n2) && (testTypeEq t1 t2) then testEq r1 r2 else False
 
-testTypeEq (TVar n1) (TVar n2) = n1 == n2 || ((take synthLen n1) == synthetic && (take synthLen n2) == synthetic)
+testTypeEq (TVar n1) (TVar n2) = n1 == n2 || ((T.take synthLen n1) == synthetic && (T.take synthLen n2) == synthetic)
 testTypeEq (TOper n1 r1) (TOper n2 r2) = if n1 == n2 && (length r1) == (length r2) then List.foldl' testPairTypeEq True (zip r1 r2)  else False
 testTypeEq t1 t2 = t1 == t2
 
 testPairTypeEq b (t1, t2) = b && (testTypeEq t1 t2)
 
 
-processTypes :: Expression -> StateThrow [(String, Type)]
+processTypes :: Expression -> StateThrow [(T.Text, Type)]
 processTypes e = processTypes' e []
 

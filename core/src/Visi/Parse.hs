@@ -31,7 +31,7 @@ import Text.Parsec.Prim
 import Text.Parsec.Expr
 import Text.Parsec.Token
 import Text.Parsec.Language
-
+import qualified Data.Text as T
 import Data.Char ( isAlpha, toLower, toUpper, isSpace, digitToInt )
 import Data.List ( nub, sort )
 import Visi.Util
@@ -154,7 +154,7 @@ sinkFunc =
       mySpaces
       rt <- newTyVar "Sink"
       letId <- newLetId "SinkLet"
-      return $ SinkExp letId (FuncName sinkName) rt exp
+      return $ SinkExp letId (FuncName $ T.pack sinkName) rt exp
 
 consumeUntilNotWhitespaceOrEOL :: MParser ()
 consumeUntilNotWhitespaceOrEOL = try(consumeUntilNotWhitespaceOrEOL' <|> mySpaces)
@@ -199,7 +199,7 @@ sourceFunc =
       tpe <- newTyVar "source"
       letId <- newLetId "SourceLet"
       seLetId <- newLetId "SourceExp"
-      return $ LetExp letId (FuncName sourceName) False tpe $ SourceExp seLetId (FuncName sourceName) tpe
+      return $ LetExp letId (FuncName $ T.pack sourceName) False tpe $ SourceExp seLetId (FuncName $ T.pack sourceName) tpe
 
 normalFunc = do 
               name <- m_identifier
@@ -213,9 +213,9 @@ normalFunc = do
               letId <- newLetId "normal"
               pTypes <- mapM makeVars param
               let (wholeExp, ft) = foldr foldFunc (exp, rt) pTypes
-              return $ LetExp letId (FuncName name) True ft wholeExp
+              return $ LetExp letId (FuncName $ T.pack name) True ft wholeExp
               where makeVars param = do pt <- newTyVar "p"
-                                        return (FuncName param, pt)
+                                        return (FuncName $ T.pack param, pt)
                     foldFunc (funcName, pt) (exp, rt) = (FuncExp funcName pt exp, tFun pt rt)
 
 letDef :: MParser Expression
@@ -230,7 +230,7 @@ letDef =
     mySpaces
     t1 <- newTyVar "L"
     letId <- newLetId "Let"
-    return $ LetExp letId (FuncName name) False t1 exp
+    return $ LetExp letId (FuncName $ T.pack name) False t1 exp
 
 buildType t = tFun (TPrim PrimBool) $ ifType t
 ifType t = (tFun t (tFun t t))
@@ -254,7 +254,7 @@ expression = try( oprFuncExp ) <|>
                    constExp = try(strConstExp) <|> try(numConstExp) <?> "Constant"
                    strConstExp = do
                                   chars <- m_stringLiteral
-                                  return $ ValueConst $ StrValue chars
+                                  return $ ValueConst $ StrValue $ T.pack chars
                    decMore = do
                                dec <- char '.'
                                digits <- many1 $ oneOf "0123456789"
@@ -272,7 +272,7 @@ expression = try( oprFuncExp ) <|>
                                              (Just(_), d, Just(rest)) -> '-' : (d ++ rest)
                                              (_, d, Just(rest)) -> (d ++ rest)
                    zeroFuncExp = do funcName <- try(m_identifier) <?> "Looking for a variable"
-                                    return $ Var (FuncName funcName)
+                                    return $ Var (FuncName $ T.pack funcName)
                    ifElseExp = do
                                 m_reserved "if"
                                 mySpaces
@@ -291,7 +291,7 @@ expression = try( oprFuncExp ) <|>
                                 return $ Apply letId theType 
                                            (Apply letId (tFun theType theType)
                                             (Apply letId (ifType theType) 
-                                                       (Var (FuncName "$ifelse"))
+                                                       (Var (FuncName $ T.pack "$ifelse"))
                                                        boolExp) trueExp) falseExp
                    funcParamExp = do
                                   funcName <- try(m_identifier)
@@ -301,7 +301,7 @@ expression = try( oprFuncExp ) <|>
                                   restWithVars <- mapM makeVars rest
                                   letId <- newLetId funcName
                                   let buildApply exp (exp2, t2) =  Apply letId t2 exp exp2
-                                  return $ List.foldl' buildApply (Var (FuncName funcName)) restWithVars
+                                  return $ List.foldl' buildApply (Var (FuncName $ T.pack funcName)) restWithVars
                                   where makeVars exp = do t2 <- newTyVar "RetType"
                                                           return (exp, t2)
                                         
@@ -321,7 +321,7 @@ expression = try( oprFuncExp ) <|>
                                 t4 <- newTyVar "OAt4"
                                 letId <- newLetId $ "binary" ++ opr
                                 right <- try(expression) <?> "Looking for right side of exp"
-                                return $ Apply letId t2 (Apply letId t4 (Var (FuncName opr)) left) right
+                                return $ Apply letId t2 (Apply letId t4 (Var (FuncName $ T.pack opr)) left) right
 
 curColumn :: MParser Int
 curColumn =
@@ -334,7 +334,7 @@ newLetId prefix =
     do
       s <- getState
       setState s{tiSupply = tiSupply s + 1}
-      return $ LetId (prefix ++ (show (tiSupply s)))
+      return $ LetId $ T.pack (prefix ++ (show (tiSupply s)))
 
 runDepth d c =
   do
@@ -348,7 +348,7 @@ runDepth d c =
 
 newTyVar prefix = do s <- getState
                      setState s{tiSupply = tiSupply s + 1}
-                     return $ TVar (prefix ++ (show (tiSupply s)))
+                     return $ TVar $ T.pack (prefix ++ (show (tiSupply s)))
 
 
 -----------------------------------------------------------

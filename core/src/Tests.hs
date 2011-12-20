@@ -34,7 +34,7 @@ import Visi.Parse
 import Visi.Executor
 import Visi.Typer
 import Control.Monad.Error
-
+import qualified Data.Text as T
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
@@ -226,11 +226,11 @@ syntaxTests =
        \bad = goodorbad false\n\
        \goodorbad v = if v then \"good\" else \"bad\"",
                   testResults [("res", DoubleValue 3628800)
-                              ,("good", StrValue "good")
-                              ,("bad", StrValue "bad")] . checkResults)
+                              ,("good", StrValue $ T.pack "good")
+                              ,("bad", StrValue $ T.pack "bad")] . checkResults)
 
      ,("res = \"10\"",
-                  testResults [("res", StrValue "10")] . checkResults)
+                  testResults [("res", StrValue $ T.pack "10")] . checkResults)
 
 
      ,("total = subtotal + tax\n\
@@ -284,7 +284,7 @@ testTypes listOStuff res =
         (Left err) -> Just $ show err
         (Right typeMap) -> 
           let testIt (funcName, expType) = 
-                case Map.lookup funcName typeMap of
+                case Map.lookup (T.pack $ funcName) typeMap of
                   (Just t) -> expType funcName t
                   _ -> Just $ "Not function "++ funcName ++ " defined"
                 in
@@ -309,7 +309,7 @@ testResults list res =
     Left err -> Just $ show err
     Right grp ->
       let exprs = buildLetScope grp in
-      let testIt (funcName, expVal) = case eval Map.empty exprs $ Var $ FuncName funcName of
+      let testIt (funcName, expVal) = case eval Map.empty exprs $ Var $ FuncName $ T.pack funcName of
                                           v | expVal == v -> Nothing
                                           v -> Just $ "Funcname " ++ funcName ++ " yielded " ++ show v ++ " expected " ++ show expVal
       in

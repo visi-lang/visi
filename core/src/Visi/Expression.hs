@@ -40,10 +40,11 @@ module Visi.Expression (
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
+import qualified Data.Text as T
 import Visi.Util
 import Data.Char
 
-newtype LetId = LetId String deriving (Eq, Ord, Show)
+newtype LetId = LetId T.Text deriving (Eq, Ord, Show)
 
 type CanBeGeneric = Bool
 
@@ -58,19 +59,19 @@ data Expression = LetExp LetId FuncName CanBeGeneric Type Expression
                   | ValueConst Value
                   | Group (Map.Map FuncName Expression) Type Expression
 
-data Type = TVar String
+data Type = TVar T.Text
             | TPrim Prim
-            | TOper String [Type]
+            | TOper T.Text [Type]
             deriving (Eq, Ord)
 
-newtype FuncName = FuncName String deriving (Eq, Ord)
+newtype FuncName = FuncName T.Text deriving (Eq, Ord)
 
 
 instance Show FuncName where
-  show (FuncName name) = name
+  show (FuncName name) = T.unpack name
 
 -- | The name of the function operator
-funcOperName = "->"
+funcOperName = T.pack "->"
 
 -- | create a type that represents a Function
 tFun t1 t2 = TOper funcOperName [t1,t2]
@@ -78,24 +79,24 @@ tFun t1 t2 = TOper funcOperName [t1,t2]
 startsWithLetter (a:b) = isLetter a
 
 instance Show Expression where
-  show (LetExp _ (FuncName name) _ t1 exp) = "let " ++ name ++ " = " ++ show exp ++ " :: " ++ show t1
+  show (LetExp _ (FuncName name) _ t1 exp) = "let " ++ (T.unpack name) ++ " = " ++ show exp ++ " :: " ++ show t1
   show (InnerLet _ letExp evalExp) = show letExp ++ "\n" ++ show evalExp
-  show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ name ++ " " ++ show right
-  show (FuncExp (FuncName param) rt exp) = "func " ++ param ++ " = " ++ show exp ++ " :: " ++ show rt
+  show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ (T.unpack name) ++ " " ++ show right
+  show (FuncExp (FuncName param) rt exp) = "func " ++ (T.unpack param) ++ " = " ++ show exp ++ " :: " ++ show rt
   show (Apply _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
-  show (Var (FuncName name)) = name
+  show (Var (FuncName name)) = T.unpack name
   show (ValueConst v) = show v
   show (Group map _ _) = "Group " ++ show map
-  show (BuiltIn (FuncName name) tpe _) = name ++ " :: " ++ show tpe
-  show (SinkExp _ (FuncName name) tpe _) = "Sink: " ++ name ++ " :: " ++ show tpe
-  show (SourceExp _ (FuncName name) tpe) = "Source: " ++ name ++ " :: " ++ show tpe
+  show (BuiltIn (FuncName name) tpe _) = (T.unpack name) ++ " :: " ++ show tpe
+  show (SinkExp _ (FuncName name) tpe _) = "Sink: " ++ (T.unpack name) ++ " :: " ++ show tpe
+  show (SourceExp _ (FuncName name) tpe) = "Source: " ++ (T.unpack name) ++ " :: " ++ show tpe
 
 
 
 instance Show Type where
-  show (TVar tv) = "TVar " ++ tv
-  show (TOper name (a:b:[])) | not $ startsWithLetter name = show a ++ " " ++ name ++ " " ++ show b
-  show (TOper name params) = "TOper " ++ name ++ ": " ++ show params
+  show (TVar tv) = "TVar " ++ T.unpack tv
+  show (TOper name (a:b:[])) | not $ startsWithLetter $ T.unpack name = show a ++ " " ++ (T.unpack name) ++ " " ++ show b
+  show (TOper name params) = "TOper " ++ (T.unpack name) ++ ": " ++ show params
   show (TPrim prim) = show prim
 
 data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord)
@@ -111,7 +112,7 @@ valuePrim (StrValue _) = TPrim PrimStr
 valuePrim (BoolValue _) = TPrim PrimBool
 
 data Value = DoubleValue Double
-             | StrValue String
+             | StrValue T.Text
              | BoolValue Bool
              | UndefinedValue
              | FuncValue (Value -> Value)
@@ -128,12 +129,12 @@ instance Show Value where
     show (BoolValue i) = show i
     show (FuncValue i) = "Value -> Value"
 
-data AllTypeVars = AllTypeVars !(Map.Map String TVarInfo) deriving (Show)
+data AllTypeVars = AllTypeVars (Map.Map T.Text TVarInfo) deriving (Show)
 
 type VarScope = Map.Map FuncName Type
 
 type LetScope = Map.Map FuncName Expression
 
-data TVarInfo = TVarInfo String !Expression (Maybe Type) deriving (Show)
+data TVarInfo = TVarInfo T.Text Expression (Maybe Type) deriving (Show)
 
 
