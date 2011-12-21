@@ -80,7 +80,7 @@ visiDef = emptyDef{ commentStart = "{-"
                   , opStart = oneOf ":!#$%&*+./<=>?@\\^|-~"
                   , opLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
                   , reservedOpNames = []
-                  , reservedNames = ["if", "then", "else", "let", "source", "sink"]
+                  , reservedNames = ["if", "then", "else", "struct"]
                   }
 
 TokenParser{ parens = m_parens
@@ -93,7 +93,7 @@ TokenParser{ parens = m_parens
 
 
 line :: MParser Expression
-line = do info <- try(funcDef) <|> try(letDef)
+line = do info <- dataDefinition <|> try(funcDef) <|> try(letDef)
           try(eol) <|> try(eof)
           return info
 
@@ -140,6 +140,79 @@ curDepth =
 
 funcDef :: MParser Expression
 funcDef = try(sinkFunc) <|> try(normalFunc) <|> try(sourceFunc) <?> "Function Definition"
+
+-- | An upper case character followed by an identifier
+typeName =
+  do
+    c <- upper
+    rest <- option [] m_identifier
+    return (c:rest)
+
+-- | a type parameter
+typeParam =
+  do
+    mySpaces
+    c <- lower
+    rest <- option [] m_identifier
+    mySpaces
+    return (c:rest)
+
+-- | a list of type parameters
+typeParams = many typeParam
+
+typeWithOptionalParams =
+  do
+    name <- typeName
+    mySpaces
+    many typeOrTypeParam
+    mySpaces
+    return name
+
+-- | get a type with optional type parameters or an identifier
+typeOrTypeParam =
+  typeWithOptionalParams <|> m_identifier
+
+structDataDef =
+  do
+    mySpaces
+    argName <- typeParam
+    mySpaces
+    char ':'
+    mySpaces
+    typeName <- typeOrTypeParam
+    mySpaces
+    return ()
+
+
+structParams =
+  do
+    char '('
+    params <- sepBy1 structDataDef (char ',')
+    mySpaces
+    char ')'
+    mySpaces
+    return params
+
+-- | the inner part of a struct definition
+structInner =
+  do
+    mySpaces
+    name <- typeName
+    params <- option [] (structParams)
+    return ()
+
+
+-- | Did we find a 
+dataDefinition =
+  do
+    m_reserved "struct"
+    mySpaces
+    name <- typeName
+    tparams <- typeParams <?> "Type parameters"
+    mySpaces
+    char '='
+    defs <- sepBy1 structInner (char '|')
+    return $ ValueConst $ BoolValue False -- FIXME finish data definition
 
 sourceOrSinkName = try(m_identifier) <|> try(m_stringLiteral)
 
@@ -236,6 +309,26 @@ buildType t = tFun (TPrim PrimBool) $ ifType t
 ifType t = (tFun t (tFun t t))
 
 
+functionInvocationName =
+  try(m_identifier) <|> try(
+    do
+      char '#'
+      name <- m_identifier
+      return ('#':name)
+  ) <|> try(
+    do
+      char '#'
+      char '='
+      name <- m_identifier
+      return ('#':'=':name)
+  ) {-} <|> try(
+    do
+      var <- m_identifier
+      char '.'
+      prop <- m_identifier
+      return var -- FIXME compound thingy
+  ) -}
+
 -- expression :: GenParser Char TIState Expression
 expression = try( oprFuncExp ) <|>
              try( parenExp ) <|>
@@ -271,7 +364,7 @@ expression = try( oprFuncExp ) <|>
                                              (Just(_), d, Nothing) -> '-' : d
                                              (Just(_), d, Just(rest)) -> '-' : (d ++ rest)
                                              (_, d, Just(rest)) -> (d ++ rest)
-                   zeroFuncExp = do funcName <- try(m_identifier) <?> "Looking for a variable"
+                   zeroFuncExp = do funcName <- try(functionInvocationName) <?> "Looking for a variable"
                                     return $ Var (FuncName $ T.pack funcName)
                    ifElseExp = do
                                 m_reserved "if"
@@ -294,7 +387,7 @@ expression = try( oprFuncExp ) <|>
                                                        (Var (FuncName $ T.pack "$ifelse"))
                                                        boolExp) trueExp) falseExp
                    funcParamExp = do
-                                  funcName <- try(m_identifier)
+                                  funcName <- try(functionInvocationName)
                                   mySpaces
                                   rest <- many1(try(oprFuncExp) <|> try(parenExp) <|> 
                                                 try(zeroFuncExp) <|> try(constExp) <?> "parameter")

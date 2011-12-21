@@ -69,7 +69,21 @@ runTest (param, func) =
 -- syntaxTests :: ([(String, String -> Either VisiError a, Either VisiError a -> Either String ())])
 syntaxTests = 
     [
-      ("f n = \n\
+      ("struct List a = Cons(hd: a, next: List a) | Nil\n", psuccess 1 . checkparse)
+
+
+
+      ,
+      ("struct List a = Cons(hd: a, next: List a) | Nil\n\
+       \cons a lst = Cons a lst\n\
+       \head lst = #hd lst\n\
+       \{-head2 lst = lst.hd-}\n\
+       \res2 = #=hd 2 lst\n\
+       \{-res3 = lst.=hd 2-}\n\
+       \res4 = res2 == res3\n\
+       \res = cons 1 Nil\n", psuccess 6 . checkparse)
+
+      ,("f n = \n\
        \  v = 33\n\
        \  n + v\n", psuccess 1 . checkparse)
 
@@ -202,6 +216,7 @@ syntaxTests =
      ,("a n = n == 1\n\
        \b = a true", failsTyper . checktype)
 
+
      ,("a n = \"foo\" == 1", failsTyper . checktype)
 
 
@@ -242,7 +257,6 @@ syntaxTests =
        \?taxable\n\
        \?nonTaxable", testTypes [("tax", testPrimDouble)
                                 ,("taxable", testPrimDouble)] . checktype)
-
     ]
 
 testGenFunc _ (TOper funcOperName [(TVar t1), (TVar t2)]) | t1 == t2 = Nothing
