@@ -244,8 +244,17 @@ syntaxTests =
                               ,("good", StrValue $ T.pack "good")
                               ,("bad", StrValue $ T.pack "bad")] . checkResults)
 
+     ,("isOdd n = if n == 1 then true else not (isEven (n - 1))\n\
+       \isEven n = if n == 0 then true else not (isOdd (n - 1))\n\
+       \not n = if n then false else true\n\
+       \res = (isOdd 9)\n",
+                  testResults [("res", BoolValue True)] . checkResults)
+
      ,("res = \"10\"",
                   testResults [("res", StrValue $ T.pack "10")] . checkResults)
+
+
+                
 
 
      ,("total = subtotal + tax\n\
