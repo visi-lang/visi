@@ -1,0 +1,850 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass tufte-book
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 2
+\tocdepth 2
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 2
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+The Visi Lanugage
+\end_layout
+
+\begin_layout Author
+David Pollak
+\end_layout
+
+\begin_layout Date
+December 22, 2011
+\end_layout
+
+\begin_layout Standard
+© 2011 David Pollak, All Rights Reserved.
+ Licensed under MPL 1.1
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset toc
+LatexCommand tableofcontents
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Part
+The Language
+\end_layout
+
+\begin_layout Chapter
+Introduction
+\end_layout
+
+\begin_layout Standard
+This document describes the 
+\begin_inset CommandInset href
+LatexCommand href
+name "Visi"
+target "http://visi.io"
+
+\end_inset
+
+ language.
+ Visi is an open source language that blends concepts from spreadsheets,
+ scripting languages, functional languages such as Haskell and OCaml, and
+ other systems.
+ The goal of Visi is to be accessible for Excel power users, yet be 
+\begin_inset Quotes eld
+\end_inset
+
+correct
+\begin_inset Quotes erd
+\end_inset
+
+ such that runnable code should be substantially bug-free.
+ Visi forms the basis for the 
+\begin_inset CommandInset href
+LatexCommand href
+name "Visi.Pro"
+target "http://Visi.Pro"
+
+\end_inset
+
+ platform that allows programming on iPads and those programs can run on
+ iPads, iPhones, as well as in the cloud.
+\end_layout
+
+\begin_layout Standard
+Features of Visi include:
+\end_layout
+
+\begin_layout Itemize
+Guaranteed serializability of user-created data structures (like Erlang)
+ such that data structures can seamlessly migrate across address spaces.
+\end_layout
+
+\begin_layout Itemize
+Visually pleasing syntax that makes simple programs as well as very complex
+ programs easy to understand.
+ The syntax is whitespace-oriented and eschews curly-braces, line ending
+ markers, etc.
+\end_layout
+
+\begin_layout Itemize
+Persistent (immutable) data structures except for certain data structures
+ that do not escape the boundaries of library calls (everything that 
+\begin_inset Quotes eld
+\end_inset
+
+end users
+\begin_inset Quotes erd
+\end_inset
+
+ see is immutable).
+\end_layout
+
+\begin_layout Itemize
+Clear demarcations of side effects (sources [input]/sinks [output] and reference
+s) such that the order and locus of computations is invisible to the programmer
+ until a commit operation to a sink or reference occurs.
+\end_layout
+
+\begin_layout Itemize
+A type system that is simultaneously powerful and invisible.
+ End users cannot write type annotations.
+ Library authors can construct very complex type expressions that are evaluated
+ at compile time to insure code correctness.
+ Programs will not be allowed to run unless they pass the type checker.
+ Note that getting error messages 
+\begin_inset Quotes eld
+\end_inset
+
+right
+\begin_inset Quotes erd
+\end_inset
+
+ will be a serious challenge for Visi.
+\end_layout
+
+\begin_layout Itemize
+Visi will be self-hosted with a built-in IDE like Smalltalk.
+ The initial IDE will be Mac OS X based.
+\end_layout
+
+\begin_layout Itemize
+Visi will support incremental development such that changes can be made
+ to 
+\begin_inset Quotes eld
+\end_inset
+
+running
+\begin_inset Quotes erd
+\end_inset
+
+ programs like changes can be made to a spreadsheet and the changes are
+ immediately reflected.
+ However, Visi programs will be compiled to various more efficient representatio
+ns including converting Visi lambda calculus representations to GHC intermediate
+ representations such that Visi programs can be compiled to any supported
+ GHC back-ends including LLVM, native code, and potentially JavaScript.
+ Visi can also be run interpreted on iOS devices.
+\end_layout
+
+\begin_layout Itemize
+Visi, like spreadsheets, performs computations when external state changes
+ and updates outputs.
+ This makes Visi ideal for writing systems that rely on external data feeds
+ and Visi can trigger events when new data from data feeds is received.
+\end_layout
+
+\begin_layout Standard
+This document is an evolving description of the Visi language as well as
+ a discussion/justification for the design decisions.
+\end_layout
+
+\begin_layout Chapter
+Motivation
+\end_layout
+
+\begin_layout Standard
+Do we need yet another computer language? Is there currently a 
+\begin_inset Quotes eld
+\end_inset
+
+Cambrian explosion
+\begin_inset Quotes erd
+\end_inset
+
+ of computer languages and why Visi?
+\end_layout
+
+\begin_layout Standard
+Well, yes.
+ Most computer languages, especially the ones that are cropping up these
+ days, seem to re-visit ideas of past computer languages.
+ They make minor syntactic changes or in other ways make small alterations
+ to the kind of basic concepts that have been around computing for years.
+\end_layout
+
+\begin_layout Standard
+There are notable exceptions.
+ Clojure embraced Lisp syntax, but fundamentally changes mutable state into
+ an issue of time (see 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+http://www.artima.com/articles/hickey_on_time.html
+\end_layout
+
+\end_inset
+
+ ).
+ Scala made material advances in computer languages by blending a rich mostly
+ consistent type system with object oriented programming.
+ Most other languages that have been introduced this millennium are minor
+ variants on Smalltalk or C++ or Java.
+\end_layout
+
+\begin_layout Standard
+Visi takes a different approach.
+ Visi approaches the problem of describing how a computer should respond
+ to input in a similar manner to spreadsheets.
+ Visi approaches computing from the perspective of a dependency graph when
+ outputs change as inputs change and only outputs that depend on a particular
+ input are recomputed when a particular input changes.
+ The dependency graph is intuitive to anyone who has ever put together an
+ Excel spreadsheet (or a 1-2-3 spreadsheet or even a VisiCalc spreadsheet.)
+\end_layout
+
+\begin_layout Standard
+More broadly, my motivation for Visi is to create a language that fundamentally
+ changes the way people program computers such that Visi is a language oriented
+ to humans rather than a veneer on top of computing machinery.
+ Visi is not a tool for writing compilers (although it will be mostly self-hosti
+ng).
+ But, instead, Visi is a tool for normal people to describe relationships
+ such that a network of computers can perform calculations based on external
+ input and generate predictable, correct output.
+ My motivation for Visi is to change the landscape of computer languages
+ the way that VisiCalc changed the language and computing landscape in 1979.
+\end_layout
+
+\begin_layout Chapter
+Language Samples
+\end_layout
+
+\begin_layout Standard
+Let's take a look at some Visi language samples.
+\end_layout
+
+\begin_layout Standard
+First, 
+\begin_inset Quotes eld
+\end_inset
+
+Hello, World!
+\begin_inset Quotes erd
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+"Greeting" = "Hello, World!"
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The lefthand side of the equation has quotes around it, meaning that it's
+ a 
+\begin_inset Quotes eld
+\end_inset
+
+Sink
+\begin_inset Quotes erd
+\end_inset
+
+.
+ A Sink is output that can be wired up to a user interface or some other
+ external output.
+\end_layout
+
+\begin_layout Standard
+Next, let's take a number from a 
+\begin_inset Quotes eld
+\end_inset
+
+Source
+\begin_inset Quotes erd
+\end_inset
+
+ (an input), add 1 to the number and send it to a 
+\begin_inset Quotes eld
+\end_inset
+
+Sink
+\begin_inset Quotes erd
+\end_inset
+
+ called 
+\begin_inset Quotes eld
+\end_inset
+
+Plus One
+\begin_inset Quotes erd
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+?number
+\end_layout
+
+\begin_layout Plain Layout
+
+"Plus One" = number + 1
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It's easy to define functions:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+addOne n = n + 1 // a function that adds 1 to the input
+\end_layout
+
+\begin_layout Plain Layout
+
+?number
+\end_layout
+
+\begin_layout Plain Layout
+
+"Plus One" = addOne ?number
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And functions can be recursive:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fact n = if n == 0 then 1 else n * fact n - 1
+\end_layout
+
+\begin_layout Plain Layout
+
+res = fact 10 // 3628800
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Syntactically, variables (and local functions) need only be offset by spaces
+ from the upper level declaration:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+f n = // add 33 to the input
+\end_layout
+
+\begin_layout Plain Layout
+
+ v = 33 // the variable v is set to 33
+\end_layout
+
+\begin_layout Plain Layout
+
+ n + v // return the result because it's the last line of the function
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In action:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+f n = 
+\end_layout
+
+\begin_layout Plain Layout
+
+ v = 33
+\end_layout
+
+\begin_layout Plain Layout
+
+ n + v
+\end_layout
+
+\begin_layout Plain Layout
+
+res = f 3 // res == 36
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Functions can be local as well:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+f n = // calculate the factorial of the input
+\end_layout
+
+\begin_layout Plain Layout
+
+ fact n = if n == 0 then 1 else n * fact(n - 1)
+\end_layout
+
+\begin_layout Plain Layout
+
+ fact n
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Inner functions can shadow outer function.
+ The function in the nearest scope, wins.
+ Also partially applied functions can be passed as parameters:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+fact n = n & "hello" {- proper scoping this fact is not the inner fact -}
+\end_layout
+
+\begin_layout Plain Layout
+
+f n = {- Test partially applied functions -}
+\end_layout
+
+\begin_layout Plain Layout
+
+ // a local fact function that is visible within this function only
+\end_layout
+
+\begin_layout Plain Layout
+
+ fact n = if n == 0 then 1 else n * fact(n - 1)
+\end_layout
+
+\begin_layout Plain Layout
+
+ app n fact // apply the fact function to the input
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+{- Apply the function f to the value -}
+\end_layout
+
+\begin_layout Plain Layout
+
+app v f = f v
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+res = f 8 // 40320.0
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Partially applied functions close over local scope:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+f b = {- test that the function closes over local scope -}
+\end_layout
+
+\begin_layout Plain Layout
+
+ timesb n m = n * b * m
+\end_layout
+
+\begin_layout Plain Layout
+
+ timesb // partially apply the function which closes over the scope of the
+ 'b' parameter
+\end_layout
+
+\begin_layout Plain Layout
+
+app v f = f v
+\end_layout
+
+\begin_layout Plain Layout
+
+q = f 8 // return a partially applied function
+\end_layout
+
+\begin_layout Plain Layout
+
+z = f 10 // return another partially applied function
+\end_layout
+
+\begin_layout Plain Layout
+
+res = (app 9 (app 8 q)) - ((z 8 9) + (z 1 1)) // -154
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Rolling input, functions and output together:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+{- Input -}
+\end_layout
+
+\begin_layout Plain Layout
+
+?taxRate // source the tax rate
+\end_layout
+
+\begin_layout Plain Layout
+
+?taxable
+\end_layout
+
+\begin_layout Plain Layout
+
+?nonTaxable
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+{- Computations -}
+\end_layout
+
+\begin_layout Plain Layout
+
+total = subtotal + tax
+\end_layout
+
+\begin_layout Plain Layout
+
+tax = taxable * taxRate
+\end_layout
+
+\begin_layout Plain Layout
+
+subtotal = taxable + nonTaxable
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+{- Output -}
+\end_layout
+
+\begin_layout Plain Layout
+
+"Total" = total // sink the total
+\end_layout
+
+\begin_layout Plain Layout
+
+"Tax" = tax // sink the tax
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And the type checker insures you don't mix types:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+f = 3
+\end_layout
+
+\begin_layout Plain Layout
+
+d = f & "hi" // fails...
+ can't mix a number with a String
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The typer supports the identity function and type variables:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+q n = n
+\end_layout
+
+\begin_layout Plain Layout
+
+f n = if true then n else (q n) // both q and f are generic function
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Generic functions, even at multiple levels of recursion can be correctly
+ typed:
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+a n = b n
+\end_layout
+
+\begin_layout Plain Layout
+
+b n = c n
+\end_layout
+
+\begin_layout Plain Layout
+
+c n = a n // a, b, and c are all generic functions
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Functions can be mutually recursive without any hints to the type checker
+ (like OCaml's let rec):
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+isOdd n = if n == 1 then true else not (isEven (n - 1))
+\end_layout
+
+\begin_layout Plain Layout
+
+isEven n = if n == 0 then true else not (isOdd (n - 1))
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// define the not function
+\end_layout
+
+\begin_layout Plain Layout
+
+not n = if n then false else true
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+// the result is true (9 is odd)
+\end_layout
+
+\begin_layout Plain Layout
+
+res = isOdd 9
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

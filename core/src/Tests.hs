@@ -228,6 +228,10 @@ syntaxTests =
                               ,("c", testGenXFunc)
                               ,("d", testGenXFunc)] . checktype)
 
+     ,("a n f = if f n then n else b n f\n\
+       \b n f = c n f\n\
+       \c n f = if f n then n else a n f\n", testTypes [("a", testGenBoolFunc)] . checktype)                              
+
      ,("fact n = if n == 0 then 1 else n * fact n - 1",
                   testTypes [("fact", testDoubleFunc)] . checktype)
 
@@ -267,6 +271,10 @@ syntaxTests =
        \?nonTaxable", testTypes [("tax", testPrimDouble)
                                 ,("taxable", testPrimDouble)] . checktype)
     ]
+
+testGenBoolFunc _ (TOper funcOperName [(TVar t1), (TOper funcOperName [(TOper funcOperName [(TVar t1), (TVar t2)]), (TVar t2)])]) | t1 == t2 = Nothing
+testGenBoolFunc n t = Just $ "In: "++n++" Expecting a generic plus bool function, but got " ++ show t
+
 
 testGenFunc _ (TOper funcOperName [(TVar t1), (TVar t2)]) | t1 == t2 = Nothing
 testGenFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
