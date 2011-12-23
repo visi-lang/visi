@@ -272,14 +272,20 @@ syntaxTests =
                                 ,("taxable", testPrimDouble)] . checktype)
     ]
 
-testGenBoolFunc _ (TOper funcOperName [(TVar t1), (TOper funcOperName [(TOper funcOperName [(TVar t1), (TVar t2)]), (TVar t2)])]) | t1 == t2 = Nothing
+testGenBoolFunc _ (TOper fon1 [(TVar t1), 
+                  (TOper fon2 [(TOper fon3 
+                                      [(TVar t2), TPrim PrimBool]), (TVar t3)])]) | fon1 == funcOperName && 
+                                                                               fon2 == funcOperName &&
+                                                                               fon3 == funcOperName &&
+                                                                               t1 == t2 &&
+                                                                               t2 == t3 = Nothing
 testGenBoolFunc n t = Just $ "In: "++n++" Expecting a generic plus bool function, but got " ++ show t
 
 
-testGenFunc _ (TOper funcOperName [(TVar t1), (TVar t2)]) | t1 == t2 = Nothing
+testGenFunc _ (TOper fon [(TVar t1), (TVar t2)]) | fon == funcOperName && t1 == t2 = Nothing
 testGenFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
 
-testGenXFunc _ (TOper funcOperName [(TVar t1), (TVar t2)]) = Nothing
+testGenXFunc _ (TOper fon [(TVar t1), (TVar t2)]) | fon == funcOperName = Nothing
 testGenXFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
 
 testT t1 n t2 =
