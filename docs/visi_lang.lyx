@@ -2,8 +2,13 @@
 \lyxformat 413
 \begin_document
 \begin_header
-\textclass tufte-book
+\textclass book
 \use_default_options true
+\begin_modules
+theorems-ams
+eqs-within-sections
+figs-within-sections
+\end_modules
 \maintain_unincluded_children false
 \language english
 \language_package default
@@ -45,8 +50,8 @@
 \end_index
 \secnumdepth 2
 \tocdepth 2
-\paragraph_separation indent
-\paragraph_indentation default
+\paragraph_separation skip
+\defskip medskip
 \quotes_language english
 \papercolumns 1
 \papersides 2
@@ -69,7 +74,7 @@ David Pollak
 \end_layout
 
 \begin_layout Date
-December 22, 2011
+December 26, 2011
 \end_layout
 
 \begin_layout Standard
@@ -84,10 +89,6 @@ LatexCommand tableofcontents
 \end_inset
 
 
-\end_layout
-
-\begin_layout Part
-The Language
 \end_layout
 
 \begin_layout Chapter
@@ -306,6 +307,20 @@ Hello, World!
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -313,6 +328,11 @@ status open
 \begin_layout Plain Layout
 
 "Greeting" = "Hello, World!"
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \end_inset
@@ -364,6 +384,20 @@ Plus One
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -383,11 +417,30 @@ status open
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 It's easy to define functions:
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -404,7 +457,12 @@ addOne n = n + 1 // a function that adds 1 to the input
 
 \begin_layout Plain Layout
 
-"Plus One" = addOne ?number
+"Plus One" = addOne number
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \end_inset
@@ -417,6 +475,21 @@ And functions can be recursive:
 \end_layout
 
 \begin_layout Standard
+
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -436,12 +509,31 @@ res = fact 10 // 3628800
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 Syntactically, variables (and local functions) need only be offset by spaces
  from the upper level declaration:
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -466,11 +558,30 @@ f n = // add 33 to the input
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 In action:
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -500,11 +611,31 @@ res = f 3 // res == 36
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 Functions can be local as well:
 \end_layout
 
 \begin_layout Standard
+
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -529,6 +660,11 @@ f n = // calculate the factorial of the input
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 Inner functions can shadow outer function.
  The function in the nearest scope, wins.
@@ -536,13 +672,27 @@ Inner functions can shadow outer function.
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
 
 \begin_layout Plain Layout
 
-fact n = n & "hello" {- proper scoping this fact is not the inner fact -}
+fact n = n & "hello" {- proper scoping: fact is not the inner fact -}
 \end_layout
 
 \begin_layout Plain Layout
@@ -593,11 +743,30 @@ res = f 8 // 40320.0
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 Partially applied functions close over local scope:
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -614,8 +783,16 @@ f b = {- test that the function closes over local scope -}
 
 \begin_layout Plain Layout
 
- timesb // partially apply the function which closes over the scope of the
- 'b' parameter
+ timesb {- partially apply the function which closes over
+\end_layout
+
+\begin_layout Plain Layout
+
+           the scope of the 'b' parameter -}
+\end_layout
+
+\begin_layout Plain Layout
+
 \end_layout
 
 \begin_layout Plain Layout
@@ -625,12 +802,24 @@ app v f = f v
 
 \begin_layout Plain Layout
 
+\end_layout
+
+\begin_layout Plain Layout
+
 q = f 8 // return a partially applied function
 \end_layout
 
 \begin_layout Plain Layout
 
+\end_layout
+
+\begin_layout Plain Layout
+
 z = f 10 // return another partially applied function
+\end_layout
+
+\begin_layout Plain Layout
+
 \end_layout
 
 \begin_layout Plain Layout
@@ -643,11 +832,31 @@ res = (app 9 (app 8 q)) - ((z 8 9) + (z 1 1)) // -154
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 Rolling input, functions and output together:
 \end_layout
 
 \begin_layout Standard
+
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -720,11 +929,31 @@ subtotal = taxable + nonTaxable
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 And the type checker insures you don't mix types:
 \end_layout
 
 \begin_layout Standard
+
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -745,8 +974,31 @@ d = f & "hi" // fails...
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 The typer supports the identity function and type variables:
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -766,12 +1018,31 @@ f n = if true then n else (q n) // both q and f are generic function
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 Generic functions, even at multiple levels of recursion can be correctly
  typed:
 \end_layout
 
 \begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -796,9 +1067,31 @@ c n = a n // a, b, and c are all generic functions
 
 \end_layout
 
+\end_inset
+
+
+\end_layout
+
 \begin_layout Standard
 Functions can be mutually recursive without any hints to the type checker
  (like OCaml's let rec):
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
 \begin_inset listings
 inline false
 status open
@@ -844,6 +1137,15 @@ res = isOdd 9
 \end_inset
 
 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+More language samples as Visi evolves.
 \end_layout
 
 \end_body
