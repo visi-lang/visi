@@ -77,9 +77,9 @@ syntaxTests =
       ("struct List a = Cons(hd: a, next: List a) | Nil\n\
        \cons a lst = Cons a lst\n\
        \head lst = #hd lst\n\
-       \{-head2 lst = lst.hd-}\n\
+       \/* head2 lst = lst.hd */\n\
        \res2 = #=hd 2 lst\n\
-       \{-res3 = lst.=hd 2-}\n\
+       \/* res3 = lst.=hd 2 */\n\
        \res4 = res2 == res3\n\
        \res = cons 1 Nil\n", psuccess 6 . checkparse)
 
@@ -102,29 +102,29 @@ syntaxTests =
        \  fact n\n\
        \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
 
-      ,("f n = {- Test partially applied functions -}\n\
+      ,("f n = /* Test partially applied functions */\n\
        \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
        \  app n fact\n\
        \app v f = f v\n\
        \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
 
 
-      ,("fact n = n & \"hello\" {-  propper scoping this fact is not the inner fact -}\n\
-        \f n = {- Test partially applied functions -}\n\
+      ,("fact n = n & \"hello\" /*  propper scoping this fact is not the inner fact */\n\
+        \f n = /* Test partially applied functions */\n\
         \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
         \  app n fact\n\
         \app v f = f v\n\
         \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
 
       ,("fact n = n & \"hello\" // propper scoping this fact is not the inner fact \n\
-        \f n = {- test that the function closes over local scope -}\n\
+        \f n = /* test that the function closes over local scope */\n\
         \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
-        \  moo = fact n {- This is the local reference to 'n' -}\n\
+        \  moo = fact n /* This is the local reference to 'n' */\n\
         \  moo\n\
         \app v f = f v\n\
         \res = f 7\n", testResults [("res", DoubleValue 5040.0)] . checkResults)
 
-      ,("f b = {- test that the function closes over local scope -}\n\
+      ,("f b = /* test that the function closes over local scope */\n\
         \  timesb n m = n * b * m\n\
         \  timesb\n\
         \app v f = f v\n\
@@ -139,9 +139,9 @@ syntaxTests =
 
       ,("f a = a + 1 // function definition", psuccess 1 . checkparse)
       ,("f 33 = 44 // constant in parameter position", pfailure . checkparse)
-      ,("f a = a {- a multiline example -}\n\
+      ,("f a = a /* a multiline example */\n\
        \f b = b", psuccess 2 . checkparse)
-      ,("f a = if a then 3 else 4 {-if/then/else-}", psuccess 1 . checkparse)
+      ,("f a = if a then 3 else 4 /* if/then/else */", psuccess 1 . checkparse)
       ,("f a b c = f (1 + 2) 3 q w // multiple parameters to a function", psuccess 1 . checkparse)
       ,("add41 v = v + 41", psuccess 1 . checkparse)
       ,("\"Answer\" = add41 1", psuccess 1 . checkparse)
@@ -152,7 +152,7 @@ syntaxTests =
          \?p2", psuccess 3 . checkparse)
       ,("\"Age\" = 2011 - birthYear\n\
          \?birthYear // birthYear infered as Number", psuccess 2 . checkparse)
-      ,("{- A big multi-line expression -}\n\
+      ,("/* A big multi-line expression */\n\
          \total = subtotal + tax\n\
          \tax = taxable * taxRate\n\
          \subtotal = taxable + nonTaxable\n\n\n\
@@ -161,7 +161,7 @@ syntaxTests =
          \?taxRate // source the tax rate\n\
          \?taxable\n\
          \?nonTaxable", psuccess 8 . checkparse)
-      ,("{- and indented line should fail -}\n\
+      ,("/* and indented line should fail */\n\
          \total = subtotal + tax\n\
          \tax = taxable * taxRate\n\
          \subtotal = taxable + nonTaxable\n\n\n\

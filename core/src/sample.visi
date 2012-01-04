@@ -1,0 +1,46 @@
+/*
+	Option type where there's a type variable
+*/
+union Option a = None | Some(a)
+	methods
+		empty = case self of
+			None = true
+			_	 = false
+
+empty None = true |
+      _    = false
+
+defined n = ~ emtpy n
+
+testOption o = o.empty `must==` (empty o)
+
+testOption2 o =
+	funcs = List(empty, #empty)
+	applied = xform (app o) funcs
+	allSame applied
+
+allSame Nil = true |
+        x::xs = 
+        	test Nil = true |
+        	     y:ys = if y != x then false else test ys
+        	test xs
+
+app v f = f v
+
+union Box a = Empty | Full(elem: a) | Failure(error: String, chain: Box (Box.Failure a)) // How do we get a parameterized failure?
+
+union Person(String, age: Int) = Kid() | Parent(kids: List Person)
+	methods
+		hasKids? = case this of
+					@Kid = false
+					it@Parent = ~ it.kids.empty?
+	    name = case this of
+	    		Kid(n, _) = n
+	    		Parent(n, _, _) = n
+	    olderThan n = this.age > n
+
+precursor TestAge
+	methods
+		olderThan2 n = this.age > n
+
+enhance Person with TestAge // add the TestAge methods to the Person union so olderThan2 can be used with Person

@@ -70,8 +70,8 @@ funcName exp@(SourceExp _ name _) = [(name, exp)]
 funcName _ = []
 
 
-visiDef = emptyDef{ commentStart = "{-"
-                  , commentEnd = "-}"
+visiDef = emptyDef{ commentStart = "/*"
+                  , commentEnd = "*/"
                   , commentLine = "//"
                   , caseSensitive = True
                   , nestedComments = True
