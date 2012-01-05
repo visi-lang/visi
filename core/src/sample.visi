@@ -1,42 +1,61 @@
 /*
 	Option type where there's a type variable
 */
-union Option a = None | Some(a)
+struct Option a = None | Some(a)
 	methods
 		empty = case self of
-			None = true
-			_	 = false
+			None = True
+			_	 = False
 
-empty None = true |
-      _    = false
+empty None = True |
+      _    = False
 
 defined n = ~ emtpy n
 
 testOption o = o.empty `must==` (empty o)
 
-testOption2 o =
-	funcs = List(empty, #empty)
-	applied = xform (app o) funcs
-	allSame applied
+/*
+  The lazy list is a built-in type in Visi that's known at the
+  parser level.  Why?  Why not go with Scala's notion of "no type"
+  is built in? Well, in Scala, with var-args which are promoted to 
+  Arrays under the covers, there's a built-in type. Without var-args
+  (and Visi doesn't have var-args for the same reason that Haskell doesn't)
+  there needs to be a built-in type that allows for an arbitrary collection
+  of a given type.
+*/
 
-allSame Nil = true |
-        x::xs = 
-        	test Nil = true |
-        	     y:ys = if y != x then false else test ys
+
+testOption2 o =
+	funcs = [empty, #empty] // List of functions that test for empty-ness
+	applied = xform (app o) funcs // transform the incoming list by applying the function
+	applied' = funcs.xform (app o) // same as the above line
+	allSame applied // test that all the values are the same
+
+allSame []   = True |
+        x:xs = 
+        	test []   = True |
+        	     y:ys = if y != x then False else test ys
         	test xs
 
+/*
+	Apply the function f to the value v
+ */
 app v f = f v
 
-union Box a = Empty | Full(elem: a) | Failure(error: String, chain: Box (Box.Failure a)) // How do we get a parameterized failure?
+struct Box a = Empty | 
+			  Full(elem: a) | 
+			  Failure(error: String, chain: Box (Box.Failure a)) |
+			  ParamFailure(error: String, chain: Box (Box.Failure a), param: Unknown)
 
-union Person(String, age: Int) = Kid() | Parent(kids: List Person)
+struct Person(String, age: Int) = Kid() | Parent(kids: List Person)
 	methods
 		hasKids? = case this of
-					@Kid = false
+					@Kid = False
 					it@Parent = ~ it.kids.empty?
 	    name = case this of
 	    		Kid(n, _) = n
 	    		Parent(n, _, _) = n
+	    name2 = this.1 // the first element of the tuple because Person is a 2 element tuple (or maybe more)
 	    olderThan n = this.age > n
 
 precursor TestAge
@@ -44,3 +63,77 @@ precursor TestAge
 		olderThan2 n = this.age > n
 
 enhance Person with TestAge // add the TestAge methods to the Person union so olderThan2 can be used with Person
+
+/*
+  A function that pattern matches against any type that has a "name" property that returns a String and that String
+  is equal to "fred"
+ */
+namedFred (name == "fred") = True |
+          _                = False
+
+/*
+  A function that pattern matches against a String name that must equal "fred" and then
+  assigns the age property to the "theAge" local variable
+ */
+fredsAge (name == "fred",
+		  age => theAge) = Full age |
+		 _               = Empty
+
+struct MachineType = Car | Computer | Wrench
+
+struct Machine(name: String, age: Int, type: MachineType)
+
+/*
+  A function that pattern matches against a String name that must equal "david" and then
+  assigns the age property to the "age" local variable. This will work for
+  Person or Machine
+ */
+davidsAge (name == "david",
+ 		   @age) = Full age |
+ 		  _      = Empty
+
+
+
+/*
+  Perform a more complex computation in the pattern
+ */
+anyDavidsAge (name.toLowerCase == "david", @age) = Full age |
+			 _                                   = Empty
+
+/*
+ Automatic Boxing of incomplete patterns.  The return type of this
+ expression is "Box a" where "a" is the type of the age field.
+ */
+ davidsOtherAge (name == "david", @age) = age
+
+/*
+  Use positional extraction to match the type "Machine" and the name "david"
+ */
+machineAge Machine("david", age, _) = age
+
+/*
+ Use property names to pattern match against only Machine type with name == "david"
+ */
+machineAge2 Machine(@age, name == "david") = age
+
+/*
+  It looks like we'll need a couple of "magic" types:
+  - Nothing - a type that will match all types. Is this necessary?
+  - Unknown - A marker that means that any type may be placed in the slot
+
+  These magic types may only be specified in Visi "guru" mode.
+*/
+
+/*
+  Stuff to love from Scala that we need to work in:
+  - unapply/Extractors
+  - Auto-promotion - like implict conversion, but for parameters, not method invocation
+
+  Stuff to love from Haskell that we need to work in:
+  - Type Classes... they need another name, but they are joyous
+  - Open Classes... the ability to assocate a type with a class
+
+  Other stuff we need to work in
+  - Built in documentation
+  - Localized tests/contracts
+*/

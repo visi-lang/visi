@@ -74,7 +74,7 @@ David Pollak
 \end_layout
 
 \begin_layout Date
-December 26, 2011
+January 5, 2012
 \end_layout
 
 \begin_layout Standard
@@ -475,7 +475,6 @@ And functions can be recursive:
 \end_layout
 
 \begin_layout Standard
-
 \begin_inset Box Doublebox
 position "t"
 hor_pos "c"
@@ -621,7 +620,6 @@ Functions can be local as well:
 \end_layout
 
 \begin_layout Standard
-
 \begin_inset Box Doublebox
 position "t"
 hor_pos "c"
@@ -692,12 +690,12 @@ status open
 
 \begin_layout Plain Layout
 
-fact n = n & "hello" {- proper scoping: fact is not the inner fact -}
+fact n = n & "hello" /* proper scoping: fact is not the inner fact */
 \end_layout
 
 \begin_layout Plain Layout
 
-f n = {- Test partially applied functions -}
+f n = /* Test partially applied functions */
 \end_layout
 
 \begin_layout Plain Layout
@@ -721,7 +719,7 @@ f n = {- Test partially applied functions -}
 
 \begin_layout Plain Layout
 
-{- Apply the function f to the value -}
+/* Apply the function f to the value */
 \end_layout
 
 \begin_layout Plain Layout
@@ -773,7 +771,7 @@ status open
 
 \begin_layout Plain Layout
 
-f b = {- test that the function closes over local scope -}
+f b = /* test that the function closes over local scope */
 \end_layout
 
 \begin_layout Plain Layout
@@ -783,12 +781,12 @@ f b = {- test that the function closes over local scope -}
 
 \begin_layout Plain Layout
 
- timesb {- partially apply the function which closes over
+ timesb /* partially apply the function which closes over
 \end_layout
 
 \begin_layout Plain Layout
 
-           the scope of the 'b' parameter -}
+           the scope of the 'b' parameter */
 \end_layout
 
 \begin_layout Plain Layout
@@ -842,7 +840,6 @@ Rolling input, functions and output together:
 \end_layout
 
 \begin_layout Standard
-
 \begin_inset Box Doublebox
 position "t"
 hor_pos "c"
@@ -863,7 +860,7 @@ status open
 
 \begin_layout Plain Layout
 
-{- Input -}
+/* Input */
 \end_layout
 
 \begin_layout Plain Layout
@@ -887,7 +884,7 @@ status open
 
 \begin_layout Plain Layout
 
-{- Computations -}
+/* Computations */
 \end_layout
 
 \begin_layout Plain Layout
@@ -911,7 +908,7 @@ subtotal = taxable + nonTaxable
 
 \begin_layout Plain Layout
 
-{- Output -}
+/* Output */
 \end_layout
 
 \begin_layout Plain Layout
@@ -939,7 +936,6 @@ And the type checker insures you don't mix types:
 \end_layout
 
 \begin_layout Standard
-
 \begin_inset Box Doublebox
 position "t"
 hor_pos "c"
@@ -984,7 +980,6 @@ The typer supports the identity function and type variables:
 \end_layout
 
 \begin_layout Standard
-
 \begin_inset Box Doublebox
 position "t"
 hor_pos "c"
