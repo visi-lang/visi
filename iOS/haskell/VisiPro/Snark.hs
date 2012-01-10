@@ -5,6 +5,7 @@ import Foreign.C
 -- import Control.Concurrent
 import Visi.Runtime
 import Visi.Expression
+import qualified Data.Text as T
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -61,9 +62,9 @@ type VoidStar = Ptr ()
 
 foreign import ccall safe "sendInfoBack" sendInfoBack :: VoidStar -> CInt -> CString -> CString -> IO ()
 
-sendInfo :: VoidStar -> Int -> String -> String -> IO ()
-sendInfo void cmd name value = withCString name runName
-                               where runName name' = withCString value runValue
+sendInfo :: VoidStar -> Int -> T.Text -> T.Text -> IO ()
+sendInfo void cmd name value = withCString (T.unpack name) runName
+                               where runName name' = withCString (T.unpack value) runValue
                                         where runValue value' = sendInfoBack void (fromIntegral cmd) name' value'
 
 foreign export ccall setProgramText :: VoidStar -> CString -> IO ()
@@ -76,23 +77,25 @@ setProgramText void text =
               
 errorCallback void errMsg = sendInfo void DisplayErrorCmd errMsg errMsg
 
+blank = T.pack ""
+
 sourceSinkCallback void info =
                       do
-                        sendInfo void BeginProgramInfoCmd "" ""
+                        sendInfo void BeginProgramInfoCmd blank blank
                         mapM_ (sendSourceSinkInfo void) info
-                        sendInfo void EndProgramInfoCmd "" ""                  
+                        sendInfo void EndProgramInfoCmd blank blank          
 
-setSinksCallback :: VoidStar -> [(String, Value)] -> IO ()
+setSinksCallback :: VoidStar -> [(T.Text, Value)] -> IO ()
 setSinksCallback void info = mapM_ (sendSinks void) info
                   
-sendSinks void (name, (DoubleValue value)) = sendInfo void SetSinkCmd name $ show value
+sendSinks void (name, (DoubleValue value)) = sendInfo void SetSinkCmd name $ T.pack $ show value
 sendSinks void (name, (StrValue value)) = sendInfo void SetSinkCmd name value
-sendSinks void (name, (BoolValue value)) = sendInfo void SetSinkCmd name $ show value
-sendSinks void (name, _) = sendInfo void SetSinkCmd name "N/A"
+sendSinks void (name, (BoolValue value)) = sendInfo void SetSinkCmd name $ T.pack $ show value
+sendSinks void (name, _) = sendInfo void SetSinkCmd name $ T.pack "N/A"
 
-theTypeToStr PrimDouble =  NumberSourceStr
-theTypeToStr PrimBool =  BoolSourceStr
-theTypeToStr PrimStr =  StringSourceStr
+theTypeToStr PrimDouble =  T.pack NumberSourceStr
+theTypeToStr PrimBool =  T.pack BoolSourceStr
+theTypeToStr PrimStr =  T.pack StringSourceStr
 sendSourceSinkInfo void (SourceInfo name theType) = sendInfo void SourceInfoCmd name $ theTypeToStr theType
 sendSourceSinkInfo void (SinkInfo name theType) =sendInfo void SinkInfoCmd name $ theTypeToStr theType
 
@@ -102,16 +105,18 @@ foreign export ccall setSourceString :: CString -> CInt -> CString -> IO ()
 setSourceString :: CString -> CInt -> CString -> IO ()
 setSourceString name theType value = 
     do
-        name' <- peekCString name
-        value' <- peekCString value
+        name'' <- peekCString name
+        value'' <- peekCString value
+        let name' = T.pack name''
+        let value' = T.pack value''
         doSetSource name' (fromIntegral theType) value'
 
-doSetSource :: String -> Int -> String -> IO ()
+doSetSource :: T.Text -> Int -> T.Text -> IO ()
 doSetSource name theType value = 
     let val = case theType of
-                BoolSourceType -> if (value == "t") then BoolValue True else BoolValue False
+                BoolSourceType -> if (value == (T.pack "t")) then BoolValue True else BoolValue False
                 StringSourceType -> StrValue value
-                NumberSourceType -> case reads value of
+                NumberSourceType -> case reads $ T.unpack value of
                                       [] -> UndefinedValue
                                       [(num, _)] -> DoubleValue num
           in

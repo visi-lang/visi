@@ -18,7 +18,7 @@ Executable Visi
         QuartzCore
         OpenGLES
     Hs-Source-Dirs: haskell, ../core/src
-    Other-Modules: Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, Visi.Snark
+    Other-Modules: Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, VisiPro.Snark
     Build-Depends:
         base >= 4,
         old-time,
@@ -28,4 +28,6 @@ Executable Visi
         haskell98,
         parsec >= 3,
         containers,
-        pretty
+        pretty,
+        text
+

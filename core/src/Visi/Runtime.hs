@@ -42,19 +42,20 @@ import qualified Text.PrettyPrint as PP
 import Data.IORef
 import Control.Concurrent.Chan
 import Control.Exception
+import qualified Data.Text as T
 
 -- | The visi runtime... an interface between abstract systems and the current system
 -- | Right now, we only support a single app, but we'll expand to multiple running apps
  
-type ErrorCallback = String -> IO ()
+type ErrorCallback = T.Text -> IO ()
 type SourceSinkCallback = [SourceSinkInfo] -> IO ()
-type SetSinksCallback = [(String, Value)] -> IO ()
+type SetSinksCallback = [(T.Text, Value)] -> IO ()
 
 data AppCallback = AppCallback ErrorCallback SourceSinkCallback SetSinksCallback
  
 data SourceSinkInfo = 
-    SourceInfo String Prim
-    | SinkInfo String Prim 
+    SourceInfo T.Text Prim
+    | SinkInfo T.Text Prim 
     deriving (Show)
  
 runningApp :: IORef (Maybe (Chan AppCmd))
@@ -63,9 +64,9 @@ runningApp = unsafePerformIO $ newIORef Nothing
 -- | Commands sent to a running app
 data AppCmd = 
     AppStop
-    | AppSetSource String Value
+    | AppSetSource T.Text Value
 
-setSource :: String -> Value -> IO ()
+setSource :: T.Text -> Value -> IO ()
 setSource name value =
     let set = AppSetSource name value in
     do
@@ -83,7 +84,7 @@ runApp code callback@(AppCallback errorCallback sourceSinkCallback setSinksCallb
       maybeChan chan $ flip writeChan $ AppStop -- shutdown the app if it was running
       let stuff = parseLines code
       runIt stuff
-      where runIt (Left err) = errorCallback $ show err
+      where runIt (Left err) = errorCallback $ T.pack $ show err
             runIt (Right exps) = runExp exps
             runExp exps = 
                 let allExp = builtInExp ++ exps in
@@ -130,7 +131,7 @@ threadRunApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCall
             runLoop Map.empty
             ) 
           (\e -> do
-                   errorCallback $ show (e :: ErrorCall)
+                   errorCallback $ T.pack $ show (e :: ErrorCall)
                    writeIORef runningApp Nothing
                    return ()) -- find & send sources and sinks or type errors
           
