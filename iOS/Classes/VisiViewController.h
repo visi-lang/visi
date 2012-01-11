@@ -31,14 +31,17 @@
 	UITextView *errorInfo;
 	NSArray *currentControls;
 	NSMutableArray *newControls;
+	NSString *curModelName;
 }
 @property (retain, nonatomic) IBOutlet UITextView *editor;
 @property (retain, nonatomic) IBOutlet UIScrollView *output;
 @property (retain, nonatomic) IBOutlet UITextView *errorInfo;
+@property (retain, nonatomic) IBOutlet UITableView *models;
 @property (retain, nonatomic) NSArray *currentControls;
 @property (retain, nonatomic) NSMutableArray *newControls;
 
 - (IBAction)runCode:(id) sender;
+- (IBAction)newModel:(id) sender;
 - (void)runCmd:(int) cmd name:(NSString *)name value:(NSString *) value;
 - (IBAction)grabBool:(id)sender;
 - (IBAction)grabText:(id)sender;

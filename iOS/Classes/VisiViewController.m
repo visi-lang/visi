@@ -32,6 +32,7 @@
 
 @synthesize editor;
 @synthesize output;
+@synthesize models;
 @synthesize errorInfo;
 @synthesize currentControls;
 @synthesize newControls;
@@ -85,12 +86,43 @@
         [b cStringUsingEncoding:[NSString defaultCStringEncoding]]);
 }
 
+- (NSString *)calcName:(NSString *)text {
+	NSString *theName = nil;
+	NSArray *lines = [text componentsSeparatedByString:@"\n"];
+	NSUInteger theLine = [lines indexOfObjectPassingTest:
+						  ^(id obj, NSUInteger idx, BOOL *stop) {
+							  return (NSEqualRanges([obj rangeOfString:@"//"], NSMakeRange (0, 2)));
+						}];
+	printf("The line is: %i\n", theLine);
+						
+	return @"";
+}
+
+- (void)saveIfNeeded:(NSString *)text {
+	if (text != nil && [text length] > 0) {
+		NSString *newName = [self calcName: text];
+	}
+}
+
 - (IBAction)runCode:(id) sender {
     errorInfo.text = @"";
     NSString *editorValue = [editor text];
 
+	[self saveIfNeeded:editorValue];
+	
     setProgramText(self, [editorValue cStringUsingEncoding:[NSString defaultCStringEncoding]]);
+}
 
+
+- (IBAction)newModel:(id) sender {
+    errorInfo.text = @"";
+    NSString *editorValue = [editor text];
+
+	[self saveIfNeeded:editorValue];
+	
+	[curModelName release];
+    curModelName = nil;
+	[editor setText:@""];
 }
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string
