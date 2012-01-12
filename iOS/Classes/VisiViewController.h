@@ -30,6 +30,7 @@
 	UIScrollView *output;
 	UITextView *errorInfo;
 	NSArray *currentControls;
+	NSArray *currentFiles;
 	NSMutableArray *newControls;
 	NSString *curModelName;
 }

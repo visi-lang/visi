@@ -45,6 +45,7 @@
     errorInfo.font = font;
     errorInfo.text = @"";
     editor.font = [UIFont fontWithName:@"Courier" size:16.0];
+	[self updateFileList:self];
 }
 
 
@@ -93,15 +94,108 @@
 						  ^(id obj, NSUInteger idx, BOOL *stop) {
 							  return (NSEqualRanges([obj rangeOfString:@"//"], NSMakeRange (0, 2)));
 						}];
-	printf("The line is: %i\n", theLine);
-						
-	return @"";
+	
+	if (theLine != NSNotFound) {
+		NSString *it = [[lines objectAtIndex:theLine] stringByReplacingOccurrencesOfString:@"/" withString:@" "];
+		NSArray *words = [it componentsSeparatedByString:@" "];
+		NSUInteger theWord = [words indexOfObjectPassingTest:^(id obj, NSUInteger idx, BOOL *stop) {
+			if ([obj length] > 0) {
+				return YES;
+			} else {
+				return NO;
+			}
+		}];
+		
+		if (theWord != NSNotFound) {
+			theName = [words objectAtIndex:theWord];
+		}
+	}
+	[theName retain];
+	return theName;
+}
+
+- (void)save:(NSString *)text as:(NSString *) name {
+	NSFileManager *mgr = [[NSFileManager alloc] init];
+	NSString *path = [[NSHomeDirectory() stringByAppendingString:@"/Documents/"] stringByAppendingString:name];
+	NSString *p2 = [path stringByAppendingPathExtension:@"visi"];
+	const char *utf8 = [text UTF8String];
+	NSData *contents = [NSData dataWithBytes:utf8 length:strlen(utf8)];
+	[mgr createFileAtPath:p2 contents:contents attributes:nil];
+}
+
+- (void)deleteFile:(NSString *) name {
+	NSFileManager *mgr = [[NSFileManager alloc] init];
+	NSString *path = [[NSHomeDirectory() stringByAppendingString:@"/Documents/"] stringByAppendingString:name];
+	NSString *p2 = [path stringByAppendingPathExtension:@"visi"];
+	[mgr removeItemAtPath:p2 error:nil];
+}
+
+- (NSString *)randomName {
+	//Create unique filename
+	CFUUIDRef newUniqueId = CFUUIDCreate(kCFAllocatorDefault);
+	CFStringRef newUniqueIdString = CFUUIDCreateString(kCFAllocatorDefault, newUniqueId);
+
+	NSString *name = (NSString*)newUniqueIdString;
+	
+	CFRelease(newUniqueId);
+	[name retain];
+	return name;
 }
 
 - (void)saveIfNeeded:(NSString *)text {
 	if (text != nil && [text length] > 0) {
 		NSString *newName = [self calcName: text];
+		if (curModelName != nil) {
+			if (newName == nil || [curModelName isEqualToString:newName]) {
+				if (newName != nil) {
+					[newName release];
+				}
+				[self save: text as:curModelName];
+			} else {
+				[self deleteFile: curModelName];
+				[self save: text as: newName];
+				[curModelName release];
+				curModelName = newName;
+			}
+		} else {
+			if (newName == nil) newName = [self randomName];
+			[self save: text as:newName];
+			curModelName = newName;
+		}
 	}
+	[self updateFileList: self];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    // Return the number of sections.
+    return 1;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath 
+{
+	UITableViewCell *cell = [[[UITableViewCell alloc] initWithFrame:CGRectZero reuseIdentifier:@"MyIdentifier"] autorelease];
+	
+	cell.text = [currentFiles objectAtIndex:indexPath.row];
+	return cell;
+}
+
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    // Return the number of rows in the section.
+    return [currentFiles count];
+}
+
+
+- (void) updateFileList:(id)ignoreMe {
+	NSFileManager *mgr = [[NSFileManager alloc] init];
+	NSArray *files = [mgr contentsOfDirectoryAtPath:[NSHomeDirectory() stringByAppendingString:@"/Documents/"] error: nil];
+	NSIndexSet *visiFiles = [files indexesOfObjectsPassingTest:^(id obj, NSUInteger idx, BOOL *stop) { 
+		return [obj hasSuffix:@".visi"];
+	}];
+	[currentFiles release];
+	currentFiles = [files objectsAtIndexes:visiFiles];
+	[currentFiles retain];
+	// [self.models reload];
 }
 
 - (IBAction)runCode:(id) sender {
