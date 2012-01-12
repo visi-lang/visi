@@ -37,6 +37,20 @@
 @synthesize currentControls;
 @synthesize newControls;
 
+
+- (void) updateFileList:(id)ignoreMe {
+	NSFileManager *mgr = [[NSFileManager alloc] init];
+	NSArray *files = [mgr contentsOfDirectoryAtPath:[NSHomeDirectory() stringByAppendingString:@"/Documents/"] error: nil];
+	NSIndexSet *visiFiles = [files indexesOfObjectsPassingTest:^(id obj, NSUInteger idx, BOOL *stop) { 
+		return [obj hasSuffix:@".visi"];
+	}];
+	[currentFiles release];
+	currentFiles = [files objectsAtIndexes:visiFiles];
+	[currentFiles retain];
+	[self.models reloadData];
+}
+
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     currentControls = [[NSArray array] retain];
@@ -142,6 +156,7 @@
 	return name;
 }
 
+
 - (void)saveIfNeeded:(NSString *)text {
 	if (text != nil && [text length] > 0) {
 		NSString *newName = [self calcName: text];
@@ -175,9 +190,63 @@
 {
 	UITableViewCell *cell = [[[UITableViewCell alloc] initWithFrame:CGRectZero reuseIdentifier:@"MyIdentifier"] autorelease];
 	
-	cell.text = [currentFiles objectAtIndex:indexPath.row];
+	UILongPressGestureRecognizer *longPressGesture =
+	[[[UILongPressGestureRecognizer alloc]
+	  initWithTarget:self action:@selector(longPress:)] autorelease];
+	[cell addGestureRecognizer:longPressGesture];
+	
+	cell.textLabel.text = [currentFiles objectAtIndex:indexPath.row];
 	return cell;
 }
+
+- (void)longPress:(UILongPressGestureRecognizer *)gesture
+{
+	// only when gesture was recognized, not when ended
+	if (gesture.state == UIGestureRecognizerStateBegan)
+	{
+		// get affected cell
+		UITableViewCell *cell = (UITableViewCell *)[gesture view];
+		NSString * toDelete = cell.textLabel.text;
+		if (curModelName == nil || ![curModelName isEqualToString:toDelete] || [toDelete hasPrefix:curModelName]) {
+			NSFileManager *mgr = [[NSFileManager alloc] init];
+			NSString *path = [[NSHomeDirectory() stringByAppendingString:@"/Documents/"] stringByAppendingString:toDelete];
+			[mgr removeItemAtPath:path error:nil];
+			[self updateFileList:self];
+		}
+	}
+}
+
+- (void) loadFile: (NSString *) fileName {
+	if (curModelName != nil) [curModelName release];
+	[fileName retain];
+	curModelName = fileName;
+	NSFileManager *mgr = [[NSFileManager alloc] init];
+	NSString *path = [[NSHomeDirectory() stringByAppendingString:@"/Documents/"] stringByAppendingString:fileName];
+	
+	NSData *contents = [mgr contentsAtPath:path];
+	NSString *data = [[NSString alloc] initWithBytes:[contents bytes]
+											  length:[contents length] encoding:NSUTF8StringEncoding];
+	
+	errorInfo.text = @"";
+	[editor setText:data];
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+	[tableView deselectRowAtIndexPath:indexPath animated:NO];
+
+	UITableViewCell * cell = [tableView cellForRowAtIndexPath:indexPath];
+	NSString * theFileName = cell.textLabel.text;
+	if (curModelName == nil || ![theFileName isEqualToString: curModelName]) {
+		NSString *editorValue = [editor text];
+		
+		[self saveIfNeeded:editorValue];
+
+		[self loadFile: theFileName];
+	}
+}
+
+
 
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -186,17 +255,7 @@
 }
 
 
-- (void) updateFileList:(id)ignoreMe {
-	NSFileManager *mgr = [[NSFileManager alloc] init];
-	NSArray *files = [mgr contentsOfDirectoryAtPath:[NSHomeDirectory() stringByAppendingString:@"/Documents/"] error: nil];
-	NSIndexSet *visiFiles = [files indexesOfObjectsPassingTest:^(id obj, NSUInteger idx, BOOL *stop) { 
-		return [obj hasSuffix:@".visi"];
-	}];
-	[currentFiles release];
-	currentFiles = [files objectsAtIndexes:visiFiles];
-	[currentFiles retain];
-	// [self.models reload];
-}
+
 
 - (IBAction)runCode:(id) sender {
     errorInfo.text = @"";
