@@ -137,6 +137,14 @@ syntaxTests =
       ,("f n = \n\
         \  33\n", psuccess 1 . checkparse)
 
+      ,("hello moose \n\
+        \I am a literate program\n\ 
+        \~~~~~~~~~~~~~~~\n\
+        \f n = \n\
+        \  33\n\
+        \~~~~~~~~~~~~~~~\n\
+        \Everything outside the ~~~ is ignored", psuccess 1 . checkparse)
+
       ,("f a = a + 1 // function definition", psuccess 1 . checkparse)
       ,("f 33 = 44 // constant in parameter position", pfailure . checkparse)
       ,("f a = a /* a multiline example */\n\
