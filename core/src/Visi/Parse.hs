@@ -53,7 +53,7 @@ parseLine str = case runParser line (TIState{tiSupply = 0, tiDepth = 0,
 -- | parse many lines of input and return a List of expressions
 parseLines :: String -> Either VisiError [Expression]
 parseLines str = case runParser doLines (TIState{tiSupply = 0, tiDepth = 0,
-                                                 tiHasTilde = False, tiInLiterate = False}) str str of
+                                                 tiHasTilde = False, tiInLiterate = True}) str str of
                     Left(err) -> Left(ParsingError err)
                     Right(res) -> Right(res)
                     
@@ -138,11 +138,9 @@ testForTilde =
 
 findTildeLine =
   do
-    manyTill anyChar (try eol <|> eof)
-    char '~'
-    char '~'
-    char '~'
-    whileNot (try eol <|> eof)
+    manyTill anyChar tryEnd
+    threeMarks
+    whileNot tryEnd
 
 
 doLines = testForTilde >> blankLines >> stmtparser <* (do
@@ -152,31 +150,47 @@ doLines = testForTilde >> blankLines >> stmtparser <* (do
       stmtparser :: MParser [Expression]
       stmtparser = many(blankLines >> line <* blankLines)
 
-slurpToTildeIfNecessary tilde inLit=
-  if tilde && not inLit then 
-    do
-      manyTill anyChar $ try(findTildeLine)
-      vtrace "Setting trye" setInLiterate True
-  else return ()
+mySpaces = try(m_whiteSpace)
 
-mySpaces = 
+tryEnd = try(eol) <|> try(eof)
+threeMarks =
+  do
+    char '`'
+    char '`'
+    char '`'
+
+blankLine =
   do
     tilde <- getHasTilde
     inLit <- inLiterate
-    try (slurpToTildeIfNecessary tilde inLit)
-    try(m_whiteSpace)
-
-blankLine =
-            (do
-                mySpaces
-                eol) <?> "Blank Line"
+    if not tilde then
+        (do
+            mySpaces
+            eol) <?> "Blank Line"
+    else
+      if inLit then
+        (do
+          try $ manyTill anyChar $ (try(findTildeLine))
+          setInLiterate False) <|>
+        (do
+          anyChar
+          return ())
+      else
+        (do
+          threeMarks
+          whileNot tryEnd
+          setInLiterate True
+          tryEnd) <|>
+        (do
+            mySpaces
+            tryEnd) <?> "Literate Sep Line or Blank Line"
 
 whileNot end =  scan
                 where scan  = do{ lookAhead $ try end; return () }
                                  <|>
                               do{ anyChar ; scan }
 
-blankLines = many blankLine
+blankLines = many $ blankLine
 
 eol :: MParser ()
 eol = do char '\n'
