@@ -39,16 +39,32 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
 import Text.Parsec.Error
+import System.Directory
+import System.Environment
+import Data.String.Utils
+import System.IO
 
 main :: IO ()
 main = 
     do
-        l1 <- testOMatic syntaxTests
+        argv <- getArgs
+        path <- canonicalizePath $ head argv
+        revisedTests <- mapM (loadSamples path) syntaxTests
+        l1 <- testOMatic revisedTests -- paths
         let allL = l1
         mapM_ (snd) allL
         let errs = foldr (+) 0 $ map fst allL
         putStrLn $ "Ran " ++ (show $ length allL) ++ " tests, " ++ (show errs) ++ " errors"
  
+loadSamples path (param, func) =
+  if endswith ".md" param then
+    do
+      let whole = path ++ "/" ++ param
+      contents <- readFile whole
+      return (contents, func)
+  else
+    return (param, func)
+
 -- testOMatic a b => [(a, a -> b, b)] :: IO ()
 testOMatic lst = 
     do 
@@ -69,101 +85,41 @@ runTest (param, func) =
 -- syntaxTests :: ([(String, String -> Either VisiError a, Either VisiError a -> Either String ())])
 syntaxTests = 
     [
-      ("struct List a = Cons(hd: a, next: List a) | Nil\n", psuccess 1 . checkparse)
+      ("test_40_struct_parsing.md", psuccess 1 . checkparse)
+
+      ,("test_41_struct_and_more.md", psuccess 6 . checkparse)
+
+      ,("test_05_parse_with_local_var.md", psuccess 1 . checkparse)
+
+      ,("test_05_parse_with_local_var.md", testTypes [("f", testDoubleFunc)] . checktype)
+
+      ,("test_21_call_a_function.md", testResults [("res", DoubleValue 36)] . checkResults)       
+
+      ,("test_22_local_function.md", testResults [("res", DoubleValue 40320.0)] . checkResults)
+
+      ,("test_23_partially_applied_local_func.md", 
+          testResults [("res", DoubleValue 40320.0)] . checkResults)
 
 
+      ,("test_24_proper_scoping.md", testResults [("res", DoubleValue 40320.0)] . checkResults)
 
-      ,
-      ("struct List a = Cons(hd: a, next: List a) | Nil\n\
-       \cons a lst = Cons a lst\n\
-       \head lst = #hd lst\n\
-       \/* head2 lst = lst.hd */\n\
-       \res2 = #=hd 2 lst\n\
-       \/* res3 = lst.=hd 2 */\n\
-       \res4 = res2 == res3\n\
-       \res = cons 1 Nil\n", psuccess 6 . checkparse)
+      ,("test_25_more_scoping.md", testResults [("res", DoubleValue 5040.0)] . checkResults)
 
-      ,("f n = \n\
-       \  v = 33\n\
-       \  n + v\n", psuccess 1 . checkparse)
+      ,("test_16_complex_local_scope.md", testResults [("res", DoubleValue (-154))] . checkResults)
 
-      ,("f n = \n\
-       \  v = 33\n\
-       \  n + v\n", testTypes [("f", testDoubleFunc)] . checktype)
+      ,("test_01_simple_assignment.md", psuccess 1 . checkparse)
 
-      ,("f n = \n\
-       \  v = 33\n\
-       \  n + v\n\
-       \res = f 3\n", testResults [("res", DoubleValue 36)] . checkResults)       
+      ,("test_02_significant_spaces.md", psuccess 1 . checkparse)
+
+      ,("test_03_literate.md", psuccess 1 . checkparse)
 
 
-      ,("f n = \n\
-       \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
-       \  fact n\n\
-       \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
+      ,("test_04_multi_literal.md", psuccess 14 . checkparse)        
 
-      ,("f n = /* Test partially applied functions */\n\
-       \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
-       \  app n fact\n\
-       \app v f = f v\n\
-       \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
-
-
-      ,("fact n = n & \"hello\" /*  propper scoping this fact is not the inner fact */\n\
-        \f n = /* Test partially applied functions */\n\
-        \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
-        \  app n fact\n\
-        \app v f = f v\n\
-        \res = f 8\n", testResults [("res", DoubleValue 40320.0)] . checkResults)
-
-      ,("fact n = n & \"hello\" // propper scoping this fact is not the inner fact \n\
-        \f n = /* test that the function closes over local scope */\n\
-        \  fact n = if n == 0 then 1 else n * fact(n - 1)\n\
-        \  moo = fact n /* This is the local reference to 'n' */\n\
-        \  moo\n\
-        \app v f = f v\n\
-        \res = f 7\n", testResults [("res", DoubleValue 5040.0)] . checkResults)
-
-      ,("f b = /* test that the function closes over local scope */\n\
-        \  timesb n m = n * b * m\n\
-        \  timesb\n\
-        \app v f = f v\n\
-        \q = f 8\n\
-        \z = f 10\n\
-        \res = (app 9 (app 8 q)) - ((z 8 9) + (z 1 1))\n", testResults [("res", DoubleValue (-154))] . checkResults)
-
-      ,("a = 1 // simple assignment\n", psuccess 1 . checkparse)
-
-      ,("f n = \n\
-        \  33\n", psuccess 1 . checkparse)
-
-      ,("hello moose \n\
-        \I am a literate program\n\ 
-        \````````\n\
-        \f n = \n\
-        \  33\n\
-        \`````\n\
-        \Everything outside the ``` is ignored", psuccess 1 . checkparse)
-
-
-      ,("hello moose \n\
-        \I am a literate program\n\ 
-        \```\n\
-        \f n = \n\
-        \  33 + n\n\
-        \```\n\
-        \Everything outside the ``` is ignored\n\
-        \```\n\
-        \second = 33\n\
-        \res = f 88\n\
-        \```\n\
-        \This is some more literate stuff", psuccess 3 . checkparse)        
-
-      ,("f a = a + 1 // function definition", psuccess 1 . checkparse)
+      ,("test_01_simple_function.md", psuccess 1 . checkparse)
       ,("f 33 = 44 // constant in parameter position", pfailure . checkparse)
-      ,("f a = a /* a multiline example */\n\
-       \f b = b", psuccess 2 . checkparse)
-      ,("f a = if a then 3 else 4 /* if/then/else */", psuccess 1 . checkparse)
+      ,("test_02_two_function.md", psuccess 2 . checkparse)
+      ,("test_04_if_then_else.md", psuccess 1 . checkparse)
       ,("f a b c = f (1 + 2) 3 q w // multiple parameters to a function", psuccess 1 . checkparse)
       ,("add41 v = v + 41", psuccess 1 . checkparse)
       ,("\"Answer\" = add41 1", psuccess 1 . checkparse)
@@ -174,15 +130,7 @@ syntaxTests =
          \?p2", psuccess 3 . checkparse)
       ,("\"Age\" = 2011 - birthYear\n\
          \?birthYear // birthYear infered as Number", psuccess 2 . checkparse)
-      ,("/* A big multi-line expression */\n\
-         \total = subtotal + tax\n\
-         \tax = taxable * taxRate\n\
-         \subtotal = taxable + nonTaxable\n\n\n\
-         \\"Total\" = total // sink the total\n\
-         \\"Tax\" = tax // sink the tax\n\
-         \?taxRate // source the tax rate\n\
-         \?taxable\n\
-         \?nonTaxable", psuccess 8 . checkparse)
+      ,("test_15_complex_source_sink.md", psuccess 8 . checkparse)
       ,("/* and indented line should fail */\n\
          \total = subtotal + tax\n\
          \tax = taxable * taxRate\n\
@@ -196,25 +144,19 @@ syntaxTests =
       ,("f = 3 & \"hi\"", failsTyper . checktype)
       ,("f = 3\n\
         \d = f & \"hi\"", failsTyper . checktype)
-      ,("f = 3", testTypes [("f", testPrimDouble)] . checktype)
-      ,("f = 3\n\
-        \f2 n = f + n", testTypes [("f", testPrimDouble)
-                                  ,("f2", testDoubleFunc)] . checktype)
-      ,("f = 3\n\
-        \f2 = \"Hello\"", testTypes [("f", testPrimDouble)
+      ,("test_01_simple_assignment.md", testTypes [("a", testPrimDouble)] . checktype)
+      ,("test_04_multi_literal.md", testTypes [("res", testPrimDouble)
+                                  ,("f", testDoubleFunc)] . checktype)
+      ,("test_04_multi_literal.md", testTypes [("res", testPrimDouble)
                                      ,("f2", testPrimStr)] . checktype)
 
-      ,("f n = n + 1", testTypes [("f", testDoubleFunc)] . checktype)
-      ,("f n = n & \"hi\"", testTypes [("f", testStrFunc)] . checktype)
-      ,("q n = n", testTypes [("q", testGenFunc)] . checktype)
+      ,("test_04_multi_literal.md", testTypes [("f3", testStrFunc)
+                                              ,("f4", testStrFunc)
+                                              ,("id", testGenFunc)
+                                              ,("cond", testGenFunc)] . checktype)
 
-      ,("q n = n\n\
-        \f n = if true then n else (q n)", testTypes [("q", testGenFunc)
-                                                      ,("f", testGenFunc)] . checktype)
-
-      ,("f n = if true then n else (n + 1)", testTypes [("f", testDoubleFunc)] . checktype)
-
-      ,("f n = if true then n else (f (n + 1))", testTypes [("f", testDoubleFunc)] . checktype)
+      ,("test_04_multi_literal.md", testTypes [("numberFunc", testDoubleFunc)
+                                              ,("selfRefNumber", testDoubleFunc)] . checktype)
      
       ,("f n = if true then n else (n + 1)\n\
         \f2 n = if true then n else (n & \"foo\")", testTypes [("f", testDoubleFunc)
@@ -270,11 +212,8 @@ syntaxTests =
                               ,("good", StrValue $ T.pack "good")
                               ,("bad", StrValue $ T.pack "bad")] . checkResults)
 
-     ,("isOdd n = if n == 1 then true else not (isEven (n - 1))\n\
-       \isEven n = if n == 0 then true else not (isOdd (n - 1))\n\
-       \not n = if n then false else true\n\
-       \res = (isOdd 9)\n",
-                  testResults [("res", BoolValue True)] . checkResults)
+     ,("test_04_multi_literal.md",
+                  testResults [("oddRes", BoolValue True)] . checkResults)
 
      ,("res = \"10\"",
                   testResults [("res", StrValue $ T.pack "10")] . checkResults)
@@ -283,14 +222,7 @@ syntaxTests =
                 
 
 
-     ,("total = subtotal + tax\n\
-       \tax = taxable * taxRate\n\
-       \subtotal = taxable + nonTaxable\n\n\n\
-       \\"Total\" = total // sink the total\n\
-       \\"Tax\" = tax // sink the tax\n\
-       \?taxRate // source the tax rate\n\
-       \?taxable\n\
-       \?nonTaxable", testTypes [("tax", testPrimDouble)
+     ,("test_15_complex_source_sink.md", testTypes [("tax", testPrimDouble)
                                 ,("taxable", testPrimDouble)] . checktype)
     ]
 
