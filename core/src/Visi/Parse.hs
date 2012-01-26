@@ -24,7 +24,7 @@ module Visi.Parse (parseLine, parseLines, mkGroup) where
  *
  * ***** END LICENSE BLOCK ***** -}
 
-import Control.Applicative((<*))
+import Control.Applicative ((<$>),(<*>),(*>),(<*),(<$))
 import Text.Parsec
 import Text.Parsec.String
 import Text.Parsec.Prim
@@ -103,20 +103,14 @@ line = do info <- dataDefinition <|> try(funcDef) <|> try(letDef)
 
 narc id = id
 
-getHasTilde =
-  do
-    st <- getState
-    return $ tiHasTilde st
+getHasTilde = tiHasTilde <$> getState
 
 setHasTilde b =
   do
     st <- getState
     setState st{tiHasTilde = b}
 
-inLiterate =
-  do
-    st <- getState
-    return $ tiInLiterate st
+inLiterate = tiInLiterate <$> getState
 
 setInLiterate b =
   do
@@ -164,31 +158,25 @@ blankLine =
     tilde <- getHasTilde
     inLit <- inLiterate
     if not tilde then
-        (do
-            mySpaces
-            eol) <?> "Blank Line"
+      mySpaces >> eol <?> "Blank Line"
     else
       if inLit then
         (do
           try $ manyTill anyChar $ (try(findTildeLine))
           setInLiterate False) <|>
-        (do
-          anyChar
-          return ())
+        () <$ anyChar
       else
         (do
           threeMarks
           whileNot tryEnd
           setInLiterate True
           tryEnd) <|>
-        (do
-            mySpaces
-            tryEnd) <?> "Literate Sep Line or Blank Line"
+        (mySpaces >> tryEnd <?> "Literate Sep Line or Blank Line")
 
 whileNot end =  scan
-                where scan  = do{ lookAhead $ try end; return () }
+                where scan  = () <$ (lookAhead $ try end)
                                  <|>
-                              do{ anyChar ; scan }
+                              (anyChar >> scan)
 
 blankLines = many $ blankLine
 
@@ -204,10 +192,7 @@ consumeN n exp =
     exp
     consumeN (n - 1) exp
 
-curDepth =
-  do
-    st <- getState
-    return $ tiDepth st
+curDepth = tiDepth <$> getState
 
 funcDef :: MParser Expression
 funcDef = try(sinkFunc) <|> try(normalFunc) <|> try(sourceFunc) <?> "Function Definition"
@@ -231,13 +216,9 @@ typeParam =
 -- | a list of type parameters
 typeParams = many typeParam
 
-typeWithOptionalParams =
-  do
-    name <- typeName
-    mySpaces
-    many typeOrTypeParam
-    mySpaces
-    return name
+typeWithOptionalParams = typeName <* mySpaces
+                                  <* many typeOrTypeParam
+                                  <* mySpaces
 
 -- | get a type with optional type parameters or an identifier
 typeOrTypeParam =
@@ -322,7 +303,6 @@ expressionOrLetAndExp =
 
 letAndThenExp atCol =
   do
-
     letExp <- try(normalFunc) <|> try(letDef)
     try(eol)
     consumeUntilNotWhitespaceOrEOL
@@ -382,16 +362,9 @@ ifType t = (tFun t (tFun t t))
 
 functionInvocationName =
   try(m_identifier) <|> try(
-    do
-      char '#'
-      name <- m_identifier
-      return ('#':name)
+    ('#':) <$> (char '#' *> m_identifier)
   ) <|> try(
-    do
-      char '#'
-      char '='
-      name <- m_identifier
-      return ('#':'=':name)
+    ("#=" ++) <$> (char '#' *> char '=' *> m_identifier)
   ) {-} <|> try(
     do
       var <- m_identifier
@@ -416,13 +389,8 @@ expression = try( oprFuncExp ) <|>
                               char ')'
                               return exp
                    constExp = try(strConstExp) <|> try(numConstExp) <?> "Constant"
-                   strConstExp = do
-                                  chars <- m_stringLiteral
-                                  return $ ValueConst $ StrValue $ T.pack chars
-                   decMore = do
-                               dec <- char '.'
-                               digits <- many1 $ oneOf "0123456789"
-                               return $ dec : digits
+                   strConstExp = (ValueConst . StrValue . T.pack) <$> m_stringLiteral
+                   decMore = (:) <$> char '.' <*> many1 (oneOf "0123456789")
                    numConstExp = do
                                   mySpaces
                                   optMin <- optionMaybe(char '-')
@@ -435,8 +403,8 @@ expression = try( oprFuncExp ) <|>
                                              (Just(_), d, Nothing) -> '-' : d
                                              (Just(_), d, Just(rest)) -> '-' : (d ++ rest)
                                              (_, d, Just(rest)) -> (d ++ rest)
-                   zeroFuncExp = do funcName <- try(functionInvocationName) <?> "Looking for a variable"
-                                    return $ Var (FuncName $ T.pack funcName)
+                   zeroFuncExp = (Var . FuncName . T.pack) <$> try functionInvocationName
+                               <?> "Looking for a variable"
                    ifElseExp = do
                                 m_reserved "if"
                                 mySpaces
@@ -469,7 +437,7 @@ expression = try( oprFuncExp ) <|>
                                   where makeVars exp = do t2 <- newTyVar "RetType"
                                                           return (exp, t2)
                                         
-                   allButOpr = try( parenExp) <|> try(ifElseExp) <|> try(funcParamExp) <|> 
+                   allButOpr = try(parenExp) <|> try(ifElseExp) <|> try(funcParamExp) <|> 
                                try(zeroFuncExp) <|> try(constExp) <?>
                                "All but Opr"
 --                   oprFuncExp :: GenParser Char TIState Expression
@@ -488,11 +456,7 @@ expression = try( oprFuncExp ) <|>
                                 return $ Apply letId t2 (Apply letId t4 (Var (FuncName $ T.pack opr)) left) right
 
 curColumn :: MParser Int
-curColumn =
-  do
-    pos <- getPosition
-    let sc = sourceColumn pos
-    return sc
+curColumn = sourceColumn <$> getPosition
 
 newLetId prefix =
     do
@@ -632,22 +596,21 @@ m_makeTokenParser languageDef
                         }
                       <?> "literal string")
 
-    stringChar      =   do{ c <- stringLetter; return (Just c) }
+    stringChar      =  Just <$> stringLetter
                     <|> stringEscape
                     <?> "string character"
 
     stringLetter    = satisfy (\c -> (c /= '"') && (c /= '\\') && (c > '\026'))
 
     stringEscape    = do{ char '\\'
-                        ;     do{ escapeGap  ; return Nothing }
-                          <|> do{ escapeEmpty; return Nothing }
-                          <|> do{ esc <- escapeCode; return (Just esc) }
+                        ;     Nothing <$ escapeGap
+                          <|> Nothing <$ escapeEmpty
+                          <|> Just <$> escapeCode
                         }
 
     escapeEmpty     = char '&'
-    escapeGap       = do{ many1 space
-                        ; char '\\' <?> "end of string gap"
-                        }
+    escapeGap       = many1 space >> char '\\'
+                    <?> "end of string gap"
 
 
 
@@ -668,11 +631,11 @@ m_makeTokenParser languageDef
 
     charEsc         = choice (map parseEsc escMap)
                     where
-                      parseEsc (c,code)     = do{ char c; return code }
+                      parseEsc (c,code)     = code <$ char c
 
     charAscii       = choice (map parseAscii asciiMap)
                     where
-                      parseAscii (asc,code) = try (do{ string asc; return code })
+                      parseAscii (asc,code) = code <$ string asc
 
 
     -- escape code tables
@@ -695,7 +658,7 @@ m_makeTokenParser languageDef
     -----------------------------------------------------------
     -- Numbers
     -----------------------------------------------------------
-    naturalOrFloat  = lexeme (natFloat) <?> "number"
+    naturalOrFloat  = lexeme natFloat <?> "number"
 
     float           = lexeme floating   <?> "float"
     integer         = lexeme int        <?> "integer"
@@ -703,19 +666,12 @@ m_makeTokenParser languageDef
 
 
     -- floats
-    floating        = do{ n <- decimal
-                        ; fractExponent n
-                        }
+    floating        = decimal >>= fractExponent
 
+    natFloat        = (char '0' *> zeroNumFloat)
+                   <|> decimalFloat
 
-    natFloat        = do{ char '0'
-                        ; zeroNumFloat
-                        }
-                      <|> decimalFloat
-
-    zeroNumFloat    =  do{ n <- hexadecimal <|> octal
-                         ; return (Left n)
-                         }
+    zeroNumFloat    = Left <$> (hexadecimal <|> octal)
                     <|> decimalFloat
                     <|> fractFloat 0
                     <|> return (Left 0)
@@ -725,9 +681,7 @@ m_makeTokenParser languageDef
                                  (fractFloat n)
                         }
 
-    fractFloat n    = do{ f <- fractExponent n
-                        ; return (Right f)
-                        }
+    fractFloat n    = Right <$> fractExponent n
 
     fractExponent n = do{ fract <- fraction
                         ; expo  <- option 1.0 exponent'
@@ -758,13 +712,10 @@ m_makeTokenParser languageDef
 
 
     -- integers and naturals
-    int             = do{ f <- lexeme sign
-                        ; n <- nat
-                        ; return (f n)
-                        }
+    int             = ($) <$> (lexeme sign) <*> nat
 
-    sign            =   (char '-' >> return negate)
-                    <|> (char '+' >> return id)
+    sign            =   (negate <$ char '-')
+                    <|> (id <$ char '+')
                     <|> return id
 
     nat             = zeroNumber <|> decimal
@@ -801,11 +752,7 @@ m_makeTokenParser languageDef
              else return name
           }
 
-    oper =
-        do{ c <- (opStart languageDef)
-          ; cs <- many (opLetter languageDef)
-          ; return (c:cs)
-          }
+    oper = (:) <$> opStart languageDef <*> many (opLetter languageDef)
         <?> "operator"
 
     isReservedOp name =
@@ -823,7 +770,7 @@ m_makeTokenParser languageDef
 
     caseString name
         | caseSensitive languageDef  = string name
-        | otherwise               = do{ walk name; return name }
+        | otherwise               = name <$ walk name
         where
           walk []     = return ()
           walk (c:cs) = do{ caseChar c <?> msg; walk cs }
@@ -844,10 +791,7 @@ m_makeTokenParser languageDef
 
 
     ident
-        = do{ c <- identStart languageDef
-            ; cs <- many (identLetter languageDef)
-            ; return (c:cs)
-            }
+        = (:) <$> identStart languageDef <*> many (identLetter languageDef)
         <?> "identifier"
 
     isReservedName name
@@ -881,7 +825,7 @@ m_makeTokenParser languageDef
         = lexeme (string name)
 
     lexeme p
-        = do{ x <- p; whiteSpace; return x  }
+        = p <* whiteSpace
 
 
     --whiteSpace
@@ -915,18 +859,18 @@ m_makeTokenParser languageDef
         | otherwise                = inCommentSingle
 
     inCommentMulti
-        =   do{ try (string (commentEnd languageDef)) ; return () }
-        <|> do{ multiLineComment                     ; inCommentMulti }
-        <|> do{ skipMany1 (noneOf startEnd)          ; inCommentMulti }
-        <|> do{ oneOf startEnd                       ; inCommentMulti }
+        =   () <$ try (string $ commentEnd languageDef)
+        <|> multiLineComment            *> inCommentMulti
+        <|> skipMany1 (noneOf startEnd) *> inCommentMulti
+        <|> oneOf startEnd              *> inCommentMulti
         <?> "end of comment"
         where
-          startEnd   = nub (commentEnd languageDef ++ commentStart languageDef)
+          startEnd   = nub $ commentEnd languageDef ++ commentStart languageDef
 
     inCommentSingle
-        =   do{ try (string (commentEnd languageDef)); return () }
-        <|> do{ skipMany1 (noneOf startEnd)         ; inCommentSingle }
-        <|> do{ oneOf startEnd                      ; inCommentSingle }
+        =   () <$ try (string $ commentEnd languageDef)
+        <|> skipMany1 (noneOf startEnd) *> inCommentSingle
+        <|> oneOf startEnd              *> inCommentSingle
         <?> "end of comment"
         where
-          startEnd   = nub (commentEnd languageDef ++ commentStart languageDef)
+          startEnd   = nub $ commentEnd languageDef ++ commentStart languageDef
