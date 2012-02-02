@@ -29,6 +29,5 @@ Executable Visi
         parsec >= 3,
         containers,
         pretty,
-        missingh,
         text
 

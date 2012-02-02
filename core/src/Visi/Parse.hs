@@ -167,23 +167,23 @@ blankLine =
         (do
             mySpaces
             eol) <?> "Blank Line"
-    else
-      if inLit then
-        (do
-          try $ manyTill anyChar $ (try(findTildeLine))
-          setInLiterate False) <|>
-        (do
-          anyChar
-          return ())
       else
-        (do
-          threeMarks
-          whileNot tryEnd
-          setInLiterate True
-          tryEnd) <|>
-        (do
-            mySpaces
-            tryEnd) <?> "Literate Sep Line or Blank Line"
+        if inLit then
+          (do
+            try $ manyTill anyChar $ (try(findTildeLine))
+            setInLiterate False) <|>
+          (do
+            anyChar
+            return ())
+        else
+          (do
+            threeMarks
+            whileNot tryEnd
+            setInLiterate True
+            tryEnd) <|>
+          (do
+              mySpaces
+              tryEnd) <?> "Literate Sep Line or Blank Line"
 
 whileNot end =  scan
                 where scan  = do{ lookAhead $ try end; return () }
