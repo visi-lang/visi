@@ -9,6 +9,8 @@ import Foreign.Marshal.Alloc
 import System.Directory
 import Data.List
 import Text.Regex.Posix
+import System.IO
+import Control.Exception
 
 frog :: CInt -> CInt
 frog n = 
@@ -30,16 +32,19 @@ foreign import ccall safe "objc_lookUpClass" objc_lookUpClass :: CString -> IO O
 foreign import ccall safe "objc_getClassList" objc_getClassList :: Ptr VoidPtr -> CInt -> IO CInt
 foreign import ccall safe "class_getName" class_getName :: VoidPtr -> IO CString
 
-rootDir = "/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS5.0.sdk/System/Library/Frameworks/"
+-- rootDir = "/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS5.0.sdk/System/Library/Frameworks/"
+rootDir = "/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS4.2.sdk/System/Library/Frameworks/"
 
-fileList filterFunc root = 
+fileList filterFunc todo root = 
   if (isSuffixOf "/." root) || (isSuffixOf "/.." root) then
     return []
   else
     do
       isFile <- doesFileExist root
       if isFile then
-        return $ filter filterFunc [root]
+        do 
+          ret <- mapM todo $ filter filterFunc [root]
+          return ret -- $ length ret `seq` ret
       else
         do
           isDir <-  doesDirectoryExist root
@@ -48,8 +53,9 @@ fileList filterFunc root =
               path <- canonicalizePath root
               kids' <- getDirectoryContents path
               let kids = map (\name -> path ++ "/" ++ name) kids'
-              subPaths <- mapM (fileList filterFunc) kids
-              return $ concat subPaths
+              subPaths <- mapM (fileList filterFunc todo) kids
+              let ret = concat subPaths
+              return ret -- $ length ret `seq` ret
 
           else
             return []
@@ -59,19 +65,42 @@ findThem str =
   case str =~ "\\@interface +([A-Za-z0-9]+) +\\:" :: (String, String, String, [String]) of
     (_, _, _, ret) -> ret
 
+hGetContents' h  = hGetContents h >>= \s -> length s `seq` return s
+
+readFile' name =
+  do
+    h <- openFile name ReadMode
+    hSetEncoding h latin1
+    hGetContents' h
+
+loadAndFind fileName =
+  do
+    contents <- readFile' $! fileName
+    let ret = (findThem $! contents)
+    -- putStrLn $ "Found " ++ show ret
+    return ret
+
+allClassNames =
+  do
+    res <- fileList (isSuffixOf ".h") (loadAndFind $!) rootDir
+    let ret = concat res
+    return $ length ret `seq` ret
+{-
 allClassNames =
   do
     files <- fileList (isSuffixOf ".h") rootDir
     programText <- mapM readFile files
     let matches = concat $ map findThem programText
     putStrLn $ "found: " ++ show matches
+-}
+
 
 makeAString :: IO ObjCId
 makeAString = do
     strCls <- withCString "NSString" objc_lookUpClass 
     allocName <- withCString "alloc" sel_registerName
     alloced <- objc_msgSend strCls allocName
-    putStrLn "Alloced it"
+    putStrLn $ "Alloced it " ++ show alloced
     initName <- withCString "init" sel_registerName 
     objc_msgSend alloced initName
 
@@ -84,6 +113,11 @@ showClass buffer pos =
     putStrLn "Three"
     str <- peekCString cstr
     putStrLn $ "Name " ++ str ++ " at " ++ show pos
+
+getClass name =
+  do
+    clz <- withCString name objc_lookUpClass
+    putStrLn $ "Looking for "++ name ++ " got " ++ show clz
 
 classList :: IO ()
 classList =
@@ -100,7 +134,9 @@ classList =
 
 main = 
 	do
-    allClassNames
+    names <- allClassNames
+    putStrLn $ "Names " ++ show names
+    mapM_ getClass names
     makeAString
     classList
     putStrLn "I'm the Haskell Objective-C Exchange"
