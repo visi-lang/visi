@@ -17,4 +17,5 @@ Executable visi
                      pretty,
                      parsec,
                      mtl,
-                     HUnit
+                     HUnit,
+                     text
