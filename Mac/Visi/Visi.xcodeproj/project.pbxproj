@@ -1,0 +1,307 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DE2B0E3C14E4629700EC530F /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE2B0E3B14E4629700EC530F /* Cocoa.framework */; };
+		DE2B0E4614E4629700EC530F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E4414E4629700EC530F /* InfoPlist.strings */; };
+		DE2B0E4814E4629700EC530F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = DE2B0E4714E4629700EC530F /* main.m */; };
+		DE2B0E4C14E4629700EC530F /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E4A14E4629700EC530F /* Credits.rtf */; };
+		DE2B0E4F14E4629700EC530F /* VisiDocument.m in Sources */ = {isa = PBXBuildFile; fileRef = DE2B0E4E14E4629700EC530F /* VisiDocument.m */; };
+		DE2B0E5214E4629700EC530F /* VisiDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5014E4629700EC530F /* VisiDocument.xib */; };
+		DE2B0E5514E4629700EC530F /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5314E4629700EC530F /* MainMenu.xib */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		DE2B0E3714E4629700EC530F /* Visi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Visi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DE2B0E3B14E4629700EC530F /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		DE2B0E3E14E4629700EC530F /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		DE2B0E3F14E4629700EC530F /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		DE2B0E4014E4629700EC530F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		DE2B0E4314E4629700EC530F /* Visi-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Visi-Info.plist"; sourceTree = "<group>"; };
+		DE2B0E4514E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		DE2B0E4714E4629700EC530F /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		DE2B0E4914E4629700EC530F /* Visi-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Visi-Prefix.pch"; sourceTree = "<group>"; };
+		DE2B0E4B14E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = en; path = en.lproj/Credits.rtf; sourceTree = "<group>"; };
+		DE2B0E4D14E4629700EC530F /* VisiDocument.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VisiDocument.h; sourceTree = "<group>"; };
+		DE2B0E4E14E4629700EC530F /* VisiDocument.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VisiDocument.m; sourceTree = "<group>"; };
+		DE2B0E5114E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/VisiDocument.xib; sourceTree = "<group>"; };
+		DE2B0E5414E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainMenu.xib; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DE2B0E3414E4629700EC530F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE2B0E3C14E4629700EC530F /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DE2B0E2C14E4629600EC530F = {
+			isa = PBXGroup;
+			children = (
+				DE2B0E4114E4629700EC530F /* Visi */,
+				DE2B0E3A14E4629700EC530F /* Frameworks */,
+				DE2B0E3814E4629700EC530F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DE2B0E3814E4629700EC530F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DE2B0E3714E4629700EC530F /* Visi.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DE2B0E3A14E4629700EC530F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DE2B0E3B14E4629700EC530F /* Cocoa.framework */,
+				DE2B0E3D14E4629700EC530F /* Other Frameworks */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		DE2B0E3D14E4629700EC530F /* Other Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DE2B0E3E14E4629700EC530F /* AppKit.framework */,
+				DE2B0E3F14E4629700EC530F /* CoreData.framework */,
+				DE2B0E4014E4629700EC530F /* Foundation.framework */,
+			);
+			name = "Other Frameworks";
+			sourceTree = "<group>";
+		};
+		DE2B0E4114E4629700EC530F /* Visi */ = {
+			isa = PBXGroup;
+			children = (
+				DE2B0E4D14E4629700EC530F /* VisiDocument.h */,
+				DE2B0E4E14E4629700EC530F /* VisiDocument.m */,
+				DE2B0E5014E4629700EC530F /* VisiDocument.xib */,
+				DE2B0E5314E4629700EC530F /* MainMenu.xib */,
+				DE2B0E4214E4629700EC530F /* Supporting Files */,
+			);
+			path = Visi;
+			sourceTree = "<group>";
+		};
+		DE2B0E4214E4629700EC530F /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				DE2B0E4314E4629700EC530F /* Visi-Info.plist */,
+				DE2B0E4414E4629700EC530F /* InfoPlist.strings */,
+				DE2B0E4714E4629700EC530F /* main.m */,
+				DE2B0E4914E4629700EC530F /* Visi-Prefix.pch */,
+				DE2B0E4A14E4629700EC530F /* Credits.rtf */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DE2B0E3614E4629700EC530F /* Visi */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE2B0E5814E4629700EC530F /* Build configuration list for PBXNativeTarget "Visi" */;
+			buildPhases = (
+				DE2B0E3314E4629700EC530F /* Sources */,
+				DE2B0E3414E4629700EC530F /* Frameworks */,
+				DE2B0E3514E4629700EC530F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Visi;
+			productName = Visi;
+			productReference = DE2B0E3714E4629700EC530F /* Visi.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DE2B0E2E14E4629600EC530F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0420;
+			};
+			buildConfigurationList = DE2B0E3114E4629600EC530F /* Build configuration list for PBXProject "Visi" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = DE2B0E2C14E4629600EC530F;
+			productRefGroup = DE2B0E3814E4629700EC530F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				DE2B0E3614E4629700EC530F /* Visi */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DE2B0E3514E4629700EC530F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE2B0E4614E4629700EC530F /* InfoPlist.strings in Resources */,
+				DE2B0E4C14E4629700EC530F /* Credits.rtf in Resources */,
+				DE2B0E5214E4629700EC530F /* VisiDocument.xib in Resources */,
+				DE2B0E5514E4629700EC530F /* MainMenu.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DE2B0E3314E4629700EC530F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE2B0E4814E4629700EC530F /* main.m in Sources */,
+				DE2B0E4F14E4629700EC530F /* VisiDocument.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		DE2B0E4414E4629700EC530F /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				DE2B0E4514E4629700EC530F /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		DE2B0E4A14E4629700EC530F /* Credits.rtf */ = {
+			isa = PBXVariantGroup;
+			children = (
+				DE2B0E4B14E4629700EC530F /* en */,
+			);
+			name = Credits.rtf;
+			sourceTree = "<group>";
+		};
+		DE2B0E5014E4629700EC530F /* VisiDocument.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				DE2B0E5114E4629700EC530F /* en */,
+			);
+			name = VisiDocument.xib;
+			sourceTree = "<group>";
+		};
+		DE2B0E5314E4629700EC530F /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				DE2B0E5414E4629700EC530F /* en */,
+			);
+			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		DE2B0E5614E4629700EC530F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		DE2B0E5714E4629700EC530F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		DE2B0E5914E4629700EC530F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
+				INFOPLIST_FILE = "Visi/Visi-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		DE2B0E5A14E4629700EC530F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
+				INFOPLIST_FILE = "Visi/Visi-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		DE2B0E3114E4629600EC530F /* Build configuration list for PBXProject "Visi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DE2B0E5614E4629700EC530F /* Debug */,
+				DE2B0E5714E4629700EC530F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DE2B0E5814E4629700EC530F /* Build configuration list for PBXNativeTarget "Visi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DE2B0E5914E4629700EC530F /* Debug */,
+				DE2B0E5A14E4629700EC530F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DE2B0E2E14E4629600EC530F /* Project object */;
+}
