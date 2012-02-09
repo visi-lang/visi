@@ -1,3 +1,7 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE CPP #-}
+
+
 module VisiPro.Snark where
 
 import Foreign.Ptr
@@ -6,6 +10,13 @@ import Foreign.C
 import Visi.Runtime
 import Visi.Expression
 import qualified Data.Text as T
+
+import Foreign.C.Types
+import Foreign.C.String
+import Foreign.Ptr
+import Foreign.Storable
+import Foreign.Marshal.Alloc
+
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -52,7 +63,12 @@ import qualified Data.Text as T
 #define SinkInfoCmd 5
 #define SetSinkCmd 6
 
+type PVP = Ptr VoidPtr
 
+foreign import ccall safe "objc_getClassList" objc_getClassList :: Ptr VoidPtr -> CInt -> IO CInt
+foreign import ccall safe "class_copyMethodList" class_copyMethodList :: VoidPtr -> VoidPtr -> IO PVP
+foreign import ccall safe "class_getName" class_getName :: VoidPtr -> IO CString
+type VoidPtr = Ptr ()
 
 foreign export ccall releaseMe :: FunPtr a -> IO ()
 releaseMe :: FunPtr a -> IO ()
@@ -105,11 +121,60 @@ foreign export ccall setSourceString :: CString -> CInt -> CString -> IO ()
 setSourceString :: CString -> CInt -> CString -> IO ()
 setSourceString name theType value = 
     do
+        -- classList
         name'' <- peekCString name
         value'' <- peekCString value
         let name' = T.pack name''
         let value' = T.pack value''
         doSetSource name' (fromIntegral theType) value'
+
+classList :: IO ()
+classList =
+    do
+      putStrLn "Here"
+      cnt' <- objc_getClassList nullPtr 0
+      let cnt = fromIntegral cnt'
+      buffer <- mallocBytes $ cnt * 8
+      putStrLn "Malloced"
+      objc_getClassList buffer cnt'
+      putStrLn "About to map"
+      mapM_ (showClass buffer) [0 .. (cnt - 1)]
+      free buffer
+
+ptrSize = sizeOf (nullPtr :: VoidPtr)
+
+showClass buffer pos = 
+  do
+    ptr <- peekElemOff buffer pos 
+    cstr <- class_getName ptr
+    str <- peekCString cstr
+    putStrLn $ "Name: " ++ str
+    showMethods ptr
+
+showMethods :: VoidPtr -> IO ()
+showMethods classPtr =
+  do
+    outCount <- mallocBytes 64
+    methods <- class_copyMethodList classPtr outCount
+    showMethod methods
+    free outCount
+    free methods
+
+showMethod :: PVP -> IO ()
+showMethod meth =
+  if nullPtr == meth then
+    return ()
+    else
+      do
+        dereffed <- peekElemOff meth 0
+        if nullPtr == dereffed then
+            return ()
+          else
+            do
+              putStrLn "hi"
+              let next = plusPtr meth ptrSize
+              showMethod next
+
 
 doSetSource :: T.Text -> Int -> T.Text -> IO ()
 doSetSource name theType value = 
