@@ -43,6 +43,7 @@
 		DE2B0E4E14E4629700EC530F /* VisiDocument.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VisiDocument.m; sourceTree = "<group>"; };
 		DE2B0E5114E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/VisiDocument.xib; sourceTree = "<group>"; };
 		DE2B0E5414E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		DE7FF64814E7281700188E46 /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon.png; sourceTree = "<group>"; };
 		DEA103F414E5F19300685CB6 /* libiconv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.dylib; path = usr/lib/libiconv.dylib; sourceTree = SDKROOT; };
 		DEA103F614E5F81C00685CB6 /* WholeVisi.o */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = WholeVisi.o; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -64,6 +65,7 @@
 		DE2B0E2C14E4629600EC530F = {
 			isa = PBXGroup;
 			children = (
+				DE7FF64814E7281700188E46 /* icon.png */,
 				DEA103F614E5F81C00685CB6 /* WholeVisi.o */,
 				DEA103F414E5F19300685CB6 /* libiconv.dylib */,
 				DE2B0E4114E4629700EC530F /* Visi */,
@@ -313,9 +315,6 @@
 				INFOPLIST_FILE = "Visi/Visi-Info.plist";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/dist/build\"",
-					"\"$(SRCROOT)/../../../../Library/Developer/Xcode/DerivedData/Visi-fsmxqnoneonikhdjxczvuwmfeayo/Build/Products/Debug/dist/build\"",
-					"\"$(SRCROOT)\"",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
@@ -328,12 +327,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
 				INFOPLIST_FILE = "Visi/Visi-Info.plist";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/dist/build\"",
-					"\"$(SRCROOT)/../../../../Library/Developer/Xcode/DerivedData/Visi-fsmxqnoneonikhdjxczvuwmfeayo/Build/Products/Debug/dist/build\"",
-					"\"$(SRCROOT)\"",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
