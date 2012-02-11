@@ -9,10 +9,20 @@
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>haskell.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
 		<key>DE2B0E3614E4629700EC530F</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>DE411DD814E59CE700646473</key>
 		<dict>
 			<key>primary</key>
 			<true/>

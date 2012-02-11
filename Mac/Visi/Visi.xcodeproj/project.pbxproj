@@ -14,7 +14,19 @@
 		DE2B0E4F14E4629700EC530F /* VisiDocument.m in Sources */ = {isa = PBXBuildFile; fileRef = DE2B0E4E14E4629700EC530F /* VisiDocument.m */; };
 		DE2B0E5214E4629700EC530F /* VisiDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5014E4629700EC530F /* VisiDocument.xib */; };
 		DE2B0E5514E4629700EC530F /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5314E4629700EC530F /* MainMenu.xib */; };
+		DEA103F514E5F19300685CB6 /* libiconv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = DEA103F414E5F19300685CB6 /* libiconv.dylib */; };
+		DEA103F714E5F81C00685CB6 /* WholeVisi.o in Frameworks */ = {isa = PBXBuildFile; fileRef = DEA103F614E5F81C00685CB6 /* WholeVisi.o */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DE411DDD14E59D2B00646473 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DE2B0E2E14E4629600EC530F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DE411DD814E59CE700646473;
+			remoteInfo = haskell;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		DE2B0E3714E4629700EC530F /* Visi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Visi.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -31,6 +43,8 @@
 		DE2B0E4E14E4629700EC530F /* VisiDocument.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VisiDocument.m; sourceTree = "<group>"; };
 		DE2B0E5114E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/VisiDocument.xib; sourceTree = "<group>"; };
 		DE2B0E5414E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		DEA103F414E5F19300685CB6 /* libiconv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.dylib; path = usr/lib/libiconv.dylib; sourceTree = SDKROOT; };
+		DEA103F614E5F81C00685CB6 /* WholeVisi.o */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = WholeVisi.o; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,6 +52,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DEA103F714E5F81C00685CB6 /* WholeVisi.o in Frameworks */,
+				DEA103F514E5F19300685CB6 /* libiconv.dylib in Frameworks */,
 				DE2B0E3C14E4629700EC530F /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -48,6 +64,8 @@
 		DE2B0E2C14E4629600EC530F = {
 			isa = PBXGroup;
 			children = (
+				DEA103F614E5F81C00685CB6 /* WholeVisi.o */,
+				DEA103F414E5F19300685CB6 /* libiconv.dylib */,
 				DE2B0E4114E4629700EC530F /* Visi */,
 				DE2B0E3A14E4629700EC530F /* Frameworks */,
 				DE2B0E3814E4629700EC530F /* Products */,
@@ -107,6 +125,23 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXLegacyTarget section */
+		DE411DD814E59CE700646473 /* haskell */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "$(ACTION)";
+			buildConfigurationList = DE411DDB14E59CE700646473 /* Build configuration list for PBXLegacyTarget "haskell" */;
+			buildPhases = (
+			);
+			buildToolPath = ./my_cabal.sh;
+			buildWorkingDirectory = "";
+			dependencies = (
+			);
+			name = haskell;
+			passBuildSettingsInEnvironment = 1;
+			productName = haskell;
+		};
+/* End PBXLegacyTarget section */
+
 /* Begin PBXNativeTarget section */
 		DE2B0E3614E4629700EC530F /* Visi */ = {
 			isa = PBXNativeTarget;
@@ -119,6 +154,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				DE411DDE14E59D2B00646473 /* PBXTargetDependency */,
 			);
 			name = Visi;
 			productName = Visi;
@@ -145,6 +181,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				DE411DD814E59CE700646473 /* haskell */,
 				DE2B0E3614E4629700EC530F /* Visi */,
 			);
 		};
@@ -175,6 +212,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DE411DDE14E59D2B00646473 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DE411DD814E59CE700646473 /* haskell */;
+			targetProxy = DE411DDD14E59D2B00646473 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		DE2B0E4414E4629700EC530F /* InfoPlist.strings */ = {
@@ -233,6 +278,7 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				"LIBRARY_SEARCH_PATHS[arch=*]" = "";
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -265,6 +311,12 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
 				INFOPLIST_FILE = "Visi/Visi-Info.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/dist/build\"",
+					"\"$(SRCROOT)/../../../../Library/Developer/Xcode/DerivedData/Visi-fsmxqnoneonikhdjxczvuwmfeayo/Build/Products/Debug/dist/build\"",
+					"\"$(SRCROOT)\"",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -276,8 +328,35 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
 				INFOPLIST_FILE = "Visi/Visi-Info.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/dist/build\"",
+					"\"$(SRCROOT)/../../../../Library/Developer/Xcode/DerivedData/Visi-fsmxqnoneonikhdjxczvuwmfeayo/Build/Products/Debug/dist/build\"",
+					"\"$(SRCROOT)\"",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+		DE411DD914E59CE700646473 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEBUGGING_SYMBOLS = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		DE411DDA14E59CE700646473 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -300,6 +379,16 @@
 				DE2B0E5A14E4629700EC530F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DE411DDB14E59CE700646473 /* Build configuration list for PBXLegacyTarget "haskell" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DE411DD914E59CE700646473 /* Debug */,
+				DE411DDA14E59CE700646473 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

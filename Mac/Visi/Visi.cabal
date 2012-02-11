@@ -1,0 +1,25 @@
+Name: Visi
+Version: 0.1
+Synopsis: A simple language and IDE for Mac OS X
+Description: A simple language and IDE for Macintosh
+Build-type: Simple
+Cabal-Version: >= 1.6
+
+ -- , Visi.Runtime, Visi.Expression, Visi.Parse      
+
+Library
+    GHC-Options: -threaded -O0 -optl-Wl 
+    extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface
+    Hs-Source-Dirs: Visi/haskell, ../../core/src
+    Other-Modules: VisiPro.Mac, Visi.Util 
+    Build-Depends:
+        base >= 4,
+        old-time,
+        mtl,
+        random,
+        array,
+        parsec >= 3,
+        containers,
+        pretty,
+        text
+
