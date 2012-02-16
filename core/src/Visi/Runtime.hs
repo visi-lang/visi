@@ -103,32 +103,35 @@ threadRunApp :: AppCallback -> (Chan AppCmd) -> Expression -> [Expression] -> IO
 threadRunApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) chan grp top =
     Control.Exception.catch
         (do
-            let Right lets = collectTypes grp -- FIXME deal with errors
-            let theScope = buildLetScope grp
-            let typeMap = Map.fromList lets
-            let doEval vars (name, expr) = (name, eval vars theScope expr)
-            let sinks = calcSinks top typeMap
-            let sinkTypes = List.map fromSink sinks -- FIXME deal with non-primative
-            let sources = calcSources top typeMap
-            let sourceTypes = List.map fromSource sources -- FIXME deal with non-primative
-            sourceSinkCallback $ sinkTypes ++ sourceTypes
-            let sink' = do
-                         (name, expr, _) <- sinks
-                         return (name, expr)
-            let sinkSets = map (doEval Map.empty) sink'
-            setSinksCallback sinkSets
-            let runLoop vars =
-                  do
-                      toDo <- readChan chan
-                      runCmd toDo
-                  where runCmd AppStop = return ()
-                        runCmd (AppSetSource name value) = 
-                            do
-                              let sinkSets = map (doEval newVars) sink'
-                              setSinksCallback sinkSets
-                              runLoop newVars
-                              where newVars = Map.insert name value vars  -- FIXME recalc and resend all sinks
-            runLoop Map.empty
+            case collectTypes grp of 
+              Right lets ->
+                do
+                  let theScope = buildLetScope grp
+                  let typeMap = Map.fromList lets
+                  let doEval vars (name, expr) = (name, eval vars theScope expr)
+                  let sinks = calcSinks top typeMap
+                  let sinkTypes = List.map fromSink sinks -- FIXME deal with non-primative
+                  let sources = calcSources top typeMap
+                  let sourceTypes = List.map fromSource sources -- FIXME deal with non-primative
+                  sourceSinkCallback $ sinkTypes ++ sourceTypes
+                  let sink' = do
+                               (name, expr, _) <- sinks
+                               return (name, expr)
+                  let sinkSets = map (doEval Map.empty) sink'
+                  setSinksCallback sinkSets
+                  let runLoop vars =
+                        do
+                            toDo <- readChan chan
+                            runCmd toDo
+                        where runCmd AppStop = return ()
+                              runCmd (AppSetSource name value) = 
+                                  do
+                                    let sinkSets = map (doEval newVars) sink'
+                                    setSinksCallback sinkSets
+                                    runLoop newVars
+                                    where newVars = Map.insert name value vars  -- FIXME recalc and resend all sinks
+                  runLoop Map.empty
+              Left error -> errorCallback $ T.pack $ show error
             ) 
           (\e -> do
                    errorCallback $ T.pack $ show (e :: ErrorCall)
