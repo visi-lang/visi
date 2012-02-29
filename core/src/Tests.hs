@@ -1,5 +1,3 @@
-import Char
-import List
 import Test.QuickCheck
 import Text.Printf
 
@@ -41,7 +39,6 @@ import qualified Data.List as List
 import Text.Parsec.Error
 import System.Directory
 import System.Environment
-import Data.String.Utils
 import System.IO
 
 main :: IO ()
@@ -57,7 +54,7 @@ main =
         putStrLn $ "Ran " ++ (show $ length allL) ++ " tests, " ++ (show errs) ++ " errors"
  
 loadSamples path (param, func) =
-  if endswith ".md" param then
+  if List.isSuffixOf ".md" param then
     do
       let whole = path ++ "/" ++ param
       contents <- readFile whole
