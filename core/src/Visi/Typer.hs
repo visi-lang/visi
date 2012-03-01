@@ -39,45 +39,58 @@ type Nongen = Set.Set Type
 
 type TypeVars = Map.Map T.Text TVarInfo
 type TypeMap = Map.Map Type Type
-type StateThrow = StateT (TypeVars, TypeMap ,Expression) ThrowsError
+type MethodMap = Map.Map Type (Map.Map T.Text Type)
+type StateThrow = StateT (TypeVars, TypeMap ,Expression, MethodMap) ThrowsError
 
 collectTypes :: Expression -> ThrowsError [(T.Text, Type)]
 collectTypes exp = 
     do
-        (a, s) <- runStateT (processTypes exp) (Map.empty, Map.empty, Var $ FuncName $ T.pack "Starting")
+        (a, s) <- runStateT (processTypes exp) (Map.empty, Map.empty, Var $ FuncName $ T.pack "Starting",
+                    Map.fromList [((TPrim PrimDouble), (Map.singleton (T.pack "asInt") (TPrim PrimDouble)))
+                                 ,((TPrim PrimStr), (Map.singleton (T.pack "asInt") (TPrim PrimStr)))])
         return a
         
 getATV :: StateThrow TypeVars
 getATV =
     do
-        (atv, _, _) <- get
+        (atv, _, _, _) <- get
         return atv
  
 putATV :: TypeVars -> StateThrow ()      
 putATV atv =
     do
-        (_, m, e) <- get
-        put (atv, m, e)
+        (_, m, e, meth) <- get
+        put (atv, m, e, meth)
         
 getTypeMap =
     do
-        (_, tm, _) <- get
+        (_, tm, _, _) <- get
         return tm
 
 putTypeMap tm =
     do
-        (atv, _, e) <- get
-        put (atv, tm, e)
+        (atv, _, e, meth) <- get
+        put (atv, tm, e, meth)
         
 getCurExp =
     do
-        (_, _, e) <- get
+        (_, _, e, _) <- get
         return e
         
 putCurExp e =
     do
-        (atv, m, _) <- get
-        put (atv, m, e)
+        (atv, m, _, meth) <- get
+        put (atv, m, e, meth)
+
+getMethMap =
+    do
+        (_, _, _, meth) <- get
+        return meth
+
+putMethMap mm =
+    do
+        (atv, tm, e, _) <- get
+        put (atv, tm, e, mm)
 
 findTVI :: Type -> StateThrow TVarInfo
 findTVI (TVar t1)  = 
@@ -159,8 +172,29 @@ newVariable =
       setATV t nv
       return t
 
+hasMethods clz (MethodType theMap) =
+    do
+        methMap <- getMethMap
+        case (Map.lookup clz methMap) of
+            Just meths -> 
+                do
+                    let methPairs = Map.toList theMap
+                    let testAndUnify (name, tpe) = do
+                            case (Map.lookup name meths) of
+                                Just otype -> 
+                                    do 
+                                        tpe' <- prune tpe
+                                        otype' <- prune otype
+                                        unify tpe' otype'
+                                _ -> throwError $ TypeError $ "Failed to find method " ++ T.unpack name ++ " on " ++ show clz
+                    mapM_ testAndUnify methPairs
+            _ -> throwError $ TypeError $ "No known methods for " ++ show clz
+
+
 unify t1 t2 =
     do
+        methMap <- getMethMap
+        putMethMap methMap
         t1' <- prune t1
         t2' <- prune t2
         case (t1', t2') of
@@ -179,6 +213,10 @@ unify t1 t2 =
                 then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
                 else mapM_ (uncurry unify) $ zip p1 p2
             (a, b) | a == b -> return ()
+            (a, v@(MethodType theMap)) -> 
+                do
+                  res <- hasMethods a v
+                  return ()
             (a, b) -> throwError $ TypeError $ "Failed to unify " ++ show a ++ " & " ++ show b
 
 prune tv@(TVar _) =
@@ -195,7 +233,12 @@ prune (TOper name params) =
     do
         params' <- mapM prune params
         return $ TOper name params'
+prune (MethodType theMap) =
+    do
+        revised <- mapM (\(k, v) -> do {v' <- prune v; return (k,v')}) $ Map.toList theMap
+        return $ MethodType $ Map.fromList revised
 prune t = return t
+
 
 isGeneric nongen tv@(TVar _) = 
     do
@@ -261,6 +304,12 @@ calcType scope nongen e@(FuncExp paramName pt exp) =
         rt <- calcType scope' (Set.insert pt' nongen) exp
         pt'' <- prune pt'
         return $ tFun pt'' rt
+calcType scope nongen e@(ApplyMethod letId method@(FuncName methodText) (TOper oprName [source, dest])) =
+    do
+        putCurExp e
+        t1' <- createTypeVar e dest
+        t1'' <- prune t1'
+        return $ TOper oprName [source, t1'']
 calcType scope nongen e@(Apply letId t1 exp1 exp2) =
     do
         putCurExp e

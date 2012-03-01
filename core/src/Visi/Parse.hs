@@ -378,7 +378,7 @@ expression =
       do
         funcExp <- try(parenExp) <|> try(methodInv) <|> try(identifier)
         mySpaces
-        rest <- many1(try(parenExp) <|> try(methodInv) <|> try(identifier)  <|> try(constExp) <?> "parameter")
+        rest <- many1(try(parenExp) <|> try(ifElseExp) <|> try(methodInv) <|> try(identifier)  <|> try(constExp) <?> "parameter")
         mySpaces
         restWithVars <- mapM makeVars rest
         letId <- newLetId "func"
@@ -429,8 +429,11 @@ expression =
         mySpaces
         char '.'
         mySpaces
-        method <- identifier
-        return method -- FIXME do the method invocation
+        (Var method@(FuncName methText)) <- identifier
+        letId <- newLetId $ "Method: " ++ T.unpack methText
+        retType <- newTyVar $ "Method: " ++ T.unpack methText
+        let targetType = MethodType (Map.singleton methText retType)
+        return $ Apply letId retType (ApplyMethod letId method $ tFun targetType retType) target
     ifElseExp = 
       do
         m_reserved "if"
@@ -466,88 +469,6 @@ expression =
         letId <- newLetId $ "binary" ++ opr
         right <- expression <?> "Looking for right side of exp"
         return $ Apply letId t2 (Apply letId t4 (Var (FuncName $ T.pack opr)) left) right
-
--- expression :: GenParser Char TIState Expression
-expression2 = try oprFuncExp <|>
-             try parenExp <|>
-             try ifElseExp <|>
-             try funcParamExp <|>
-             try zeroFuncExp <|>
-             try constExp <?> "Looking for an expression"
-             where parenExp = do
-                              mySpaces
-                              char '('
-                              mySpaces
-                              exp <- expression
-                              mySpaces
-                              char ')'
-                              return exp
-                   constExp = try strConstExp <|> try numConstExp <?> "Constant"
-                   strConstExp = (ValueConst . StrValue . T.pack) <$> m_stringLiteral
-                   decMore = (:) <$> char '.' <*> many1 (oneOf "0123456789")
-                   numConstExp = do
-                                  mySpaces
-                                  optMin <- optionMaybe(char '-')
-                                  digits <- many1 $ oneOf "0123456789"
-                                  optDec <- optionMaybe decMore
-                                  mySpaces
-                                  return $ ValueConst $ DoubleValue $ 
-                                    read $ case (optMin, digits, optDec) of
-                                             (Nothing, d, Nothing) -> d
-                                             (Just _, d, Nothing) -> '-' : d
-                                             (Just _, d, Just rest) -> '-' : (d ++ rest)
-                                             (_, d, Just rest) -> d ++ rest
-                   zeroFuncExp = (Var . FuncName . T.pack) <$> try functionInvocationName
-                               <?> "Looking for a variable"
-                   ifElseExp = do
-                                m_reserved "if"
-                                mySpaces
-                                boolExp <- expression
-                                mySpaces
-                                m_reserved "then"
-                                mySpaces
-                                trueExp <- expression
-                                mySpaces
-                                m_reserved "else"
-                                mySpaces
-                                falseExp <- expression
-                                mySpaces
-                                theType <- newTyVar "IfElse"
-                                letId <- newLetId "IfElse"
-                                return $ Apply letId theType 
-                                           (Apply letId (tFun theType theType)
-                                            (Apply letId (ifType theType) 
-                                                       (Var (FuncName $ T.pack "$ifelse"))
-                                                       boolExp) trueExp) falseExp
-                   funcParamExp = do
-                                  funcName <- try functionInvocationName
-                                  mySpaces
-                                  rest <- many1 (try oprFuncExp <|> try parenExp <|> 
-                                                try zeroFuncExp <|> try constExp <?> "parameter")
-                                  restWithVars <- mapM makeVars rest
-                                  letId <- newLetId funcName
-                                  let buildApply exp (exp2, t2) =  Apply letId t2 exp exp2
-                                  return $ List.foldl' buildApply (Var (FuncName $ T.pack funcName)) restWithVars
-                                  where makeVars exp = do t2 <- newTyVar "RetType"
-                                                          return (exp, t2)
-                                        
-                   allButOpr = try parenExp <|> try ifElseExp <|> try funcParamExp <|> 
-                               try zeroFuncExp <|> try constExp <?>
-                               "All but Opr"
---                   oprFuncExp :: GenParser Char TIState Expression
-                   oprFuncExp = do
-                                mySpaces
-                                left <- try allButOpr
-                                mySpaces
-                                opr <- many1 $ oneOf "+-*/&|=><!?"
-                                mySpaces
-                                t1 <- newTyVar "OAt1"
-                                t2 <- newTyVar "OAt2"
-                                t3 <- newTyVar "OAt3"
-                                t4 <- newTyVar "OAt4"
-                                letId <- newLetId $ "binary" ++ opr
-                                right <- try expression <?> "Looking for right side of exp"
-                                return $ Apply letId t2 (Apply letId t4 (Var (FuncName $ T.pack opr)) left) right
 
 curColumn :: MParser Int
 curColumn = sourceColumn <$> getPosition

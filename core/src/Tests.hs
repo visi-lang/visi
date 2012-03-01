@@ -218,6 +218,16 @@ syntaxTests =
 
      ,("res n = n.age", psuccess 1 . checkparse)
 
+     ,("res n = n.asInt\n\
+       \frog = (res 44) + 1", testTypes [("frog", testPrimDouble)] . checktype)
+
+     ,("res n = n.asInt\n\
+       \frog = (res \"foo\") & \"1\"", testTypes [("frog", testPrimStr)] . checktype)
+
+     ,("res n = n.asInt\n\
+       \dog = (res 44) + 1\n\
+       \frog = (res \"foo\") & \"1\"", testTypes [("frog", testPrimStr), ("dog", testPrimDouble)] . checktype)
+
 
      ,("test_15_complex_source_sink.md", testTypes [("tax", testPrimDouble)
                                 ,("taxable", testPrimDouble)] . checktype)
