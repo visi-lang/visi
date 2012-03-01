@@ -674,11 +674,14 @@ m_makeTokenParser languageDef
                     where
                       op d f = (f + fromIntegral (digitToInt d))/10.0
 
-    exponent'       = power <$> (sign <*> (decimal <?> "exponent"))
-                    <?> "exponent"
-                    where
-                       power e  | e < 0      = 1.0/power(-e)
-                                | otherwise  = fromInteger (10^e)
+    exponent'       = do oneOf "eE"
+                         f <- sign	  	
+                         e <- decimal <?> "exponent"                       
+                         return $ power (f e)
+                      <?> "exponent"
+      where
+        power e  | e < 0      = 1.0/power(-e)
+                 | otherwise  = fromInteger (10^e)
 
 
     -- integers and naturals
