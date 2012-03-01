@@ -376,9 +376,9 @@ expression =
       try(constExp) <?> "Looking for Term"
     funcParamExp = 
       do
-        funcExp <- vtrace "Yeal" try(parenExp) <|> try(methodInv) <|> try(identifier)
+        funcExp <- try(parenExp) <|> try(methodInv) <|> try(identifier)
         mySpaces
-        rest <- many1(vtrace "meow" try(parenExp) <|> try(methodInv) <|> try(identifier)  <|> try(constExp) <?> "parameter")
+        rest <- many1(try(parenExp) <|> try(methodInv) <|> try(identifier)  <|> try(constExp) <?> "parameter")
         mySpaces
         restWithVars <- mapM makeVars rest
         letId <- newLetId "func"
@@ -421,7 +421,7 @@ expression =
       do
         mySpaces
         ret <- try functionInvocationName
-        vtrace ("Id " ++ ret) mySpaces
+        mySpaces
         return $ (Var . FuncName . T.pack) ret
     methodInv =
       do
@@ -456,7 +456,7 @@ expression =
       do
         mySpaces
         left <- term
-        vtrace "opr" mySpaces
+        mySpaces
         opr <- many1 $ oneOf "+-*/&|=><!?"
         mySpaces
         t1 <- newTyVar "OAt1"
@@ -465,7 +465,7 @@ expression =
         t4 <- newTyVar "OAt4"
         letId <- newLetId $ "binary" ++ opr
         right <- expression <?> "Looking for right side of exp"
-        return $ vtrace ("Got whole expr " ++ show left ++ " " ++ opr ++ " " ++ show right) $ Apply letId t2 (Apply letId t4 (Var (FuncName $ T.pack opr)) left) right
+        return $ Apply letId t2 (Apply letId t4 (Var (FuncName $ T.pack opr)) left) right
 
 -- expression :: GenParser Char TIState Expression
 expression2 = try oprFuncExp <|>
