@@ -18,7 +18,7 @@ import Text.Printf
  *
  * The Initial Developer of the Original Code is
  * David Pollak.
- * Portions created by the Initial Developer are Copyright (C) 2011
+ * Portions created by the Initial Developer are Copyright (C) 2011-2012
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -193,14 +193,14 @@ syntaxTests =
        \b n f = c n f\n\
        \c n f = if f n then n else a n f\n", testTypes [("a", testGenBoolFunc)] . checktype)                              
 
-     ,("fact n = if n == 0 then 1 else n * fact n - 1",
+     ,("fact n = if n == 0 then 1 else n * fact (n - 1)",
                   testTypes [("fact", testDoubleFunc)] . checktype)
 
-     ,("fact n = if n == 0 then 1 else n * fact n - 1\n\
+     ,("fact n = if n == 0 then 1 else n * fact (n - 1)\n\
        \res = fact 10",
                   testResults [("res", DoubleValue 3628800)] . checkResults)
 
-     ,("fact n = if n == 0 then 1 else n * fact n - 1\n\
+     ,("fact n = if n == 0 then 1 else n * fact (n - 1)\n\
        \res = fact 10\n\
        \good = goodorbad true\n\
        \bad = goodorbad false\n\
@@ -216,7 +216,7 @@ syntaxTests =
                   testResults [("res", StrValue $ T.pack "10")] . checkResults)
 
 
-                
+     ,("res n = n.age", psuccess 1 . checkparse)
 
 
      ,("test_15_complex_source_sink.md", testTypes [("tax", testPrimDouble)
