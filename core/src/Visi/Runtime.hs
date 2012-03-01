@@ -71,7 +71,7 @@ setSource name value =
     let set = AppSetSource name value in
     do
         chan <- readIORef runningApp
-        maybeChan chan $ flip writeChan $ set
+        maybeChan chan $ flip writeChan set
 
 -- | run an application
 -- FIXME this is a concurrency problem... if two different runApp calls are made
@@ -81,7 +81,7 @@ runApp code callback@(AppCallback errorCallback sourceSinkCallback setSinksCallb
     let shutDown it = (Nothing, it) in
     do
       chan <- atomicModifyIORef runningApp shutDown
-      maybeChan chan $ flip writeChan $ AppStop -- shutdown the app if it was running
+      maybeChan chan $ flip writeChan AppStop -- shutdown the app if it was running
       let stuff = parseLines code
       runIt stuff
       where runIt (Left err) = errorCallback $ T.pack $ show err
@@ -99,7 +99,7 @@ runApp code callback@(AppCallback errorCallback sourceSinkCallback setSinksCallb
 fromSink (name, _, TPrim p) = SinkInfo name p
 fromSource (name, TPrim p) = SourceInfo name p
 
-threadRunApp :: AppCallback -> (Chan AppCmd) -> Expression -> [Expression] -> IO ()
+threadRunApp :: AppCallback -> Chan AppCmd -> Expression -> [Expression] -> IO ()
 threadRunApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) chan grp top =
     Control.Exception.catch
         (do

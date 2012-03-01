@@ -79,24 +79,24 @@ tFun t1 t2 = TOper funcOperName [t1,t2]
 startsWithLetter (a:b) = isLetter a
 
 instance Show Expression where
-  show (LetExp _ (FuncName name) _ t1 exp) = "let " ++ (T.unpack name) ++ " = " ++ show exp ++ " :: " ++ show t1
+  show (LetExp _ (FuncName name) _ t1 exp) = "let " ++ T.unpack name ++ " = " ++ show exp ++ " :: " ++ show t1
   show (InnerLet _ letExp evalExp) = show letExp ++ "\n" ++ show evalExp
-  show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ (T.unpack name) ++ " " ++ show right
-  show (FuncExp (FuncName param) rt exp) = "func " ++ (T.unpack param) ++ " = " ++ show exp ++ " :: " ++ show rt
+  show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ T.unpack name ++ " " ++ show right
+  show (FuncExp (FuncName param) rt exp) = "func " ++ T.unpack param ++ " = " ++ show exp ++ " :: " ++ show rt
   show (Apply _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
   show (Var (FuncName name)) = T.unpack name
   show (ValueConst v) = show v
   show (Group map _ _) = "Group " ++ show map
-  show (BuiltIn (FuncName name) tpe _) = (T.unpack name) ++ " :: " ++ show tpe
-  show (SinkExp _ (FuncName name) tpe _) = "Sink: " ++ (T.unpack name) ++ " :: " ++ show tpe
-  show (SourceExp _ (FuncName name) tpe) = "Source: " ++ (T.unpack name) ++ " :: " ++ show tpe
+  show (BuiltIn (FuncName name) tpe _) = T.unpack name ++ " :: " ++ show tpe
+  show (SinkExp _ (FuncName name) tpe _) = "Sink: " ++ T.unpack name ++ " :: " ++ show tpe
+  show (SourceExp _ (FuncName name) tpe) = "Source: " ++ T.unpack name ++ " :: " ++ show tpe
 
 
 
 instance Show Type where
   show (TVar tv) = "TVar " ++ T.unpack tv
-  show (TOper name (a:b:[])) | not $ startsWithLetter $ T.unpack name = show a ++ " " ++ (T.unpack name) ++ " " ++ show b
-  show (TOper name params) = "TOper " ++ (T.unpack name) ++ ": " ++ show params
+  show (TOper name (a:b:[])) | not $ startsWithLetter $ T.unpack name = show a ++ " " ++ T.unpack name ++ " " ++ show b
+  show (TOper name params) = "TOper " ++ T.unpack name ++ ": " ++ show params
   show (TPrim prim) = show prim
 
 data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord)

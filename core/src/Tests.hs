@@ -49,12 +49,12 @@ main =
         revisedTests <- mapM (loadSamples path) syntaxTests
         l1 <- testOMatic revisedTests -- paths
         let allL = l1
-        mapM_ (snd) allL
-        let errs = foldr (+) 0 $ map fst allL
-        putStrLn $ "Ran " ++ (show $ length allL) ++ " tests, " ++ (show errs) ++ " errors"
+        mapM_ snd allL
+        let errs = sum $ map fst allL
+        putStrLn $ "Ran " ++ show (length allL) ++ " tests, " ++ show errs ++ " errors"
  
 loadSamples path (param, func) =
-  if List.isSuffixOf ".md" param then
+  if ".md" `List.isSuffixOf` param then
     do
       let whole = path ++ "/" ++ param
       contents <- readFile whole
@@ -172,7 +172,7 @@ syntaxTests =
        \p41 = plus41\n\
        \f = p41 1\n", testTypes [("f", testPrimDouble)] . checktype)
 
-     ,("a n = n == 1", testTypes [("a", (testT $ tFun (TPrim PrimDouble) (TPrim PrimBool)))] . checktype)
+     ,("a n = n == 1", testTypes [("a", testT $ tFun (TPrim PrimDouble) (TPrim PrimBool))] . checktype)
 
      ,("a n = n == 1\n\
        \b = a true", failsTyper . checktype)
@@ -223,20 +223,20 @@ syntaxTests =
                                 ,("taxable", testPrimDouble)] . checktype)
     ]
 
-testGenBoolFunc _ (TOper fon1 [(TVar t1), 
-                  (TOper fon2 [(TOper fon3 
-                                      [(TVar t2), TPrim PrimBool]), (TVar t3)])]) | fon1 == funcOperName && 
-                                                                               fon2 == funcOperName &&
-                                                                               fon3 == funcOperName &&
-                                                                               t1 == t2 &&
-                                                                               t2 == t3 = Nothing
+testGenBoolFunc _ (TOper fon1 [TVar t1, 
+                   TOper fon2 [TOper fon3 
+                                     [TVar t2, TPrim PrimBool], TVar t3]]) | fon1 == funcOperName && 
+                                                                             fon2 == funcOperName &&
+                                                                             fon3 == funcOperName &&
+                                                                             t1 == t2 &&
+                                                                             t2 == t3 = Nothing
 testGenBoolFunc n t = Just $ "In: "++n++" Expecting a generic plus bool function, but got " ++ show t
 
 
-testGenFunc _ (TOper fon [(TVar t1), (TVar t2)]) | fon == funcOperName && t1 == t2 = Nothing
+testGenFunc _ (TOper fon [TVar t1, TVar t2]) | fon == funcOperName && t1 == t2 = Nothing
 testGenFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
 
-testGenXFunc _ (TOper fon [(TVar t1), (TVar t2)]) | fon == funcOperName = Nothing
+testGenXFunc _ (TOper fon [TVar t1, TVar t2]) | fon == funcOperName = Nothing
 testGenXFunc n t = Just $ "In: "++n++" Expecting a generic function, but got " ++ show t
 
 testT t1 n t2 =
@@ -252,16 +252,16 @@ testStrFunc = testT $ tFun (TPrim PrimStr) (TPrim PrimStr)
 
 -- | test that the string parses and there are cnt expressions
 psuccess cnt p = case p of 
-              (Right ar) | (length ar) == cnt -> Nothing
-              (Right ar) -> Just $ "Expected " ++ show cnt ++ " but got " ++ (show $ length ar) ++ " expressions"
-              (Left msg) -> Just $ show msg
+              Right ar | length ar == cnt -> Nothing
+              Right ar -> Just $ "Expected " ++ show cnt ++ " but got " ++ show (length ar) ++ " expressions"
+              Left msg -> Just $ show msg
 
 pfailure p = case p of 
               (Left _) -> Nothing
               (Right _) -> Just "Should have failed"
 
 -- checkparse :: (Error e) => String -> e
-checkparse str = parseLines str
+checkparse = parseLines
 
 failsTyper (Left (TypeError _)) = Nothing
 failsTyper (Right types) = Just $ "Expected a type error, but got " ++ show types
@@ -272,8 +272,8 @@ testTypes listOStuff res =
         (Left err) -> Just $ show err
         (Right typeMap) -> 
           let testIt (funcName, expType) = 
-                case Map.lookup (T.pack $ funcName) typeMap of
-                  (Just t) -> expType funcName t
+                case Map.lookup (T.pack funcName) typeMap of
+                  Just t -> expType funcName t
                   _ -> Just $ "Not function "++ funcName ++ " defined"
                 in
           let res = List.map testIt listOStuff in

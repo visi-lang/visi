@@ -86,9 +86,9 @@ findTVI (TVar t1)  =
         case Map.lookup t1 map of
             (Just v) -> return v
             _ -> throwError $ TypeError $ "Cannot find type var: " ++ T.unpack t1
-findTVI tv = throwError $ TypeError $ "Trying to look up " ++ (show tv) ++ " but it's not a Type Variable"
+findTVI tv = throwError $ TypeError $ "Trying to look up " ++ show tv ++ " but it's not a Type Variable"
 
-setTVIType (TVarInfo name exp _) newType = TVarInfo name exp $ newType
+setTVIType (TVarInfo name exp _) newType = TVarInfo name exp newType
 
 updateType tv nt =
     do
@@ -100,19 +100,18 @@ setATV (TVar t1) newTV =
     do
         map <- getATV
         putATV $ Map.insert t1 newTV map
-setATV theType _ = throwError $ TypeError $ "Trying to update a type variable, but got " ++ (show theType)
+setATV theType _ = throwError $ TypeError $ "Trying to update a type variable, but got " ++ show theType
 
 instnce (TVarInfo _ _ i) = i
 
 -- gettype _ nongen (FuncName name) | vtrace ("Gettyoe for " ++ name ++ " Nongen " ++ show nongen) False = error "Never"
 gettype scope nongen name =
     case Map.lookup name scope of
-        (Just t) -> 
-           do
-               t' <- prune t
-               ret <- fresh nongen t'
-               -- return $ vtrace ("Returning " ++ show ret) ret
-               return ret
+        Just t -> do 
+          t' <- prune t
+          ret <- fresh nongen t'
+          -- return $ vtrace ("Returning " ++ show ret) ret
+          return ret
         _ -> throwError $ TypeError $ "Could not find " ++ show name ++ " in scope"
 
 fresh nongen tpe = 
@@ -154,7 +153,7 @@ newVariable =
       atv <- getATV
       curExp <- getCurExp
       let len = Map.size atv
-      let name = T.pack $ (T.unpack synthetic ++ show len)
+      let name = T.pack $ T.unpack synthetic ++ show len
       let nv = TVarInfo name curExp Nothing
       let t = TVar name
       setATV t nv
@@ -170,14 +169,15 @@ unify t1 t2 =
             (a@(TVar _), b) ->
                 do
                     oit <- occursInType a b
-                    if oit then throwError $ TypeError $  "Recursive Unification of " ++ show a ++ " and " ++ show b
-                        else do
-                            tvi <- findTVI a
-                            updateType a b
+                    if oit 
+                      then throwError $ TypeError $  "Recursive Unification of " ++ show a ++ " and " ++ show b
+                      else do tvi <- findTVI a
+                              updateType a b
             (o, v@(TVar _)) -> unify v o
             (a@(TOper n1 p1),b@(TOper n2 p2)) ->
-                if n1 /= n2 || (length p1) /= (length p2) then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
-                    else mapM_ (\(a,b) -> unify a b) $ zip p1 p2
+                if n1 /= n2 || length p1 /= length p2 
+                then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
+                else mapM_ (uncurry unify) $ zip p1 p2
             (a, b) | a == b -> return ()
             (a, b) -> throwError $ TypeError $ "Failed to unify " ++ show a ++ " & " ++ show b
 
@@ -243,8 +243,7 @@ calcType scope nongen e@(LetExp _ name canBeGen t1 exp) =
         let scope' = Map.insert name t1' scope
         rt <- calcType scope' (if canBeGen then nongen else Set.insert t1' nongen) exp
         unify t1' rt
-        t1'' <- prune t1'
-        return t1''
+        prune t1'
 calcType scope nongen e@(SinkExp _ name t1 exp) = 
     do
         putCurExp e
@@ -252,8 +251,8 @@ calcType scope nongen e@(SinkExp _ name t1 exp) =
         let scope' = Map.insert name t1' scope
         rt <- calcType scope' (Set.insert t1' nongen) exp
         unify t1' rt
-        t1'' <- prune t1'
-        return t1''
+        prune t1'
+
 calcType scope nongen e@(FuncExp paramName pt exp) =
     do
         putCurExp e
@@ -285,10 +284,10 @@ calcType scope nongen (Group exprs _ exp) =
                                 t1' <- createTypeVar e t1
                                 return (name, t1', isNongen e)        
         pairs <- mapM (processExp it) $ Map.assocs exprs
-        let scope' = scope `Map.union` (Map.fromList $ map nv pairs)
+        let scope' = scope `Map.union` Map.fromList (map nv pairs)
         -- all the source expressions are *NOT* generic. We need to
         -- know what the actual types are
-        let nongen' = nongen `Set.union` (Set.fromList (pairs >>= genPull))
+        let nongen' = nongen `Set.union` Set.fromList (pairs >>= genPull)
         mapM_ (calcType scope' nongen') $ Map.elems exprs
         return $ (TOper $ T.pack "na") []
 
@@ -325,13 +324,18 @@ processTypes' e@(Group exprs _ _) org =
 testEq [] [] = True
 testEq [] _ = False
 testEq _ [] = False
-testEq ((n1, t1):r1) ((n2, t2):r2) = if (n1 == n2) && (testTypeEq t1 t2) then testEq r1 r2 else False
+testEq ((n1, t1):r1) ((n2, t2):r2) = n1 == n2 
+                                     && testTypeEq t1 t2 
+                                     && testEq r1 r2
 
-testTypeEq (TVar n1) (TVar n2) = n1 == n2 || ((T.take synthLen n1) == synthetic && (T.take synthLen n2) == synthetic)
-testTypeEq (TOper n1 r1) (TOper n2 r2) = if n1 == n2 && (length r1) == (length r2) then List.foldl' testPairTypeEq True (zip r1 r2)  else False
+testTypeEq (TVar n1) (TVar n2) = n1 == n2 
+                                 || (T.take synthLen n1 == synthetic && T.take synthLen n2 == synthetic)
+testTypeEq (TOper n1 r1) (TOper n2 r2) = (n1 == n2 && length r1 == length r2) 
+                                         && List.foldl' testPairTypeEq True (zip r1 r2)
+  
 testTypeEq t1 t2 = t1 == t2
 
-testPairTypeEq b (t1, t2) = b && (testTypeEq t1 t2)
+testPairTypeEq b (t1, t2) = b && testTypeEq t1 t2
 
 
 processTypes :: Expression -> StateThrow [(T.Text, Type)]

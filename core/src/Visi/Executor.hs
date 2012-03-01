@@ -29,6 +29,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
 import qualified Data.Text as T
+import Data.Maybe (fromMaybe)
+
 import Visi.Expression
 import Visi.Parse
 import Visi.Util
@@ -74,23 +76,20 @@ eval1 sourceVars scope (FuncExp funcName p exp) = FuncValue doFuncApply
 eval1 sourceVars scope (Apply _ _ e1 e2) =
      let (FuncValue exp) = eval sourceVars scope e1 in
      let param = eval sourceVars scope e2 in
-     exp(param)
+     exp param
 eval1 sourceVars scope (Var funcName) = eval sourceVars scope $ scope Map.! funcName
 eval1 sourceVars scope (BuiltIn _ _ func) = FuncValue func
 eval1 sourceVars scope (ValueConst v) = v
-eval1 sourceVars scope (SourceExp _ (FuncName name) _) = 
-    case Map.lookup name sourceVars of
-        Just(v) -> v
-        _ -> UndefinedValue
+eval1 sourceVars scope (SourceExp _ (FuncName name) _) = fromMaybe UndefinedValue $ Map.lookup name sourceVars
         
 -- eval1 _ _ what = error $ "Yikes... don't know how to deal with: " ++ show what
 --                  | Group !(Map.Map FuncName Expression) Type !Expression
 
 
-builtInExp = boolTrue : boolFalse : builtInConcat : builtInIf : builtInAdd : 
-             builtInMult : builtInSub : builtInDiv : builtInAnd : builtInOr :
-             builtInReverse : builtInEq :
-             builtInLen : builtInShow : []
+builtInExp = [ boolTrue,  boolFalse, builtInConcat, builtInIf, builtInAdd 
+             , builtInMult, builtInSub, builtInDiv, builtInAnd, builtInOr
+             , builtInReverse, builtInEq, builtInLen, builtInShow
+             ]
 
 funcDoubleDouble = tFun (TPrim PrimDouble) (TPrim PrimDouble)
 funcDoubleDoubleDouble = tFun (TPrim PrimDouble) funcDoubleDouble
@@ -186,7 +185,7 @@ builtInDiv = BuiltIn (FuncName $ T.pack "/") funcDoubleDoubleDouble divThing
              where divThing :: Value -> Value
                    divThing (DoubleValue v) = FuncValue partialDiv
                      where partialDiv :: Value -> Value
-                           partialDiv (DoubleValue v') = if (v' == 0.0) then UndefinedValue else DoubleValue $ v / v'
+                           partialDiv (DoubleValue v') = if v' == 0.0 then UndefinedValue else DoubleValue $ v / v'
                            partialDiv _ = UndefinedValue
                    divThing _ = FuncValue partialDiv
                      where partialDiv :: Value -> Value

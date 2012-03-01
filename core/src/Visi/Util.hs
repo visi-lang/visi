@@ -30,7 +30,7 @@ import Debug.Trace
 
 -- | flatten a List
 flatten :: [[a]] -> [a]
-flatten x = x >>= (\a -> a)
+flatten = concat
 
 -- | Trace that you can disable
 vtrace :: String -> a -> a
