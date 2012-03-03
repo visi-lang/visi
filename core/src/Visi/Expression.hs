@@ -38,10 +38,7 @@ module Visi.Expression (
  * ***** END LICENSE BLOCK ***** -}
 
 import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.List as List
 import qualified Data.Text as T
-import Visi.Util
 import Data.Char
 
 newtype LetId = LetId T.Text deriving (Eq, Ord, Show)

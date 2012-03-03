@@ -26,19 +26,15 @@ module Visi.Parse (parseLine, parseLines, mkGroup) where
 
 import Control.Applicative ((<$>),(<*>),(*>),(<*),(<$))
 import Text.Parsec
-import Text.Parsec.String
-import Text.Parsec.Prim
-import Text.Parsec.Expr
 import Text.Parsec.Token
 import Text.Parsec.Language
 import qualified Data.Text as T
 import Data.Char ( isAlpha, toLower, toUpper, isSpace, digitToInt )
-import Data.List ( nub, sort )
+import Data.List ( nub, sort, foldl' )
 import Data.Maybe ( catMaybes )
 import Visi.Util
 import Visi.Expression
 import qualified Data.Map as Map
-import qualified Data.List as List
 
 data TIState = TIState {tiSupply :: Int, tiDepth :: Int, 
                         tiHasTilde :: Bool, tiInLiterate :: Bool} deriving (Show)
@@ -383,7 +379,7 @@ expression =
         restWithVars <- mapM makeVars rest
         letId <- newLetId "func"
         let buildApply exp (exp2, t2) =  Apply letId t2 exp exp2
-        return $ List.foldl' buildApply funcExp restWithVars
+        return $ foldl' buildApply funcExp restWithVars
         where makeVars exp = do t2 <- newTyVar "RetType"
                                 return (exp, t2)
     parenExp = 
