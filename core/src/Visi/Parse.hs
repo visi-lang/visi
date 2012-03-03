@@ -430,10 +430,10 @@ expression =
         char '.'
         mySpaces
         (Var method@(FuncName methText)) <- identifier
-        letId <- newLetId $ "Method: " ++ T.unpack methText
-        retType <- newTyVar $ "Method: " ++ T.unpack methText
-        let targetType = MethodType (Map.singleton methText retType)
-        return $ Apply letId retType (ApplyMethod letId method $ tFun targetType retType) target
+        letId <- newLetId $ "Method_" ++ T.unpack methText
+        retType <- newTyVar $ "Method_" ++ T.unpack methText
+        let targetType = StructuralType (Map.singleton methText retType)
+        return $ Apply letId retType (InvokeMethod letId method $ tFun targetType retType) target
     ifElseExp = 
       do
         m_reserved "if"

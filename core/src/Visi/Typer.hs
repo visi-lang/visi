@@ -46,8 +46,10 @@ collectTypes :: Expression -> ThrowsError [(T.Text, Type)]
 collectTypes exp = 
     do
         (a, s) <- runStateT (processTypes exp) (Map.empty, Map.empty, Var $ FuncName $ T.pack "Starting",
-                    Map.fromList [((TPrim PrimDouble), (Map.singleton (T.pack "asInt") (TPrim PrimDouble)))
-                                 ,((TPrim PrimStr), (Map.singleton (T.pack "asInt") (TPrim PrimStr)))])
+                    Map.fromList [((TPrim PrimDouble), 
+                                    (Map.fromList [((T.pack "fizzbin"), (TPrim PrimDouble))
+                                                  ,((T.pack "meowfizz"), (TPrim PrimDouble))]))
+                                 ,((TPrim PrimStr), (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))])
         return a
         
 getATV :: StateThrow TypeVars
@@ -123,7 +125,6 @@ gettype scope nongen name =
         Just t -> do 
           t' <- prune t
           ret <- fresh nongen t'
-          -- return $ vtrace ("Returning " ++ show ret) ret
           return ret
         _ -> throwError $ TypeError $ "Could not find " ++ show name ++ " in scope"
 
@@ -155,9 +156,15 @@ fresh' nongen t =
               do
                   args' <- mapM (fresh' nongen) args
                   return $ TOper name args'
+            (StructuralType theMap) ->
+                do
+                  revised <- mapM (\(k, v) -> do {v' <- fresh' nongen v; return (k,v')}) $ Map.toList theMap
+                  return $ StructuralType $ Map.fromList revised  
             _ -> return t'
 
-synthetic = T.pack "synthetic"
+syntheticString = "synthetic"
+
+synthetic = T.pack syntheticString
 
 synthLen = T.length synthetic
 
@@ -172,7 +179,7 @@ newVariable =
       setATV t nv
       return t
 
-hasMethods clz (MethodType theMap) =
+hasMethods clz (StructuralType theMap) =
     do
         methMap <- getMethMap
         case (Map.lookup clz methMap) of
@@ -191,6 +198,14 @@ hasMethods clz (MethodType theMap) =
             _ -> throwError $ TypeError $ "No known methods for " ++ show clz
 
 
+testSameGen (TVar _) (TVar _) = True
+testSameGen a b = testSame a b
+
+testSame mt1@(StructuralType mm1) mt2@(StructuralType mm2) = 
+    let testit bool (k, tpe) = bool && (testSameGen (mm1 Map.! k) tpe) in
+    (Map.size mm1 == Map.size mm2) && (Map.keysSet mm1 == Map.keysSet mm2) && (List.foldl' testit True $ Map.toList mm2)
+testSame mt1 mt2 = mt1 == mt2
+
 unify t1 t2 =
     do
         methMap <- getMethMap
@@ -199,7 +214,7 @@ unify t1 t2 =
         t2' <- prune t2
         case (t1', t2') of
             -- (a,b) | vtrace ("Unifying " ++ show a ++ " & " ++ show b) False -> error "Yikes"
-            (TVar a, TVar b) | a == b -> return ()
+            (a, b) | a `testSame` b -> return ()
             (a@(TVar _), b) ->
                 do
                     oit <- occursInType a b
@@ -212,10 +227,9 @@ unify t1 t2 =
                 if n1 /= n2 || length p1 /= length p2 
                 then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
                 else mapM_ (uncurry unify) $ zip p1 p2
-            (a, b) | a == b -> return ()
-            (a, v@(MethodType theMap)) -> 
+            (a, v@(StructuralType theMap)) -> 
                 do
-                  res <- hasMethods a v
+                  hasMethods a v
                   return ()
             (a, b) -> throwError $ TypeError $ "Failed to unify " ++ show a ++ " & " ++ show b
 
@@ -233,13 +247,17 @@ prune (TOper name params) =
     do
         params' <- mapM prune params
         return $ TOper name params'
-prune (MethodType theMap) =
+prune (StructuralType theMap) = 
     do
         revised <- mapM (\(k, v) -> do {v' <- prune v; return (k,v')}) $ Map.toList theMap
-        return $ MethodType $ Map.fromList revised
+        return $ StructuralType $ Map.fromList revised
 prune t = return t
 
 
+isSynthetic t = 
+    T.isPrefixOf synthetic t
+
+isGeneric nongen tv@(TVar v) | isSynthetic v = return False
 isGeneric nongen tv@(TVar _) = 
     do
         oi <- occursIn (Set.elems nongen) tv
@@ -304,28 +322,34 @@ calcType scope nongen e@(FuncExp paramName pt exp) =
         rt <- calcType scope' (Set.insert pt' nongen) exp
         pt'' <- prune pt'
         return $ tFun pt'' rt
-calcType scope nongen e@(ApplyMethod letId method@(FuncName methodText) (TOper oprName [source, dest])) =
+calcType scope nongen e@(InvokeMethod letId method@(FuncName methodText) (TOper oprName [source, dest])) =
     do
         putCurExp e
         t1' <- createTypeVar e dest
-        t1'' <- prune t1'
-        return $ TOper oprName [source, t1'']
+        source' <- prune source
+        let ret = TOper oprName [source', t1']
+        return ret
 calcType scope nongen e@(Apply letId t1 exp1 exp2) =
     do
         putCurExp e
         t1' <- createTypeVar e t1
         funType <- calcType scope nongen exp1
-        argType <- calcType scope nongen exp2
+        argType <- showStructType funType $ calcType scope nongen exp2
         unify (tFun argType t1') funType
-        prune t1'
+        ret <- prune t1'
+        funType' <- prune funType
+        unify (tFun argType ret) funType'
+        let (TOper _ [_, ret']) = funType'
+        return ret'
 calcType scope nongen (InnerLet t letExp actualExp) = 
     do
         let (LetExp _ name canBeGen t1 exp) = letExp
         t1' <- createTypeVar exp t1
         t' <- createTypeVar actualExp t
         let scope' = Map.insert name t1' scope
-        calcType scope' nongen letExp
-        ret <- calcType scope' nongen actualExp
+        let nongen' = Set.insert t1' nongen
+        calcType scope' nongen' letExp
+        ret <- calcType scope' nongen' actualExp
         prune ret
 calcType scope nongen (Group exprs _ exp) =
     do
@@ -339,6 +363,9 @@ calcType scope nongen (Group exprs _ exp) =
         let nongen' = nongen `Set.union` Set.fromList (pairs >>= genPull)
         mapM_ (calcType scope' nongen') $ Map.elems exprs
         return $ (TOper $ T.pack "na") []
+
+-- showStructType (TOper _ [st@(StructuralType _), other]) rest = vtrace ("Struct type " ++ show st ++ " other " ++ show other) rest
+showStructType _ rest = rest
 
 genPull (_, t, True) = [t]
 genPull _ = []
@@ -382,7 +409,7 @@ testTypeEq (TVar n1) (TVar n2) = n1 == n2
 testTypeEq (TOper n1 r1) (TOper n2 r2) = (n1 == n2 && length r1 == length r2) 
                                          && List.foldl' testPairTypeEq True (zip r1 r2)
   
-testTypeEq t1 t2 = t1 == t2
+testTypeEq t1 t2 = t1 `testSame` t2
 
 testPairTypeEq b (t1, t2) = b && testTypeEq t1 t2
 

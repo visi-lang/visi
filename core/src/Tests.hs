@@ -218,15 +218,47 @@ syntaxTests =
 
      ,("res n = n.age", psuccess 1 . checkparse)
 
-     ,("res n = n.asInt\n\
+     ,("res n = n.fizzbin\n\
        \frog = (res 44) + 1", testTypes [("frog", testPrimDouble)] . checktype)
 
-     ,("res n = n.asInt\n\
+     ,("res n = n.fizzbin\n\
        \frog = (res \"foo\") & \"1\"", testTypes [("frog", testPrimStr)] . checktype)
 
-     ,("res n = n.asInt\n\
+{-
+     ,("res n = \n\
+       \  x = n.fizzbin\n\
+       \  y = n.meowfizz\n\
+       \  x + y\n\
+       \frog = (res 44) + 1", testTypes [("frog", testPrimDouble)] . checktype)
+-}
+
+     ,("woof n =\n\
+       \  x = n.fizzbin\n\
+       \  show x\n\
+       \res n = \n\
+       \  x = n.fizzbin\n\
+       \  y = n.fizzbin\n\
+       \  z = woof n\n\
+       \  x + y + (len z)\n\
+       \frog = (res 44) + 1", testTypes [("frog", testPrimDouble)] . checktype)
+
+     ,("woof n =\n\
+       \  x = n.fizzbin\n\
+       \  show x\n\
+       \res n = \n\
+       \  x = n.fizzbin\n\
+       \  y = n.fizzbin\n\
+       \  z = woof n\n\
+       \  x + y + (len z)\n\
+       \frog = (res \"44\") + 1", failsTyper . checktype)
+
+     ,("res n = n.fizzbin\n\
        \dog = (res 44) + 1\n\
        \frog = (res \"foo\") & \"1\"", testTypes [("frog", testPrimStr), ("dog", testPrimDouble)] . checktype)
+
+     ,("res n = n.fizzbin\n\
+       \dog = (res 44) + 1\n\
+       \frog = (res \"foo\") + 1", failsTyper . checktype)
 
 
      ,("test_15_complex_source_sink.md", testTypes [("tax", testPrimDouble)

@@ -1,11 +1,11 @@
 module Visi.Expression ( 
                             Expression(LetExp, InnerLet, FuncExp, Apply,
-                                       SinkExp, SourceExp, ApplyMethod,
+                                       SinkExp, SourceExp, InvokeMethod,
                                        Var, BuiltIn, ValueConst,
                                        Group),
                            AllTypeVars(AllTypeVars),
                            VarScope, LetScope, TVarInfo(TVarInfo),
-                           Type(TVar, TPrim, TOper, MethodType),
+                           Type(TVar, TPrim, TOper, StructuralType),
                            FuncName(FuncName), 
                            LetId(LetId),
                            Prim(PrimDouble, PrimBool, PrimStr),
@@ -52,7 +52,7 @@ data Expression = LetExp LetId FuncName CanBeGeneric Type Expression
                   | InnerLet Type Expression Expression -- defines a Let plus an expression to be evaluated in the scope of the Let
                   | SinkExp LetId FuncName Type Expression
                   | SourceExp LetId FuncName Type
-                  | ApplyMethod LetId FuncName Type
+                  | InvokeMethod LetId FuncName Type
                   | FuncExp FuncName Type Expression
                   | Apply LetId Type Expression Expression
                   | Var FuncName
@@ -63,7 +63,7 @@ data Expression = LetExp LetId FuncName CanBeGeneric Type Expression
 data Type = TVar T.Text
             | TPrim Prim
             | TOper T.Text [Type]
-            | MethodType (Map.Map T.Text Type) -- Structural type
+            | StructuralType (Map.Map T.Text Type) -- Structural type
             deriving (Eq, Ord)
 
 newtype FuncName = FuncName T.Text deriving (Eq, Ord)
@@ -86,7 +86,7 @@ instance Show Expression where
   show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ T.unpack name ++ " " ++ show right
   show (FuncExp (FuncName param) rt exp) = "func " ++ T.unpack param ++ " = " ++ show exp ++ " :: " ++ show rt
   show (Apply _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
-  show (ApplyMethod _ (FuncName name) _) = "#" ++ T.unpack name
+  show (InvokeMethod _ (FuncName name) _) = "#" ++ T.unpack name
   show (Var (FuncName name)) = T.unpack name
   show (ValueConst v) = show v
   show (Group map _ _) = "Group " ++ show map
@@ -101,7 +101,7 @@ instance Show Type where
   show (TOper name (a:b:[])) | not $ startsWithLetter $ T.unpack name = show a ++ " " ++ T.unpack name ++ " " ++ show b
   show (TOper name params) = "TOper " ++ T.unpack name ++ ": " ++ show params
   show (TPrim prim) = show prim
-  show (MethodType info) = "MethodType " ++ show info
+  show (StructuralType info) = "StructuralType " ++ show info
 
 data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord)
 
