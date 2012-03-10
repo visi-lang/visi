@@ -10,12 +10,55 @@
 
 @implementation VisiDocument
 
+
+
+@synthesize editor;
+@synthesize output;
+@synthesize errorInfo;
+@synthesize base;
+
+- (IBAction)runCode:(id) sender {
+    printf("I like eating mice!!!\n");
+}
+
+- (void)runCmd:(int) cmd name:(NSString *)name value:(NSString *) value {
+    
+}
+
+- (IBAction)grabBool:(id)sender {
+    /*
+    NamedSwitch *sw = sender;
+    BOOL b = sw.on;
+    NSString *ns = sw.name;
+    setSourceString([ns cStringUsingEncoding:[NSString defaultCStringEncoding]], BoolSourceType, b ? "t" : "0");
+     */
+}
+
+- (IBAction)grabText:(id)sender {
+    
+}
+
+- (NSTextField *)findSink:(NSString *)name {
+    return nil;
+}
+
+/*
+ - (void) findCopyOrRemove: (SourceSinkInfo *) ss {
+ 
+ }
+ */
+
+- (void) layoutControls {
+    
+}
+
+
+
 - (id)init
 {
     self = [super init];
     if (self) {
-        // Add your subclass-specific initialization here.
-        // If an error occurs here, return nil.
+        self.base = @"";
     }
     return self;
 }
@@ -30,29 +73,31 @@
 - (void)windowControllerDidLoadNib:(NSWindowController *)aController
 {
     [super windowControllerDidLoadNib:aController];
+    NSString *cur =  [[self.editor textStorage] string];
+    [[self.editor textStorage] replaceCharactersInRange: NSMakeRange(0, [cur length]) withString:self.base];
+    [editor setAutomaticSpellingCorrectionEnabled:NO];
     // Add any code here that needs to be executed once the windowController has loaded the document's window.
 }
 
 - (NSData *)dataOfType:(NSString *)typeName error:(NSError **)outError
 {
-    /*
-     Insert code here to write your document to data of the specified type. If outError != NULL, ensure that you create and set an appropriate error when returning nil.
-    You can also choose to override -fileWrapperOfType:error:, -writeToURL:ofType:error:, or -writeToURL:ofType:forSaveOperation:originalContentsURL:error: instead.
-    */
-    NSException *exception = [NSException exceptionWithName:@"UnimplementedMethod" reason:[NSString stringWithFormat:@"%@ is unimplemented", NSStringFromSelector(_cmd)] userInfo:nil];
-    @throw exception;
-    return nil;
+    NSString *text = [[self.editor textStorage] string];
+    const char *utf8 = [text UTF8String];
+	NSData *contents = [NSData dataWithBytes:utf8 length:strlen(utf8)];
+    return contents;
 }
 
 - (BOOL)readFromData:(NSData *)data ofType:(NSString *)typeName error:(NSError **)outError
 {
-    /*
-    Insert code here to read your document from the given data of the specified type. If outError != NULL, ensure that you create and set an appropriate error when returning NO.
-    You can also choose to override -readFromFileWrapper:ofType:error: or -readFromURL:ofType:error: instead.
-    If you override either of these, you should also override -isEntireFileLoaded to return NO if the contents are lazily loaded.
-    */
-    NSException *exception = [NSException exceptionWithName:@"UnimplementedMethod" reason:[NSString stringWithFormat:@"%@ is unimplemented", NSStringFromSelector(_cmd)] userInfo:nil];
-    @throw exception;
+    if ([data length] > 0) {
+        NSString *text = [NSString stringWithUTF8String: [data bytes]];
+        if (self.editor == nil) {
+            self.base = text;
+        } else {
+            NSString *cur =  [[self.editor textStorage] string];
+          [[self.editor textStorage] replaceCharactersInRange: NSMakeRange(0, [cur length]) withString:text];
+        }
+    }
     return YES;
 }
 

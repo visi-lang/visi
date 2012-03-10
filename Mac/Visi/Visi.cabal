@@ -3,15 +3,16 @@ Version: 0.1
 Synopsis: A simple language and IDE for Mac OS X
 Description: A simple language and IDE for Macintosh
 Build-type: Simple
-Cabal-Version: >= 1.6
+Cabal-Version: >= 1.6  
 
- -- , Visi.Runtime, Visi.Expression, Visi.Parse      
 
 Library
+    Build-tools: c2hs  
     GHC-Options: -threaded -O0 -optl-Wl 
+    -- Include-dirs: /Users/dpp//TeamSpace/proj/visi/Mac/Visi/include
     extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface
     Hs-Source-Dirs: Visi/haskell, ../../core/src
-    Other-Modules: VisiPro.Mac, Visi.Util 
+    Other-Modules: VisiPro.Mac, VisiPro.Bridge, Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, Visi.Executor, Visi.Typer
     Build-Depends:
         base >= 4,
         old-time,

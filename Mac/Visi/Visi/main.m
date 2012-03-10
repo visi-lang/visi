@@ -9,7 +9,7 @@
 #import <Cocoa/Cocoa.h>
 
 extern int haskellMain(int argc, char *argv[]);
-
+extern void hs_init(int *argc, char ***argv);
 
 int main(int argc, char *argv[])
 {
