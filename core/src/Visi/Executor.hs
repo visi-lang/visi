@@ -24,16 +24,11 @@ module Visi.Executor (builtInExp, eval, maybeChan, calcSources, calcSinks) where
  *
  * ***** END LICENSE BLOCK ***** -}
  
- 
 import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.List as List
 import qualified Data.Text as T
 import Data.Maybe (fromMaybe)
 
 import Visi.Expression
-import Visi.Parse
-import Visi.Util
  
  -- | give a list of Expressions and a map of function name to type, return the function name
  -- | the expression and the type

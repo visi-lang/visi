@@ -29,18 +29,13 @@ module Visi.Runtime (ErrorCallback,
  * ***** END LICENSE BLOCK ***** -}    
     
 import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.List as List
 import System.IO.Unsafe
 import Visi.Expression
 import Visi.Parse
 import Control.Concurrent
-import Visi.Util
 import Visi.Executor
 import Visi.Typer
-import qualified Text.PrettyPrint as PP
 import Data.IORef
-import Control.Concurrent.Chan
 import Control.Exception
 import qualified Data.Text as T
 
@@ -110,9 +105,9 @@ threadRunApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCall
                   let typeMap = Map.fromList lets
                   let doEval vars (name, expr) = (name, eval vars theScope expr)
                   let sinks = calcSinks top typeMap
-                  let sinkTypes = List.map fromSink sinks -- FIXME deal with non-primative
+                  let sinkTypes = map fromSink sinks -- FIXME deal with non-primative
                   let sources = calcSources top typeMap
-                  let sourceTypes = List.map fromSource sources -- FIXME deal with non-primative
+                  let sourceTypes = map fromSource sources -- FIXME deal with non-primative
                   sourceSinkCallback $ sinkTypes ++ sourceTypes
                   let sink' = do
                                (name, expr, _) <- sinks
