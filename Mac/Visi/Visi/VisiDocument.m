@@ -8,9 +8,14 @@
 
 #import "VisiDocument.h"
 
+#import "include/Test.h"
+
 @implementation VisiDocument
 
-
+void runCommand(const void *theId, const visi_command *cmd) {
+    id target = (__bridge id) theId;
+    // FIXME
+}
 
 @synthesize editor;
 @synthesize output;

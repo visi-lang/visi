@@ -30,24 +30,25 @@ import Foreign.Marshal.Alloc
  *
  * ***** END LICENSE BLOCK ***** -}
 
---import Visi.Util
---import Visi.Typer
---import Visi.Runtime
---import Visi.Parse
---import Visi.Executor
---import Visi.Expression
+import Visi.Util
+import Visi.Typer
+import Visi.Runtime
+import Visi.Parse
+import Visi.Executor
+import Visi.Expression
+import VisiPro.Bridge
 
 type VoidPtr = Ptr ()
 
 foreign import ccall safe "afterHaskellmain" afterHaskellmain :: CInt -> VoidPtr -> IO CInt
 
-
+-- foreign export ccall newProcess :: VoidPtr -> IO ()
 
 -- | Initialize the Haskell runtime and call back into the ObjC code
-foreign export ccall haskellMain :: CInt -> VoidPtr -> IO ()
-haskellMain :: CInt -> VoidPtr -> IO ()
+foreign export ccall haskellMain :: CInt -> VoidPtr -> IO CInt
+haskellMain :: CInt -> VoidPtr -> IO CInt
 haskellMain argc argv = 
     do
       putStrLn "Meow and woof!!!!"
-      afterHaskellmain argc argv
-      return ()
+      ret <- afterHaskellmain argc argv
+      return ret
