@@ -26,12 +26,11 @@ module Visi.Typer (collectTypes, buildLetScope) where
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import qualified Data.List as List
+import Data.List ( foldl' ) 
 import qualified Data.Text as T
 import Visi.Util
 import Visi.Expression 
 import Control.Monad.Error
-import Control.Applicative
 import Control.Monad.State
 
 -- | An implementation based on http://dysphoria.net/2009/06/28/hindley-milner-type-inference-in-scala/
@@ -203,7 +202,7 @@ testSameGen a b = testSame a b
 
 testSame mt1@(StructuralType mm1) mt2@(StructuralType mm2) = 
     let testit bool (k, tpe) = bool && (testSameGen (mm1 Map.! k) tpe) in
-    (Map.size mm1 == Map.size mm2) && (Map.keysSet mm1 == Map.keysSet mm2) && (List.foldl' testit True $ Map.toList mm2)
+    (Map.size mm1 == Map.size mm2) && (Map.keysSet mm1 == Map.keysSet mm2) && (foldl' testit True $ Map.toList mm2)
 testSame mt1 mt2 = mt1 == mt2
 
 unify t1 t2 =
@@ -407,7 +406,7 @@ testEq ((n1, t1):r1) ((n2, t2):r2) = n1 == n2
 testTypeEq (TVar n1) (TVar n2) = n1 == n2 
                                  || (T.take synthLen n1 == synthetic && T.take synthLen n2 == synthetic)
 testTypeEq (TOper n1 r1) (TOper n2 r2) = (n1 == n2 && length r1 == length r2) 
-                                         && List.foldl' testPairTypeEq True (zip r1 r2)
+                                         && foldl' testPairTypeEq True (zip r1 r2)
   
 testTypeEq t1 t2 = t1 `testSame` t2
 
