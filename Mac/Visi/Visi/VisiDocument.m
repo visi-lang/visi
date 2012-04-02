@@ -8,7 +8,7 @@
 
 #import "VisiDocument.h"
 
-#import "include/Test.h"
+#import "include/VisiBridge.h"
 
 @implementation VisiDocument
 

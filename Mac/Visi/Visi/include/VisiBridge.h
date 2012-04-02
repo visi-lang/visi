@@ -27,7 +27,8 @@ enum cmds {
  setProgramTextCmd,
  setStringSourceCmd,
  setNumberSourceCmd,
- setBoolSourceCmd} visiCmds;
+ setBoolSourceCmd,
+ stopRunningCmd} visiCmds;
 
 typedef struct {
 	enum cmds cmd;
@@ -35,6 +36,7 @@ typedef struct {
 	union info {
 		const char *text;
 		int boolValue;
+		int intValue;
 		double number;
 	} theInfo;
 } visi_command;

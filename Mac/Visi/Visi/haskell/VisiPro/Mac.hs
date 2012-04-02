@@ -5,6 +5,8 @@ import Foreign.C.String
 import Foreign.Ptr
 import Foreign.Storable
 import Foreign.Marshal.Alloc
+import VisiPro.Bridge
+import Visi.Runtime
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -52,3 +54,9 @@ haskellMain argc argv =
       putStrLn "Meow and woof!!!!"
       ret <- afterHaskellmain argc argv
       return ret
+
+foreign export ccall fromMac :: VoidPtr -> (FunPtr ExecCommand) -> IO ()
+fromMac cmd handlerFunc = 
+    do
+        cvt <- convertFromC cmd
+        handlerFunc cvt

@@ -2,7 +2,9 @@ module Visi.Runtime (ErrorCallback,
                      SourceSinkCallback, SetSinksCallback,
                      SourceSinkInfo(SourceInfo, SinkInfo),
                      AppCallback(AppCallback),
-                     runApp, setSource) where
+                     ExecCommand,
+                     VisiCommand(SetProgramText, SetStringSource, SetNumberSource, SetBoolSource, StopRunning),
+                     runApp) where
     
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -21,7 +23,7 @@ module Visi.Runtime (ErrorCallback,
  *
  * The Initial Developer of the Original Code is
  * David Pollak.
- * Portions created by the Initial Developer are Copyright (C) 2011
+ * Portions created by the Initial Developer are Copyright (C) 2011-2012
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -52,7 +54,8 @@ data SourceSinkInfo =
     SourceInfo T.Text Prim
     | SinkInfo T.Text Prim 
     deriving (Show)
- 
+
+{- 
 runningApp :: IORef (Maybe (Chan AppCmd))
 runningApp = unsafePerformIO $ newIORef Nothing
 
@@ -67,12 +70,50 @@ setSource name value =
     do
         chan <- readIORef runningApp
         maybeChan chan $ flip writeChan set
+-}
+
+-- runOnThread :: 
+runOnThread = 
+  do
+    localVar <- newEmptyMVar
+    let loopIt = do
+        func <- takeMVar localVar
+        forkIO func
+        loopIt
+    let run func = do
+        putMVar localVar func
+    forkOS loopIt -- 3 OS threads running the round robin command handler
+    forkOS loopIt -- FIXME get a real thread pool
+    forkOS loopIt
+    return run
+
+data VisiCommand = SetProgramText T.Text
+                   | SetStringSource T.Text T.Text
+                   | SetNumberSource T.Text Double
+                   | SetBoolSource T.Text Bool
+                   | StopRunning
+
+type ExecCommand = VisiCommand -> IO ()
 
 -- | run an application
 -- FIXME this is a concurrency problem... if two different runApp calls are made
 -- before the app is set up.
-runApp :: String -> AppCallback -> IO ()
-runApp code callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) = 
+runApp :: AppCallback -> IO ExecCommand
+runApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) = 
+  do
+    mvar <- newEmptyMVar
+    let runIt v = do
+                    putMVar mvar v
+    let runOMatic = do
+        v <- takeMVar mvar
+        case v of
+          StopRunning -> return ()
+          _ -> runOMatic
+    tf <- runOnThread
+    tf runOMatic
+    return runIt
+
+{-
     let shutDown it = (Nothing, it) in
     do
       chan <- atomicModifyIORef runningApp shutDown
@@ -89,8 +130,9 @@ runApp code callback@(AppCallback errorCallback sourceSinkCallback setSinksCallb
                     writeIORef runningApp $ Just chan
                     forkOS $ threadRunApp callback chan grp allExp
                     return ()
-      
+-}    
 
+{-
 fromSink (name, _, TPrim p) = SinkInfo name p
 fromSource (name, TPrim p) = SourceInfo name p
 
@@ -133,3 +175,4 @@ threadRunApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCall
                    writeIORef runningApp Nothing
                    return ()) -- find & send sources and sinks or type errors
           
+-}
