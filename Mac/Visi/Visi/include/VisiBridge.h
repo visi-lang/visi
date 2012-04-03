@@ -33,23 +33,35 @@ enum cmds {
 typedef struct {
 	enum cmds cmd;
 	const char *target;
-	union info {
+	union  {
 		const char *text;
 		int boolValue;
-		int intValue;
 		double number;
-	} theInfo;
+	} cmdInfo;
 } visi_command;
 
-
+enum evts {
+ reportErrorEvent} visiEvents;
 
 typedef struct 
 {
 	int cmd;
-	const char *text;
-	int boolValue;
-	double number;
+	union {
+		char *errorText;
+
+	} evtInfo;
 } visi_event;
 
-void runCommand(const void *id, const visi_command *cmd);
+/**
+ * Send an event into ObjC land and execute the event on the UI thread
+ */
+void sendEvent(const void *id, visi_event *evt);
 
+// a command callback
+typedef void(*cmdFunc)(visi_command *cmd);
+
+cmdFunc startProcess(void *controller);
+
+void freeEvent(visi_event *evt);
+
+void freeFunPtr(cmdFunc cmd);

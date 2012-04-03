@@ -55,8 +55,28 @@ haskellMain argc argv =
       ret <- afterHaskellmain argc argv
       return ret
 
-foreign export ccall fromMac :: VoidPtr -> (FunPtr ExecCommand) -> IO ()
+foreign export ccall freeFunPtr :: FunPtr (VoidPtr -> IO ()) -> IO ()
+freeFunPtr ptr = freeHaskellFunPtr ptr
+
+foreign import ccall "wrapper"
+  wrapIt :: (VoidPtr -> IO ()) -> IO (FunPtr (VoidPtr -> IO ()))
+
+foreign export ccall startProcess :: VoidPtr -> IO (FunPtr (VoidPtr -> IO ()))
+startProcess objcId =
+    do
+        handler <- runApp $ AppCallback (doError objcId) (doSourceSink objcId) (doSetSinks objcId)
+        wrapIt $ handleMsg  handler
+
+handleMsg handler msg =
+    do
+        myMsg <- convertFromC msg
+        handler myMsg
+
+{-
+foreign export ccall fromMac :: VoidPtr -> VoidPtr -> IO ()
 fromMac cmd handlerFunc = 
     do
         cvt <- convertFromC cmd
+
         handlerFunc cvt
+-}

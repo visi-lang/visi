@@ -14,6 +14,7 @@
 		DE2B0E4F14E4629700EC530F /* VisiDocument.m in Sources */ = {isa = PBXBuildFile; fileRef = DE2B0E4E14E4629700EC530F /* VisiDocument.m */; };
 		DE2B0E5214E4629700EC530F /* VisiDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5014E4629700EC530F /* VisiDocument.xib */; };
 		DE2B0E5514E4629700EC530F /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5314E4629700EC530F /* MainMenu.xib */; };
+		DE42EA14152B860100C16B47 /* RunCommandOnMainThread.m in Sources */ = {isa = PBXBuildFile; fileRef = DE42EA13152B860100C16B47 /* RunCommandOnMainThread.m */; };
 		DEA103F514E5F19300685CB6 /* libiconv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = DEA103F414E5F19300685CB6 /* libiconv.dylib */; };
 		DEA103F714E5F81C00685CB6 /* WholeVisi.o in Frameworks */ = {isa = PBXBuildFile; fileRef = DEA103F614E5F81C00685CB6 /* WholeVisi.o */; };
 /* End PBXBuildFile section */
@@ -43,6 +44,8 @@
 		DE2B0E4E14E4629700EC530F /* VisiDocument.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VisiDocument.m; sourceTree = "<group>"; };
 		DE2B0E5114E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/VisiDocument.xib; sourceTree = "<group>"; };
 		DE2B0E5414E4629700EC530F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		DE42EA12152B860100C16B47 /* RunCommandOnMainThread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RunCommandOnMainThread.h; sourceTree = "<group>"; };
+		DE42EA13152B860100C16B47 /* RunCommandOnMainThread.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RunCommandOnMainThread.m; sourceTree = "<group>"; };
 		DE7FF64814E7281700188E46 /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon.png; sourceTree = "<group>"; };
 		DEA103F414E5F19300685CB6 /* libiconv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.dylib; path = usr/lib/libiconv.dylib; sourceTree = SDKROOT; };
 		DEA103F614E5F81C00685CB6 /* WholeVisi.o */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = WholeVisi.o; sourceTree = "<group>"; };
@@ -104,6 +107,8 @@
 		DE2B0E4114E4629700EC530F /* Visi */ = {
 			isa = PBXGroup;
 			children = (
+				DE42EA12152B860100C16B47 /* RunCommandOnMainThread.h */,
+				DE42EA13152B860100C16B47 /* RunCommandOnMainThread.m */,
 				DE2B0E4D14E4629700EC530F /* VisiDocument.h */,
 				DE2B0E4E14E4629700EC530F /* VisiDocument.m */,
 				DE2B0E5014E4629700EC530F /* VisiDocument.xib */,
@@ -210,6 +215,7 @@
 			files = (
 				DE2B0E4814E4629700EC530F /* main.m in Sources */,
 				DE2B0E4F14E4629700EC530F /* VisiDocument.m in Sources */,
+				DE42EA14152B860100C16B47 /* RunCommandOnMainThread.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,9 +319,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
 				INFOPLIST_FILE = "Visi/Visi-Info.plist";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};

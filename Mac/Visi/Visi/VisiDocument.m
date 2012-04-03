@@ -3,19 +3,36 @@
 //  Visi
 //
 //  Created by David Pollak on 2/9/12.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
+//  Copyright (c) 2012 David Pollak. All rights reserved.
 //
 
 #import "VisiDocument.h"
+#import "RunCommandOnMainThread.h"
 
-#import "include/VisiBridge.h"
+void setText(NSTextView *tv, NSString *txt);
+
+void setText(NSTextView *tv, NSString *txt) {
+    NSString *cur =  [[tv textStorage] string];
+    [[tv textStorage] replaceCharactersInRange: NSMakeRange(0, [cur length]) 
+                                    withString:txt];
+}
+
+void freeEvent(visi_event *evt) {
+    switch (evt -> cmd) {
+        case reportErrorEvent:
+            if (evt -> evtInfo.errorText != Nil) free(evt -> evtInfo.errorText);
+            break;
+    }
+    free(evt);
+}
+
+void sendEvent(const void *theId, visi_event *evt) {
+    id target = (__bridge id) theId;
+    RunCommandOnMainThread *rc = [[RunCommandOnMainThread alloc] init:target event:evt];
+    [rc run];
+}
 
 @implementation VisiDocument
-
-void runCommand(const void *theId, const visi_command *cmd) {
-    id target = (__bridge id) theId;
-    // FIXME
-}
 
 @synthesize editor;
 @synthesize output;
@@ -23,12 +40,14 @@ void runCommand(const void *theId, const visi_command *cmd) {
 @synthesize base;
 
 - (IBAction)runCode:(id) sender {
-    printf("I like eating mice!!!\n");
+    NSString *theCode = [[editor textStorage] string];
+    visi_command cmd;
+    setText(errorInfo, @"Meow Mr. Moose");
+    cmd.cmd = setProgramTextCmd;
+    cmd.cmdInfo.text = [theCode UTF8String];
+    callIntoVisi(&cmd);
 }
 
-- (void)runCmd:(int) cmd name:(NSString *)name value:(NSString *) value {
-    
-}
 
 - (IBAction)grabBool:(id)sender {
     /*
@@ -47,26 +66,39 @@ void runCommand(const void *theId, const visi_command *cmd) {
     return nil;
 }
 
-/*
- - (void) findCopyOrRemove: (SourceSinkInfo *) ss {
- 
- }
- */
-
 - (void) layoutControls {
     
 }
 
-
-
 - (id)init
 {
     self = [super init];
+    callIntoVisi = Nil;
     if (self) {
         self.base = @"";
+        callIntoVisi = startProcess((__bridge void *) self);
     }
     return self;
 }
+
+- (void)runEvent:(visi_event *)event {
+    switch (event -> cmd) {
+        case reportErrorEvent:
+        {
+            char *str = event -> evtInfo.errorText;
+            if (str) {
+                setText(errorInfo, [[NSString alloc] initWithUTF8String:str]);
+            } else {
+                setText(errorInfo, @"");
+            }
+        }
+            break;
+            
+        default:
+            break;
+    }
+}
+
 
 - (NSString *)windowNibName
 {
@@ -78,10 +110,22 @@ void runCommand(const void *theId, const visi_command *cmd) {
 - (void)windowControllerDidLoadNib:(NSWindowController *)aController
 {
     [super windowControllerDidLoadNib:aController];
-    NSString *cur =  [[self.editor textStorage] string];
-    [[self.editor textStorage] replaceCharactersInRange: NSMakeRange(0, [cur length]) withString:self.base];
+    setText(editor, base);
     [editor setAutomaticSpellingCorrectionEnabled:NO];
+    [self runCode: self];
     // Add any code here that needs to be executed once the windowController has loaded the document's window.
+}
+
+- (void) windowWillClose: (NSNotification *) notification
+{
+    if (callIntoVisi != Nil) {
+    visi_command cmd;
+    cmd.cmd = stopRunningCmd;
+    callIntoVisi(&cmd);
+    freeFunPtr(callIntoVisi);
+    callIntoVisi = Nil;
+    printf("Dude... I is done\n");
+    }
 }
 
 - (NSData *)dataOfType:(NSString *)typeName error:(NSError **)outError

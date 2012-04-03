@@ -3,10 +3,12 @@
 //  Visi
 //
 //  Created by David Pollak on 2/9/12.
-//  Copyright (c) 2012 __MyCompanyName__. All rights reserved.
+//  Copyright (c) 2012 David Pollak. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>
+
+#import "include/VisiBridge.h"
 
 @interface VisiDocument : NSDocument{
 	NSTextView *editor;
@@ -15,6 +17,7 @@
 	NSArray *currentControls;
 	NSMutableArray *newControls;
     NSString *base;
+    cmdFunc callIntoVisi;
 }
 
 @property (retain, nonatomic) IBOutlet NSTextView *editor;
@@ -23,11 +26,11 @@
 @property (retain, nonatomic) IBOutlet NSString *base;
 
 - (IBAction)runCode:(id) sender;
-- (void)runCmd:(int) cmd name:(NSString *)name value:(NSString *) value;
 - (IBAction)grabBool:(id)sender;
 - (IBAction)grabText:(id)sender;
-
+- (void) windowWillClose: (NSNotification *) notification;
 - (NSTextField *)findSink:(NSString *)name;
+- (void)runEvent:(visi_event *)event;
 
 // - (void) findCopyOrRemove: (SourceSinkInfo *) ss;
 - (void) layoutControls;					

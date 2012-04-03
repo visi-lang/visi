@@ -44,7 +44,7 @@ import qualified Data.Text as T
 -- | The visi runtime... an interface between abstract systems and the current system
 -- | Right now, we only support a single app, but we'll expand to multiple running apps
  
-type ErrorCallback = T.Text -> IO ()
+type ErrorCallback = Maybe T.Text -> IO ()
 type SourceSinkCallback = [SourceSinkInfo] -> IO ()
 type SetSinksCallback = [(T.Text, Value)] -> IO ()
 
@@ -96,23 +96,51 @@ data VisiCommand = SetProgramText T.Text
 type ExecCommand = VisiCommand -> IO ()
 
 -- | run an application
--- FIXME this is a concurrency problem... if two different runApp calls are made
--- before the app is set up.
 runApp :: AppCallback -> IO ExecCommand
-runApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) = 
+runApp callback = 
   do
     mvar <- newEmptyMVar
     let runIt v = do
                     putMVar mvar v
-    let runOMatic = do
-        v <- takeMVar mvar
-        case v of
-          StopRunning -> return ()
-          _ -> runOMatic
     tf <- runOnThread
-    tf runOMatic
+    tf $ doRunRun mvar Map.empty baseProgram callback
+    putStrLn "Dude... I started one!!!"
     return runIt
 
+doRunRun mvar vars program callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) =
+  do
+    v <- takeMVar mvar
+    case v of
+      StopRunning -> do
+        return ()
+
+      SetProgramText text -> do
+            errorCallback Nothing
+            doRunRun mvar vars program callback
+
+      _ -> doRunRun mvar vars program callback
+
+baseProgram =
+  case parseLines "" of
+    Right exps -> let allExp = builtInExp ++ exps in
+      let grp = mkGroup allExp in
+      (grp, allExp)
+
+
+{-
+setProgramText callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) code =
+  do
+    let stuff = parseLines $ T.unpack code
+    runIt stuff
+    where
+      runIt (Left err) = errorCallback $ Just $ T.pack $ show err
+      runIt (Right exps) = runExp exps
+      runExp exps =
+        let allExp = builtInExp ++ exps in
+        let grp = mkGroup allExp in
+        do
+          forkIO 
+-}
 {-
     let shutDown it = (Nothing, it) in
     do
