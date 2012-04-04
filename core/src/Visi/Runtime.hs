@@ -39,6 +39,7 @@ import Visi.Executor
 import Visi.Typer
 import Data.IORef
 import Control.Exception
+import Visi.Model
 import qualified Data.Text as T
 
 -- | The visi runtime... an interface between abstract systems and the current system
@@ -103,11 +104,11 @@ runApp callback =
     let runIt v = do
                     putMVar mvar v
     tf <- runOnThread
-    tf $ doRunRun mvar Map.empty baseProgram callback
+    tf $ doRunRun mvar blankModel callback
     putStrLn "Dude... I started one!!!"
     return runIt
 
-doRunRun mvar vars program callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) =
+doRunRun mvar model callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) =
   do
     v <- takeMVar mvar
     case v of

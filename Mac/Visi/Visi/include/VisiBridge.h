@@ -33,7 +33,7 @@ enum cmds {
 typedef struct {
 	enum cmds cmd;
 	const char *target;
-	union  {
+	union {
 		const char *text;
 		int boolValue;
 		double number;

@@ -1,8 +1,10 @@
-module Visi.Util (flatten, VisiError(TypeError, ParsingError), ThrowsError, vtrace, justOr, (|-)) where
+module Visi.Util (flatten, VisiError(TypeError, ParsingError), ThrowsError, vtrace, justOr, (|-), unsafeRandom) where
 
 import Control.Monad.Error
 import Text.Parsec
 import Debug.Trace
+import System.IO.Unsafe
+import System.Random
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -21,7 +23,7 @@ import Debug.Trace
  *
  * The Initial Developer of the Original Code is
  * David Pollak.
- * Portions created by the Initial Developer are Copyright (C) 2011
+ * Portions created by the Initial Developer are Copyright (C) 2011-2012
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -50,6 +52,10 @@ showError :: VisiError -> String
 showError (TypeError str) = "Type error: " ++ str
 showError (DefaultError str) = "Uncategorized error: " ++ str
 showError (ParsingError pe) = show pe
+
+-- | Create a random value... without actually being in the
+-- | IO monad
+unsafeRandom x = unsafePerformIO $ randomIO
 
 instance Show VisiError where show = showError
 
