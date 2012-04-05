@@ -31,6 +31,7 @@ import Visi.Expression
 import Visi.Parse
 import Visi.Executor
 import Visi.Typer
+import Visi.Model
 import Control.Monad.Error
 import qualified Data.Text as T
 import qualified Data.Map as Map

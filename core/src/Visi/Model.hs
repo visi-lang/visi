@@ -1,5 +1,5 @@
 module Visi.Model (Model, SinkActionInfo, blankModel, newModel, setSourceValue, createSinkAction,
-    SinkAction, addSinkAction, removeSinkAction) where
+    SinkAction, addSinkAction, removeSinkAction, modelSources, modelSinks, setModelCode) where
     
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -30,32 +30,40 @@ import Visi.Expression
 import qualified Data.Map as Map
 import Data.UUID
 import Visi.Util
+import Visi.Parse
+import Visi.Executor
+import Visi.Typer
+import Visi.Expression
 
-type SinkAction = T.Text -> Value -> IO ()
+type SinkAction a = Model a -> T.Text -> Value -> IO ()
 
-data Model = Model {
+data Model a = Model {
     name :: T.Text,
     code :: Maybe T.Text,
-    letScope :: Either T.Text LetScope,
+    letScope :: Either VisiError LetScope,
     sources :: Map.Map T.Text (Type, Value),
-    sinks :: Map.Map T.Text SinkStuff,
-    defaultSinkAction :: Maybe SinkAction
+    sinks :: Map.Map T.Text (SinkStuff a),
+    defaultSinkAction :: Maybe (SinkAction a),
+    localData :: Maybe a
     } deriving (Show)
 
-data SinkStuff = SinkStuff {sinkName :: T.Text, sinkType :: Type, sinkValue :: Value,
- sinkActions :: [SinkActionInfo]} deriving (Show)
+data SinkStuff a = SinkStuff {sinkName :: T.Text, sinkType :: Type, sinkValue :: Value,
+    sinkExpression :: Maybe Expression,
+    sinkActions :: [SinkActionInfo a]} deriving (Show)
 
-data SinkActionInfo = SinkActionInfo UUID SinkAction deriving (Show)
+data SinkActionInfo a = SinkActionInfo UUID (SinkAction a) deriving (Show)
 
 -- | create a blank model
-blankModel :: Model
-blankModel = Model {name = T.pack "blank", code = Nothing, letScope = Left $ T.pack "blank",
-                    sources = Map.empty, sinks = Map.empty, defaultSinkAction = Nothing}
+-- blankModel :: Model String
+blankModel = Model {name = T.pack "blank", code = Nothing, letScope = Left $ DefaultError "No Model",
+                    sources = Map.empty, sinks = Map.empty, defaultSinkAction = Nothing,
+                    localData = Nothing}
 
 -- | Create a new, named model
-newModel :: T.Text -> Model
-newModel n = Model {name = n, code = Nothing, letScope = Left $ T.pack "blank",
-                    sources = Map.empty, sinks = Map.empty, defaultSinkAction = Nothing}
+newModel :: T.Text -> Maybe a -> Model a
+newModel n ld = Model {name = n, code = Nothing, letScope = Left $ DefaultError "No Model",
+                       sources = Map.empty, sinks = Map.empty, defaultSinkAction = Nothing,
+                       localData = ld}
 
 -- | given a model, set the default sink action
 -- | Whenever a new sink is created, the default sink action is added to that sink
@@ -65,20 +73,103 @@ setDefaultSinkAction action model =
 -- | remove the default sink action from the model
 removeDefaultSinkAction model = model {defaultSinkAction = Nothing}
 
+modelLocalData :: Model a -> Maybe a
+modelLocalData model = localData model
+
+-- | Is the model valid? Does it have correctly defined code?
+validModel :: Model a -> Bool
+validModel model =
+    case letScope model of
+        Right _ -> True
+        _ -> False
+
+data SourceSinkInfo = 
+    SourceInfo T.Text Prim
+    | SinkInfo T.Text Prim 
+    deriving (Show)
+
+
+-- | get the sources of the Model
+modelSources :: Model a -> Map.Map T.Text (Type, Value)
+modelSources = sources
+
+modelSinks :: Model a -> Map.Map T.Text (Type, Value)
+modelSinks model = error "FIXME implement"
+
+fromSink (name, _, TPrim p) = SinkInfo name p
+fromSource (name, TPrim p) = SourceInfo name p
+
+--mergeSinkStuff :: Map.Map T.Text (SinkStuff a) -> [(T.Text, Expression, Type)] -> Map.Map T.Text (SinkStuff a)
+--mergeSinkStuff old new = old
+
+fst3 (a, _, _) = a
+
+mergeSourceInfo :: Map.Map T.Text (Type, Value) -> [(T.Text, Type)] -> Map.Map T.Text (Type, Value)
+mergeSourceInfo old new =
+    Map.fromList $ map lookItUp new
+    where
+        lookItUp (name, tpe) = case Map.lookup name old of
+            Just (oldType, oldVal) | oldType == tpe -> (name, (tpe, oldVal))
+            _ -> (name, (tpe, defaultValueForType tpe))
+
 -- | sets or updates the model code
--- setModelCode :: T.Text -> Model -> Model
+setModelCode :: T.Text -> Model a -> Either (VisiError, Model a) (Model a, [T.Text])
+setModelCode theCode model = 
+    let updatedModel = model {code = Just theCode} in
+    case parseLines $ T.unpack theCode of
+        Left err -> Left (err, updatedModel {letScope = Left err})
+        Right exps -> let top = builtInExp ++ exps in
+             let grp = mkGroup top in
+             case collectTypes grp of
+                Left err -> Left (err, updatedModel {letScope = Left err})
+                Right lets -> do
+                  let theScope = buildLetScope grp
+                  let typeMap = Map.fromList lets
+                  let doEval vars (name, expr) = (name, eval vars theScope expr)
+                  let sinks' = calcSinks top typeMap
+                  let theSources = calcSources top typeMap
+                  let theSources' =  mergeSourceInfo (sources updatedModel) theSources
+                  let sourceVars = Map.map snd theSources'
+                  let oldSinks = sinks updatedModel
+                  let buildSinkMap = let calcSink (name, expr, tpe) = let theActions = justOr (fmap sinkActions 
+                                                                                        (Map.lookup name oldSinks))
+                                                                                        (fmap createSinkAction (listify $ 
+                                                                                            defaultSinkAction updatedModel)) in
+                                                     let calcValue = eval sourceVars theScope expr in
+                                                     (name, SinkStuff{sinkName = name, sinkType = tpe, 
+                                                        sinkExpression = Just expr,
+                                                         sinkValue = calcValue, sinkActions = theActions}) in
+                        Map.fromList $ map calcSink sinks'
+                  let model' = updatedModel {letScope = Right theScope, 
+                                             sources = theSources',
+                                             sinks = buildSinkMap
+                                             }
+                  return (model', map fst3 sinks')
+
 
 -- | Set a value in a model, recompute the model and list all the Sinks that changed
-setSourceValue :: T.Text -> Value -> Model -> (Model, [T.Text])
-setSourceValue name value model = error "FIXME - - implement setValue"
+setSourceValue :: T.Text -> Value -> Model a -> Either VisiError (Model a, [T.Text])
+setSourceValue name value model = 
+    let theSources = sources model in
+    case (Map.lookup name theSources, letScope model) of
+        (_, Left err) -> Left err
+        (Nothing, _) -> Left $ DefaultError $ "Source not found: " ++ (T.unpack name)
+        (Just (tpe, _), _) | tpe /= valuePrim value -> Left $ DefaultError $ "Type mismatch for source: " ++ (T.unpack name)
+        (Just (tpe, oldVal), Right theScope) | oldVal /= value -> let newSources = Map.insert name (tpe, value) theSources in
+            let sourceVars = Map.map snd newSources in
+            let calcValue expr = eval sourceVars theScope expr in
+            let sinks' = sinks model in
+            let recalcSinks = sinks' in
+            Right (model {sources = newSources, sinks = recalcSinks}, Map.keys sinks')
+        _ -> Right (model, [])
 
-runSinkActions :: [T.Text] -> Model -> IO ()
+runSinkActions :: [T.Text] -> Model a -> IO ()
 runSinkActions names model =
     do
         let actions = collectSinkActions names model
-        mapM_ (\x -> x) actions
+        mapM_ passthru actions
 
-collectSinkActions :: [T.Text] -> Model -> [IO ()]
+collectSinkActions :: [T.Text] -> Model a -> [IO ()]
 collectSinkActions names model =
     do
         let snk = sinks model
@@ -89,34 +180,27 @@ collectSinkActions names model =
         let sv = sinkValue stuff
         action <- actions
         let (SinkActionInfo _ func) = action
-        return $ func sn sv
+        return $ func model sn sv
 
-listify (Just a) = [a]
-listify _ = []
-
-addSinkAction :: T.Text -> SinkActionInfo -> Model -> Model
+addSinkAction :: T.Text -> SinkActionInfo a -> Model a -> Model a
 addSinkAction name action model =
     model {sinks = updateSinks $ sinks model}
-    where updateSinks sinkMap = case Map.lookup name sinkMap of
-                                    Just stuff -> Map.insert name 
-                                                    (stuff {sinkActions = action:(sinkActions stuff)}) sinkMap
-                                    _ -> sinkMap
+    where updateSinks sinkMap = Map.adjust (\s -> s {sinkActions = action:(sinkActions s)}) name sinkMap 
 
-removeSinkAction :: T.Text -> SinkActionInfo -> Model -> Model
+
+removeSinkAction :: T.Text -> SinkActionInfo a -> Model a -> Model a
 removeSinkAction name action model =
     model {sinks = updateSinks $ sinks model}
-    where updateSinks sinkMap = case Map.lookup name sinkMap of
-                                    Just stuff -> Map.insert name 
-                                                    (stuff {sinkActions = filter (/= action) (sinkActions stuff)}) sinkMap
-                                    _ -> sinkMap
+    where updateSinks sinkMap = Map.adjust (\s -> s {sinkActions = filter (/= action) (sinkActions s)}) name sinkMap
+
 -- | Given a function to execute when the Sink value changes
 -- | create a sinkAction that can be added to a model (and later removed)
-createSinkAction :: SinkAction -> SinkActionInfo
+createSinkAction :: SinkAction a -> SinkActionInfo a
 createSinkAction sa = SinkActionInfo (unsafeRandom 33) sa
 
 
-instance Eq SinkActionInfo where
+instance Eq (SinkActionInfo a) where
     (SinkActionInfo uuid1 _) == (SinkActionInfo uuid2 _) = uuid1 == uuid2
 
-instance Show SinkAction where
+instance Show (SinkAction a) where
     show _ = "<SinkAction>"

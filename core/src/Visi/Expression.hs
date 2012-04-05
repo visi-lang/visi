@@ -11,6 +11,7 @@ module Visi.Expression (
                            Prim(PrimDouble, PrimBool, PrimStr),
                            valuePrim,
                            tFun, funcOperName,
+                           defaultValueForType,
                            Value(DoubleValue, StrValue, BoolValue, FuncValue, UndefinedValue)) where
 
 {- ***** BEGIN LICENSE BLOCK *****
@@ -102,6 +103,12 @@ instance Show Type where
 
 data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord)
 
+
+defaultValueForType (TPrim PrimDouble) = DoubleValue 0.0
+defaultValueForType (TPrim PrimStr) = StrValue $ T.pack ""
+defaultValueForType (TPrim PrimBool) = BoolValue False
+defaultValueForType _ = UndefinedValue
+
 instance Show Prim where
   show PrimDouble = "Double"
   show PrimBool = "Bool"
@@ -115,7 +122,7 @@ valuePrim (BoolValue _) = TPrim PrimBool
 data Value = DoubleValue Double
              | StrValue T.Text
              | BoolValue Bool
-             | UndefinedValue
+             | UndefinedValue -- FIXME we hate undefined and it should go away 'cause it's null
              | FuncValue (Value -> Value)
 
 instance Eq Value where

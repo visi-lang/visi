@@ -29,7 +29,6 @@ import qualified Data.Text as T
 import Data.Maybe (fromMaybe)
 
 import Visi.Expression
-import Visi.Model
 
  -- | give a list of Expressions and a map of function name to type, return the function name
  -- | the expression and the type

@@ -1,10 +1,12 @@
-module Visi.Util (flatten, VisiError(TypeError, ParsingError), ThrowsError, vtrace, justOr, (|-), unsafeRandom) where
+module Visi.Util (flatten, VisiError(TypeError, ParsingError, DefaultError), ThrowsError,
+					passthru, listify, justFunc, vtrace, justOr, (|-), unsafeRandom) where
 
 import Control.Monad.Error
 import Text.Parsec
 import Debug.Trace
 import System.IO.Unsafe
 import System.Random
+import qualified Data.Map as Map
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -64,9 +66,21 @@ instance Error VisiError where
     strMsg = DefaultError
     
 justOr thing err = case thing of
-                    (Just v) -> return v
+                    (Just v) -> {-return-} v
                     _ -> err
                     
+
+-- | Turn a Maybe into a List of 0 or 1 element
+listify (Just a) = [a]
+listify _ = []
+
+passthru x = x
+
+justFunc val maybe func =
+	case maybe of
+		Just x -> func x
+		_ -> val
+
 (|-) :: Either b a -> (a -> Either b c) -> Either b c
 (Right a) |- f = f a
 (Left b) |- _ = Left b
