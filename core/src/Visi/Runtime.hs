@@ -92,32 +92,44 @@ data VisiCommand = SetProgramText T.Text
                    | SetStringSource T.Text T.Text
                    | SetNumberSource T.Text Double
                    | SetBoolSource T.Text Bool
-                   | StopRunning
+                   | StopRunning deriving (Show)
 
 type ExecCommand = VisiCommand -> IO ()
 
 -- | run an application
 runApp :: AppCallback -> IO ExecCommand
-runApp callback = 
+runApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) = 
   do
     mvar <- newEmptyMVar
     let runIt v = do
                     putMVar mvar v
     tf <- runOnThread
-    tf $ doRunRun mvar (newModel (T.pack "MyModel") Nothing) callback
+    let sinkAction model name value = setSinksCallback [(name, value)]
+    let theModel = setDefaultSinkAction sinkAction $ newModel (T.pack "MyModel") Nothing
+    tf $ doRunRun mvar theModel callback
     putStrLn "Dude... I started one!!!"
     return runIt
 
 doRunRun mvar model callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) =
   do
     v <- takeMVar mvar
+    putStrLn $ "Got cmd " ++ (show v)
     case v of
       StopRunning -> do
         return ()
 
-      SetProgramText text -> do
-            errorCallback Nothing
-            doRunRun mvar model callback
+      SetProgramText text -> case setModelCode text model of
+                              Left (err, model) -> do
+                                putStrLn $ "Got err" ++ (show err)
+                                errorCallback $ Just $ T.pack $ show err
+                                doRunRun mvar model callback
+
+                              Right (model, updates) -> do
+                                putStrLn $ "Success for sinks " ++ (show updates)
+                                errorCallback Nothing
+                                runSinkActions updates model
+                                doRunRun mvar model callback
+        
 
       _ -> doRunRun mvar model callback
 

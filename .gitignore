@@ -10,3 +10,4 @@ build
 Testly.hs
 .DS_Store
 *.xcuserstate
+*.xcuserdatad

@@ -1,5 +1,7 @@
 module Visi.Model (Model, SinkActionInfo, newModel, setSourceValue, createSinkAction,
-    SinkAction, addSinkAction, removeSinkAction, modelSources, modelSinks, setModelCode) where
+    SinkAction, addSinkAction, removeSinkAction, modelSources, modelSinks, setModelCode,
+    runSinkActions,
+    setDefaultSinkAction, removeDefaultSinkAction) where
     
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -161,7 +163,10 @@ setSourceValue name value model =
             let sourceVars = Map.map snd newSources in
             let calcValue expr = eval sourceVars theScope expr in
             let sinks' = sinks model in
-            let recalcSinks = sinks' in
+            let recalcIt old = case sinkExpression old of
+                                  Just expr -> old {sinkValue = eval sourceVars theScope expr}
+                                  _ -> old in
+            let recalcSinks = Map.map recalcIt sinks' in
             Right (model {sources = newSources, sinks = recalcSinks}, Map.keys sinks')
         _ -> Right (model, [])
 
