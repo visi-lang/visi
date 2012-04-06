@@ -1,4 +1,4 @@
-module Visi.Model (Model, SinkActionInfo, blankModel, newModel, setSourceValue, createSinkAction,
+module Visi.Model (Model, SinkActionInfo, newModel, setSourceValue, createSinkAction,
     SinkAction, addSinkAction, removeSinkAction, modelSources, modelSinks, setModelCode) where
     
 {- ***** BEGIN LICENSE BLOCK *****
@@ -55,9 +55,11 @@ data SinkActionInfo a = SinkActionInfo UUID (SinkAction a) deriving (Show)
 
 -- | create a blank model
 -- blankModel :: Model String
+{-
 blankModel = Model {name = T.pack "blank", code = Nothing, letScope = Left $ DefaultError "No Model",
                     sources = Map.empty, sinks = Map.empty, defaultSinkAction = Nothing,
                     localData = Nothing}
+-}
 
 -- | Create a new, named model
 newModel :: T.Text -> Maybe a -> Model a

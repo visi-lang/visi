@@ -104,7 +104,7 @@ runApp callback =
     let runIt v = do
                     putMVar mvar v
     tf <- runOnThread
-    tf $ doRunRun mvar blankModel callback
+    tf $ doRunRun mvar (newModel (T.pack "MyModel") Nothing) callback
     putStrLn "Dude... I started one!!!"
     return runIt
 
@@ -117,9 +117,9 @@ doRunRun mvar model callback@(AppCallback errorCallback sourceSinkCallback setSi
 
       SetProgramText text -> do
             errorCallback Nothing
-            doRunRun mvar vars program callback
+            doRunRun mvar model callback
 
-      _ -> doRunRun mvar vars program callback
+      _ -> doRunRun mvar model callback
 
 baseProgram =
   case parseLines "" of

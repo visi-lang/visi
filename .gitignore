@@ -8,3 +8,5 @@ parsley
 TAGS
 build
 Testly.hs
+.DS_Store
+*.xcuserstate

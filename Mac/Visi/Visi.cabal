@@ -12,7 +12,7 @@ Library
     -- Include-dirs: /Users/dpp//TeamSpace/proj/visi/Mac/Visi/include
     extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface, FlexibleInstances 
     Hs-Source-Dirs: Visi/haskell, ../../core/src
-    Other-Modules: VisiPro.Mac, VisiPro.Bridge, Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, Visi.Executor, Visi.Typer
+    Other-Modules: VisiPro.Mac, VisiPro.Bridge, Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, Visi.Executor, Visi.Typer, Visi.Model
     Build-Depends:
         base >= 4,
         old-time,
@@ -23,6 +23,7 @@ Library
         containers,
         pretty,
         text,
-        uuid
+        uuid,
+        random
 
 
