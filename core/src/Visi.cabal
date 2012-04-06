@@ -19,5 +19,4 @@ Executable visi
                      mtl,
                      HUnit,
                      text,
-		     uuid
-
+		                 uuid
