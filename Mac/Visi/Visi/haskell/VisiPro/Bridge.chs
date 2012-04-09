@@ -7,6 +7,8 @@ import Foreign.C.String
 import qualified Data.Text as T
 import Foreign.Marshal.Alloc
 import Visi.Runtime
+import Visi.Expression
+import Visi.Model
 
 #include "VisiBridge.h"
 
@@ -17,6 +19,8 @@ type VoidPtr = Ptr ()
 {#enum cmds as VisiCmds {upcaseFirstLetter} deriving (Show, Eq) #}
 
 {#enum evts as VisiEvents {upcaseFirstLetter} deriving (Show, Eq) #}
+
+{#enum theTypes as VisiTypes {upcaseFirstLetter} deriving (Show, Eq) #}
 
 {-
 sendEvent to (SetProgramText text) = 
@@ -55,50 +59,67 @@ getUnpacked what =
 getTarget what = getUnpacked $ {#get visi_command->target#} what
 
 
-doError objcId text = 
+doError objcId err = 
   do
     ptr <- mallocBytes {#sizeof visi_event #}
     {#set visi_event->cmd #} ptr $ enumMe ReportErrorEvent
-    errStr <- case text of
-      Just text -> newString text
+    errStr <- case err of
+      Just err -> newCString $ show err
       _ -> return nullPtr
     {#set visi_event->evtInfo.errorText #} ptr errStr
     {#call sendEvent #} objcId ptr
 
 
 
-doSourceSink objcId sourceSinkInfo = return ()
 
-doSetSinks objcId nvp = return ()
+doSourceSink :: VoidPtr -> [SourceSinkAction] -> IO ()
+doSourceSink objcId sourceSinkInfo = 
+  let doAction (RemoveSourceAction src) = do
+        ptr <- mallocBytes {#sizeof visi_event #}
+        {#set visi_event->cmd #} ptr $ enumMe RemoveSourceEvent
+        errStr <- newString src
+        {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
+        {#call sendEvent #} objcId ptr
+      doAction (RemoveSinkAction src) = do
+        ptr <- mallocBytes {#sizeof visi_event #}
+        {#set visi_event->cmd #} ptr $ enumMe RemoveSinkEvent
+        errStr <- newString src
+        {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
+        {#call sendEvent #} objcId ptr
+      doAction _ = return () in
+  mapM_ doAction sourceSinkInfo
 
-{-
-type ErrorCallback = T.Text -> IO ()
-type SourceSinkCallback = [SourceSinkInfo] -> IO ()
-type SetSinksCallback = [(T.Text, Value)] -> IO ()
--}
 
-convertFromC :: VoidPtr -> IO VisiCommand
+doSetSinks :: VoidPtr -> [(T.Text, Value)] -> IO ()
+doSetSinks objcId nvp = do
+  putStrLn $ "Do Set Sinks: " ++ show nvp
+  return ()
+
+convertFromC :: VoidPtr -> IO (Maybe VisiCommand)
 convertFromC what =
   do
     cmd <- getCommandCmd what
+    cmdType' <- {#get visi_command->cmdType#} what
+    let cmdType = toEnum $ fromIntegral $ cmdType'
     case toEnum $ fromIntegral cmd of
       SetProgramTextCmd -> do
         theStr <- getUnpacked $ {#get visi_command->cmdInfo.text #} what
-        return $ SetProgramText theStr
-      SetStringSourceCmd -> do
+        return $ Just $ SetProgramText theStr
+      SetSourceCmd | cmdType == StringVisiType -> do
         theStr <- getUnpacked $ {#get visi_command->cmdInfo.text #} what
         target <- getTarget what
-        return (SetStringSource target theStr)
-      SetNumberSourceCmd -> do
+        return $ Just (SetValueSource target $ StrValue theStr)
+      SetSourceCmd | cmdType == DoubleVisiType -> do
         cNum <- {#get visi_command->cmdInfo.number #} what
         target <- getTarget what
-        return (SetNumberSource target $ realToFrac cNum)
+        return $ Just (SetValueSource target $ DoubleValue $ realToFrac cNum)
 
-      SetBoolSourceCmd -> do
+      SetSourceCmd | cmdType == BoolVisiType -> do
         bool <- ({#get visi_command->cmdInfo.boolValue #} what)
         target <- getTarget what
-        return (SetBoolSource target (bool /= 0))
-      StopRunningCmd -> return StopRunning
+        return $ Just (SetValueSource target $ BoolValue (bool /= 0))
+      StopRunningCmd -> return $ Just StopRunning
+      _ -> return $ Nothing
 
 
 {-

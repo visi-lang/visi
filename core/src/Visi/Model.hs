@@ -1,6 +1,8 @@
 module Visi.Model (Model, SinkActionInfo, newModel, setSourceValue, createSinkAction,
     SinkAction, addSinkAction, removeSinkAction, modelSources, modelSinks, setModelCode,
-    runSinkActions,
+    runSinkActions, calcSourceSinkDeltas,
+    SourceSinkAction(AddSourceAction, AddSinkAction, RemoveSourceAction, RemoveSinkAction),
+
     setDefaultSinkAction, removeDefaultSinkAction) where
     
 {- ***** BEGIN LICENSE BLOCK *****
@@ -38,6 +40,13 @@ import Visi.Typer
 import Visi.Expression
 
 type SinkAction a = Model a -> T.Text -> Value -> IO ()
+
+data SourceSinkAction = 
+    AddSourceAction T.Text Type |
+    RemoveSourceAction T.Text |
+    AddSinkAction T.Text Type |
+    RemoveSinkAction T.Text
+    deriving (Show, Eq)
 
 data Model a = Model {
     name :: T.Text,
@@ -87,24 +96,31 @@ validModel model =
         Right _ -> True
         _ -> False
 
-data SourceSinkInfo = 
-    SourceInfo T.Text Prim
-    | SinkInfo T.Text Prim 
-    deriving (Show)
-
+-- | Calculate the difference in sources and sinks between the two models
+calcSourceSinkDeltas :: Model a -> Model a -> [SourceSinkAction]
+calcSourceSinkDeltas old new = 
+  let oldSource = Map.map fst $ modelSources old in
+  let newSource = Map.map fst $ modelSources new in
+  let cmp a b = if a == b then Nothing else Just a in
+  let removeSource = Map.differenceWith cmp oldSource newSource in
+  let addSource = ( Map.toList $ (Map.differenceWith cmp newSource oldSource)) in
+  let oldSink = Map.map fst $ modelSinks old in
+  let newSink = Map.map fst $ modelSinks new in
+  let removeSinks = Map.differenceWith cmp oldSink newSink in
+  let addSinks = ( Map.toList $ (Map.differenceWith cmp newSink oldSink)) in
+  (map RemoveSourceAction $ Map.keys removeSource) ++
+    (map (\(n, t) -> AddSourceAction n t) addSource) ++
+    (map RemoveSinkAction $ Map.keys removeSinks) ++
+    (map (\(n, t) -> AddSinkAction n t) addSinks)
 
 -- | get the sources of the Model
 modelSources :: Model a -> Map.Map T.Text (Type, Value)
 modelSources = sources
 
 modelSinks :: Model a -> Map.Map T.Text (Type, Value)
-modelSinks model = error "FIXME implement"
-
-fromSink (name, _, TPrim p) = SinkInfo name p
-fromSource (name, TPrim p) = SourceInfo name p
-
---mergeSinkStuff :: Map.Map T.Text (SinkStuff a) -> [(T.Text, Expression, Type)] -> Map.Map T.Text (SinkStuff a)
---mergeSinkStuff old new = old
+modelSinks model = 
+  let pairMe sink = (sinkType sink, sinkValue sink) in
+  Map.map pairMe $ sinks model
 
 fst3 (a, _, _) = a
 

@@ -51,7 +51,6 @@ foreign export ccall haskellMain :: CInt -> VoidPtr -> IO CInt
 haskellMain :: CInt -> VoidPtr -> IO CInt
 haskellMain argc argv = 
     do
-      putStrLn "Meow and woof!!!!"
       ret <- afterHaskellmain argc argv
       return ret
 
@@ -70,7 +69,9 @@ startProcess objcId =
 handleMsg handler msg =
     do
         myMsg <- convertFromC msg
-        handler myMsg
+        case myMsg of
+          Just myMsg' -> handler myMsg'
+          _ -> return ()
 
 {-
 foreign export ccall fromMac :: VoidPtr -> VoidPtr -> IO ()

@@ -34,8 +34,6 @@
 }
 
 - (void)dealloc {
-    printf("Deallocing runner\n");
-    
     if (event != NULL) freeEvent(event);
 }
 
@@ -48,7 +46,5 @@
     [target runEvent:event];
     freeEvent(event);
     event = Nil;
-    printf("Running on the UI thread\n");
-    // FIXME run the command
 }
 @end

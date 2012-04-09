@@ -25,31 +25,41 @@
 
 enum cmds {
  setProgramTextCmd,
- setStringSourceCmd,
- setNumberSourceCmd,
- setBoolSourceCmd,
+ setSourceCmd,
  stopRunningCmd} visiCmds;
 
 typedef struct {
-	enum cmds cmd;
+	int cmd;
 	const char *target;
 	union {
 		const char *text;
 		int boolValue;
 		double number;
 	} cmdInfo;
+	int cmdType;
 } visi_command;
 
 enum evts {
- reportErrorEvent} visiEvents;
+ reportErrorEvent,
+ removeSourceEvent,
+ removeSinkEvent,
+ addSourceEvent,
+ addSinkEvent} visiEvents;
+
+enum theTypes {
+	doubleVisiType,
+	stringVisiType,
+	boolVisiType
+} visiTypes;
 
 typedef struct 
 {
 	int cmd;
 	union {
 		char *errorText;
-
+		char *sourceSinkName;
 	} evtInfo;
+	int eventType;
 } visi_event;
 
 /**

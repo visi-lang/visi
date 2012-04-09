@@ -1,5 +1,7 @@
 module Visi.Util (flatten, VisiError(TypeError, ParsingError, DefaultError), ThrowsError,
-					passthru, listify, justFunc, vtrace, justOr, (|-), unsafeRandom) where
+					passthru, listify, justFunc, vtrace, justOr, (|-), unsafeRandom,
+                    buildMessageQueue,
+                    runOnThread) where
 
 import Control.Monad.Error
 import Text.Parsec
@@ -7,6 +9,10 @@ import Debug.Trace
 import System.IO.Unsafe
 import System.Random
 import qualified Data.Map as Map
+import System.IO.Unsafe
+import Control.Concurrent
+import Data.IORef
+
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -80,6 +86,50 @@ justFunc val maybe func =
 	case maybe of
 		Just x -> func x
 		_ -> val
+
+
+-- | Build a non-blocking message queue and associated
+-- | place to pull values placed in the Queue.  Basically,
+-- | this is Actors because the non-blocking message send is
+-- | a -> IO ()... returning a unit is generally a bad thing,
+-- | but this code exists to deal with creating non-blocking
+-- | GUIs.
+-- | Also, please note that this is what Iteratees and the 
+-- | like where meant to deal with and at some point, I intend
+-- | to rip out this code and anything that depends on it and
+-- | replace it with Iteratees. @dpp
+buildMessageQueue :: b -> (b -> a -> IO (Maybe b)) -> IO (a -> IO ())
+buildMessageQueue start func =
+    do
+        mvar <- newEmptyMVar
+        running <- newIORef True
+        let runIt v = do
+            doIt <- readIORef running
+            if doIt then runOnThread $ putMVar mvar v else return ()
+        let loopy state = do
+            v <- takeMVar mvar
+            res <- func state v
+            case res of
+                Just state' -> loopy state'
+                _ -> writeIORef running False
+        runOnThread $ loopy start
+        return $ runIt
+
+-- | Run the IO action on another thread
+runOnThread :: IO () -> IO ()
+runOnThread = 
+  unsafePerformIO $ do
+    localVar <- newEmptyMVar
+    let loopIt = do
+        func <- takeMVar localVar
+        forkIO func
+        loopIt
+    let run func = do
+        putMVar localVar func
+    forkOS loopIt -- 3 OS threads running the round robin command handler
+    forkOS loopIt -- FIXME get a real thread pool
+    forkOS loopIt
+    return run
 
 (|-) :: Either b a -> (a -> Either b c) -> Either b c
 (Right a) |- f = f a
