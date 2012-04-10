@@ -114,10 +114,11 @@ instance Show Prim where
   show PrimBool = "Bool"
   show PrimStr = "String"
 
-valuePrim :: Value -> Type
-valuePrim (DoubleValue _) = TPrim PrimDouble
-valuePrim (StrValue _) = TPrim PrimStr
-valuePrim (BoolValue _) = TPrim PrimBool
+valuePrim :: Value -> Maybe Type
+valuePrim (DoubleValue _) = Just $ TPrim PrimDouble
+valuePrim (StrValue _) = Just $ TPrim PrimStr
+valuePrim (BoolValue _) = Just $ TPrim PrimBool
+valuePrim _ = Nothing
 
 data Value = DoubleValue Double
              | StrValue T.Text

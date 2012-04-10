@@ -72,12 +72,3 @@ handleMsg handler msg =
         case myMsg of
           Just myMsg' -> handler myMsg'
           _ -> return ()
-
-{-
-foreign export ccall fromMac :: VoidPtr -> VoidPtr -> IO ()
-fromMac cmd handlerFunc = 
-    do
-        cvt <- convertFromC cmd
-
-        handlerFunc cvt
--}

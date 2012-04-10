@@ -22,6 +22,29 @@ void freeEvent(visi_event *evt) {
         case reportErrorEvent:
             if (evt -> evtInfo.errorText != Nil) free(evt -> evtInfo.errorText);
             break;
+            
+        case removeSourceEvent:
+            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
+            break;
+            
+        case removeSinkEvent:
+            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
+            break;
+            
+        case addSourceEvent:
+            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
+            break;
+            
+        case addSinkEvent:
+            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
+            break;
+
+        case setSinkEvent:
+            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
+            if (evt -> eventType == stringVisiType && evt -> evtValue.text != Nil) {
+                free(evt -> evtValue.text);
+            }
+            break;
     }
     free(evt);
 }
@@ -35,19 +58,36 @@ void sendEvent(const void *theId, visi_event *evt) {
 @implementation VisiDocument
 
 @synthesize editor;
-@synthesize output;
+@synthesize sourceControls;
+@synthesize sinkControls;
 @synthesize errorInfo;
 @synthesize base;
 
 - (IBAction)runCode:(id) sender {
     NSString *theCode = [[editor textStorage] string];
     visi_command cmd;
-    setText(errorInfo, @"Meow Mr. Moose");
+    setText(errorInfo, @"Starting Model");
     cmd.cmd = setProgramTextCmd;
     cmd.cmdInfo.text = [theCode UTF8String];
     callIntoVisi(&cmd);
 }
 
+/*
+- (IBAction)grabBool:(id)sender {
+    NamedSwitch *sw = sender;
+    BOOL b = sw.on;
+    NSString *ns = sw.name;
+    setSourceString([ns cStringUsingEncoding:[NSString defaultCStringEncoding]], BoolSourceType, b ? "t" : "0");
+}
+
+- (IBAction)grabText:(id)sender {
+    NamedText *sw = sender;
+    NSString *b = sw.text;
+    NSString *ns = sw.name;
+    setSourceString([ns cStringUsingEncoding:[NSString defaultCStringEncoding]], [sw delegate] == nil ? StringSourceType : NumberSourceType, 
+                    [b cStringUsingEncoding:[NSString defaultCStringEncoding]]);
+}
+*/
 
 - (IBAction)grabBool:(id)sender {
     /*
@@ -93,6 +133,26 @@ void sendEvent(const void *theId, visi_event *evt) {
             }
         }
             break;
+
+        case removeSourceEvent:
+            // FIXME remove source
+            break;
+            
+        case removeSinkEvent:
+            // FIXME remove sink
+            break;
+            
+        case addSourceEvent:
+            // FIXME add source
+            break;
+            
+        case addSinkEvent:
+            // FIXME add sink
+            break;
+            
+        case setSinkEvent:
+            // FIXME set sink value
+            break;
             
         default:
             break;
@@ -124,7 +184,6 @@ void sendEvent(const void *theId, visi_event *evt) {
     callIntoVisi(&cmd);
     freeFunPtr(callIntoVisi);
     callIntoVisi = Nil;
-    printf("Dude... I is done\n");
     }
 }
 

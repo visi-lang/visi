@@ -293,7 +293,9 @@ createTypeVar _ t = prune t
         
 calcType :: VarScope -> Nongen -> Expression -> StateThrow Type
 calcType scope nongen (Var funcName) = gettype scope nongen funcName
-calcType scope nongen (ValueConst v) = return $ valuePrim v
+calcType scope nongen (ValueConst v) = case valuePrim v of
+    Just tpe -> return tpe
+    _ -> throwError $ TypeError $ "Expection primative value but got value: " ++ show v
 calcType scope nongen (BuiltIn _ t _) = prune t
 calcType scope nongen (SourceExp _ _ t) = prune t
 calcType scope nongen e@(LetExp _ name canBeGen t1 exp) = 

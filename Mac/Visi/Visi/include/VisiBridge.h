@@ -44,7 +44,8 @@ enum evts {
  removeSourceEvent,
  removeSinkEvent,
  addSourceEvent,
- addSinkEvent} visiEvents;
+ addSinkEvent,
+ setSinkEvent} visiEvents;
 
 enum theTypes {
 	doubleVisiType,
@@ -59,6 +60,11 @@ typedef struct
 		char *errorText;
 		char *sourceSinkName;
 	} evtInfo;
+	union {
+		char *text;
+		int boolValue;
+		double number;
+	} evtValue;
 	int eventType;
 } visi_event;
 

@@ -21,9 +21,11 @@
 }
 
 @property (retain, nonatomic) IBOutlet NSTextView *editor;
-@property (retain, nonatomic) IBOutlet NSScrollView *output;
 @property (retain, nonatomic) IBOutlet NSTextView *errorInfo;
 @property (retain, nonatomic) IBOutlet NSString *base;
+@property (retain, nonatomic) IBOutlet NSScrollView *sourceControls;
+@property (retain, nonatomic) IBOutlet NSScrollView *sinkControls;
+
 
 - (IBAction)runCode:(id) sender;
 - (IBAction)grabBool:(id)sender;

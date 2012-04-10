@@ -22,19 +22,6 @@ type VoidPtr = Ptr ()
 
 {#enum theTypes as VisiTypes {upcaseFirstLetter} deriving (Show, Eq) #}
 
-{-
-sendEvent to (SetProgramText text) = 
-    do
-        ptr <- mallocBytes {#sizeof visi_command #}
-        {#set visi_command->cmd #} ptr $ enumMe SetProgramTextCmd
-        let doStr s =
-                    do
-                        {#set visi_command->theInfo.text #} ptr s
-                        {#call runCommand #} to ptr
-                        free ptr
-        withText text doStr
--}
-
 enumMe x = fromIntegral $ fromEnum x
 withText t = withCString (T.unpack t)
 peekText cStr =
@@ -74,26 +61,58 @@ doError objcId err =
 
 doSourceSink :: VoidPtr -> [SourceSinkAction] -> IO ()
 doSourceSink objcId sourceSinkInfo = 
-  let doAction (RemoveSourceAction src) = do
-        ptr <- mallocBytes {#sizeof visi_event #}
-        {#set visi_event->cmd #} ptr $ enumMe RemoveSourceEvent
-        errStr <- newString src
-        {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
-        {#call sendEvent #} objcId ptr
-      doAction (RemoveSinkAction src) = do
-        ptr <- mallocBytes {#sizeof visi_event #}
-        {#set visi_event->cmd #} ptr $ enumMe RemoveSinkEvent
-        errStr <- newString src
-        {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
-        {#call sendEvent #} objcId ptr
-      doAction _ = return () in
-  mapM_ doAction sourceSinkInfo
+  do
+    let addIt name cmd tpe = do
+                              ptr <- mallocBytes {#sizeof visi_event #}
+                              name' <- newString name
+                              {#set visi_event->evtInfo.sourceSinkName #} ptr name'
+                              {#set visi_event->cmd #} ptr $ enumMe cmd
+                              {#set visi_event->eventType #} ptr $ enumMe tpe
+                              {#call sendEvent #} objcId ptr
+    let figureType name cmd tpe = case tpe of
+                                    TPrim PrimDouble -> addIt name cmd DoubleVisiType
+                                    TPrim PrimStr -> addIt name cmd StringVisiType
+                                    TPrim PrimBool -> addIt name cmd BoolVisiType
+                                    _ -> return ()
+    let doAction (RemoveSourceAction src) = do
+          ptr <- mallocBytes {#sizeof visi_event #}
+          {#set visi_event->cmd #} ptr $ enumMe RemoveSourceEvent
+          errStr <- newString src
+          {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
+          {#call sendEvent #} objcId ptr
+        doAction (RemoveSinkAction src) = do
+          ptr <- mallocBytes {#sizeof visi_event #}
+          {#set visi_event->cmd #} ptr $ enumMe RemoveSinkEvent
+          errStr <- newString src
+          {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
+          {#call sendEvent #} objcId ptr
+        doAction (AddSourceAction src theType) = figureType src AddSourceEvent theType
+        doAction (AddSinkAction src theType) = figureType src AddSinkEvent theType
+    mapM_ doAction sourceSinkInfo
 
 
 doSetSinks :: VoidPtr -> [(T.Text, Value)] -> IO ()
 doSetSinks objcId nvp = do
-  putStrLn $ "Do Set Sinks: " ++ show nvp
-  return ()
+  let sendIt (name, value) = case valuePrim value of
+                              (Just (TPrim prim)) -> do
+                                ptr <- mallocBytes {#sizeof visi_event #}
+                                {#set visi_event->cmd#} ptr $ enumMe SetSinkEvent
+                                str <- newString name
+                                {#set visi_event->evtInfo.sourceSinkName#} ptr str
+                                case (prim, value) of
+                                  (PrimDouble, DoubleValue dv) -> do
+                                    {#set visi_event->evtValue.number#} ptr $ realToFrac dv
+                                    {#set visi_event->eventType#} ptr $ enumMe DoubleVisiType
+                                  (PrimStr, StrValue str') -> do
+                                    str'' <- newString str'
+                                    {#set visi_event->evtValue.text #} ptr str''
+                                    {#set visi_event->eventType#} ptr $ enumMe StringVisiType            
+                                  (PrimBool, BoolValue bv) -> do
+                                    {#set visi_event->evtValue.boolValue#} ptr $ (if bv then 1 else 0)
+                                    {#set visi_event->eventType#} ptr $ enumMe BoolVisiType
+                                {#call sendEvent #} objcId ptr
+                              _ -> return ()
+  mapM_ sendIt nvp
 
 convertFromC :: VoidPtr -> IO (Maybe VisiCommand)
 convertFromC what =
@@ -121,14 +140,3 @@ convertFromC what =
       StopRunningCmd -> return $ Just StopRunning
       _ -> return $ Nothing
 
-
-{-
-{#pointer *test_t as Test#}
-
-getA :: Test -> IO Int
-getA t = {#get test_t->a#} t >>= return . fromIntegral
-
-setA :: Test -> Int -> IO ()
-setA t i = {#set test_t->a#} t (fromIntegral i)
-
--}
