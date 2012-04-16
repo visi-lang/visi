@@ -30,12 +30,13 @@ enum cmds {
 
 typedef struct {
 	int cmd;
-	const char *target;
+	// const char *target;
 	union {
 		const char *text;
 		int boolValue;
 		double number;
 	} cmdInfo;
+	int targetHash;
 	int cmdType;
 } visi_command;
 
@@ -60,6 +61,7 @@ typedef struct
 		char *errorText;
 		char *sourceSinkName;
 	} evtInfo;
+	int targetHash;
 	union {
 		char *text;
 		int boolValue;

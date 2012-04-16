@@ -23,18 +23,17 @@
 @property (retain, nonatomic) IBOutlet NSTextView *editor;
 @property (retain, nonatomic) IBOutlet NSTextView *errorInfo;
 @property (retain, nonatomic) IBOutlet NSString *base;
-@property (retain, nonatomic) IBOutlet NSScrollView *sourceControls;
-@property (retain, nonatomic) IBOutlet NSScrollView *sinkControls;
+@property (retain, nonatomic) IBOutlet NSView *sourceControls;
+@property (retain, nonatomic) IBOutlet NSView *sinkControls;
 
 
 - (IBAction)runCode:(id) sender;
 - (IBAction)grabBool:(id)sender;
 - (IBAction)grabText:(id)sender;
 - (void) windowWillClose: (NSNotification *) notification;
-- (NSTextField *)findSink:(NSString *)name;
 - (void)runEvent:(visi_event *)event;
 
 // - (void) findCopyOrRemove: (SourceSinkInfo *) ss;
 - (void) layoutControls;					
-
+- (void) layoutControls:(id)view;
 @end

@@ -29,5 +29,8 @@ Executable Visi
         parsec >= 3,
         containers,
         pretty,
-        text
+        text,
+        SHA,
+        utf8-string,
+        uuid
 

@@ -9,6 +9,7 @@ import Foreign.Marshal.Alloc
 import Visi.Runtime
 import Visi.Expression
 import Visi.Model
+import Visi.Util
 
 #include "VisiBridge.h"
 
@@ -43,7 +44,11 @@ getUnpacked what =
     ret <- peekText cstr
     return ret
 
-getTarget what = getUnpacked $ {#get visi_command->target#} what
+
+getTarget :: VoidPtr -> IO Int
+getTarget what = do
+  cint <- {#get visi_command->targetHash#} what
+  return $ fromIntegral cint
 
 
 doError objcId err = 
@@ -66,6 +71,7 @@ doSourceSink objcId sourceSinkInfo =
                               ptr <- mallocBytes {#sizeof visi_event #}
                               name' <- newString name
                               {#set visi_event->evtInfo.sourceSinkName #} ptr name'
+                              {#set visi_event->targetHash #} ptr $ fromIntegral $ intHash name
                               {#set visi_event->cmd #} ptr $ enumMe cmd
                               {#set visi_event->eventType #} ptr $ enumMe tpe
                               {#call sendEvent #} objcId ptr
@@ -74,17 +80,15 @@ doSourceSink objcId sourceSinkInfo =
                                     TPrim PrimStr -> addIt name cmd StringVisiType
                                     TPrim PrimBool -> addIt name cmd BoolVisiType
                                     _ -> return ()
-    let doAction (RemoveSourceAction src) = do
+    let doAction (RemoveSourceAction name) = do
           ptr <- mallocBytes {#sizeof visi_event #}
           {#set visi_event->cmd #} ptr $ enumMe RemoveSourceEvent
-          errStr <- newString src
-          {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
+          {#set visi_event->targetHash #} ptr $ fromIntegral $ intHash name
           {#call sendEvent #} objcId ptr
-        doAction (RemoveSinkAction src) = do
+        doAction (RemoveSinkAction name) = do
           ptr <- mallocBytes {#sizeof visi_event #}
           {#set visi_event->cmd #} ptr $ enumMe RemoveSinkEvent
-          errStr <- newString src
-          {#set visi_event->evtInfo.sourceSinkName #} ptr errStr
+          {#set visi_event->targetHash #} ptr $ fromIntegral $ intHash name
           {#call sendEvent #} objcId ptr
         doAction (AddSourceAction src theType) = figureType src AddSourceEvent theType
         doAction (AddSinkAction src theType) = figureType src AddSinkEvent theType
@@ -97,8 +101,7 @@ doSetSinks objcId nvp = do
                               (Just (TPrim prim)) -> do
                                 ptr <- mallocBytes {#sizeof visi_event #}
                                 {#set visi_event->cmd#} ptr $ enumMe SetSinkEvent
-                                str <- newString name
-                                {#set visi_event->evtInfo.sourceSinkName#} ptr str
+                                {#set visi_event->targetHash#} ptr $ fromIntegral $ intHash name
                                 case (prim, value) of
                                   (PrimDouble, DoubleValue dv) -> do
                                     {#set visi_event->evtValue.number#} ptr $ realToFrac dv
@@ -114,8 +117,8 @@ doSetSinks objcId nvp = do
                               _ -> return ()
   mapM_ sendIt nvp
 
-convertFromC :: VoidPtr -> IO (Maybe VisiCommand)
-convertFromC what =
+convertFromC :: Model a -> VoidPtr -> IO (Maybe VisiCommand)
+convertFromC model what =
   do
     cmd <- getCommandCmd what
     cmdType' <- {#get visi_command->cmdType#} what
@@ -126,17 +129,16 @@ convertFromC what =
         return $ Just $ SetProgramText theStr
       SetSourceCmd | cmdType == StringVisiType -> do
         theStr <- getUnpacked $ {#get visi_command->cmdInfo.text #} what
-        target <- getTarget what
-        return $ Just (SetValueSource target $ StrValue theStr)
+        targetHash <- getTarget what
+        return $ fmap (\target -> SetValueSource target $ StrValue theStr) $ stringFromHash model targetHash
       SetSourceCmd | cmdType == DoubleVisiType -> do
         cNum <- {#get visi_command->cmdInfo.number #} what
-        target <- getTarget what
-        return $ Just (SetValueSource target $ DoubleValue $ realToFrac cNum)
-
+        targetHash <- getTarget what
+        return $ fmap (\target -> SetValueSource target $ DoubleValue $ realToFrac cNum) $ stringFromHash model targetHash
       SetSourceCmd | cmdType == BoolVisiType -> do
         bool <- ({#get visi_command->cmdInfo.boolValue #} what)
-        target <- getTarget what
-        return $ Just (SetValueSource target $ BoolValue (bool /= 0))
+        targetHash <- getTarget what
+        return $ fmap (\target -> SetValueSource target $ BoolValue (bool /= 0)) $ stringFromHash model targetHash
       StopRunningCmd -> return $ Just StopRunning
       _ -> return $ Nothing
 

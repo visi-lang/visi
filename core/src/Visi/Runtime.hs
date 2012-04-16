@@ -54,13 +54,13 @@ data VisiCommand = SetProgramText T.Text
 type ExecCommand = VisiCommand -> IO ()
 
 -- | run an application
-runApp :: AppCallback -> IO ExecCommand
+runApp :: AppCallback -> IO (Model T.Text, ExecCommand)
 runApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) = 
   do
     let sinkAction model name value = setSinksCallback [(name, value)]
     let theModel = setDefaultSinkAction sinkAction $ newModel (T.pack "MyModel") Nothing
     runIt <- buildMessageQueue (theModel, callback) doRunRun
-    return runIt
+    return (theModel, runIt)
 
 processSourceSetting callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) name value model =
   case setSourceValue name value model of
@@ -75,7 +75,6 @@ processSourceSetting callback@(AppCallback errorCallback sourceSinkCallback setS
 doRunRun :: (Model T.Text, AppCallback) -> VisiCommand -> IO (Maybe (Model T.Text, AppCallback))
 doRunRun (model, callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback)) v =
   do
-    putStrLn $ "Got cmd " ++ (show v)
     case v of
       StopRunning -> return Nothing
 

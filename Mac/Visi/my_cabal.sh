@@ -19,12 +19,16 @@ case "$ACTION" in
     $CABAL --distpref="$DIST" --verbose build || exit 1
     rm -f WholeVisi.o
     libtool -v -static -o WholeVisi.o $DIST/build/HSVisi-0.1.o -L${HASKELL_LIB}/pretty-1.1.1.0 -L${USER_LIB}parsec-3.1.2/lib \
-    -L${USER_LIB}uuid-1.2.5/lib -L${USER_LIB}random-1.0.1.1/lib -L${USER_LIB}/c2hs-0.16.3/lib -L${USER_LIB}text-0.11.1.13/lib \
+    -L${USER_LIB}uuid-1.2.5/lib -L${USER_LIB}random-1.0.1.1/lib \
+    -L${USER_LIB}utf8-string-0.3.7/lib -L${USER_LIB}SHA-1.5.0.1/lib \
+    -L${USER_LIB}/c2hs-0.16.3/lib -L${USER_LIB}text-0.11.1.13/lib \
     -L${USER_LIB}mtl-2.0.1.0/lib -L${USER_LIB}transformers-0.2.2.0/lib -L${HASKELL_LIB}/containers-0.4.2.1 -L${HASKELL_LIB}/deepseq-1.3.0.0 \
     -L${HASKELL_LIB}/bytestring-0.9.2.1 -L${HASKELL_LIB}/array-0.4.0.0 -L${HASKELL_LIB}/base-4.5.0.0 -L${HASKELL_LIB}/integer-gmp-0.4.0.0 \
     -L${HASKELL_LIB}/time-1.4 -L${HASKELL_LIB}/binary-0.5.1.0 \
     -L${HASKELL_LIB}/ghc-prim-0.2.0.0 -L${HASKELL_LIB} -lHSpretty-1.1.1.0 -lHSparsec-3.1.2 -lHStext-0.11.1.13 -lHSmtl-2.0.1.0 \
-    -lHStransformers-0.2.2.0 -lHScontainers-0.4.2.1 -lHSdeepseq-1.3.0.0 -lHSbytestring-0.9.2.1 -lHSarray-0.4.0.0 -lHSbase-4.5.0.0 \
+    -lHStransformers-0.2.2.0 -lHScontainers-0.4.2.1 -lHSdeepseq-1.3.0.0 \
+    -lHSSHA-1.5.0.1 -lHSutf8-string-0.3.7 \
+    -lHSbytestring-0.9.2.1 -lHSarray-0.4.0.0 -lHSbase-4.5.0.0 \
     -lHSrandom-1.0.1.1 -lHSuuid-1.2.5 -lHStime-1.4 -lHSbinary-0.5.1.0 \
     -lHSinteger-gmp-0.4.0.0 -lHSghc-prim-0.2.0.0 -lHSrts_thr 2>&1 | grep -v "libtool: warning same member name"  || exit 1
     ;;

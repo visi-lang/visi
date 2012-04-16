@@ -24,11 +24,9 @@ void freeEvent(visi_event *evt) {
             break;
             
         case removeSourceEvent:
-            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
             break;
             
         case removeSinkEvent:
-            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
             break;
             
         case addSourceEvent:
@@ -40,7 +38,6 @@ void freeEvent(visi_event *evt) {
             break;
 
         case setSinkEvent:
-            if (evt -> evtInfo.sourceSinkName != Nil) free(evt -> evtInfo.sourceSinkName);
             if (evt -> eventType == stringVisiType && evt -> evtValue.text != Nil) {
                 free(evt -> evtValue.text);
             }
@@ -102,12 +99,29 @@ void sendEvent(const void *theId, visi_event *evt) {
     
 }
 
-- (NSTextField *)findSink:(NSString *)name {
-    return nil;
+- (id)findSink:(NSInteger) hash {
+    id first = [sourceControls viewWithTag:hash];
+    if (first) return first;
+    return [sinkControls viewWithTag:hash];
 }
 
 - (void) layoutControls {
-    
+ //[self layoutControls: [sourceControls contentView]];
+ //   [self layoutControls: [sinkControls contentView]];
+  [self layoutControls: sourceControls];
+   [self layoutControls: sinkControls];
+}
+
+- (void) layoutControls:(id)view {
+    NSArray *subs = [view subviews];
+    for (int x = 0; x < [subs count]; x++) {
+        NSRect rect = CGRectMake(0, 30 * x, 300, 30);
+        NSView *tv = [subs objectAtIndex:x];
+        [tv setFrame:rect];    
+        [tv setNeedsDisplay:YES];
+    }
+    [view setNeedsLayout: YES];
+    [view setNeedsDisplay:YES];
 }
 
 - (id)init
@@ -135,23 +149,72 @@ void sendEvent(const void *theId, visi_event *evt) {
             break;
 
         case removeSourceEvent:
-            // FIXME remove source
-            break;
-            
         case removeSinkEvent:
-            // FIXME remove sink
+        {
+            id ui = [self findSink: event -> targetHash];
+            if (ui) {
+                id parent = [ui superview];
+                [parent removeFromSuperview];
+                [self layoutControls];
+            }
+        }
             break;
             
         case addSourceEvent:
+        {
+            
+        }
             // FIXME add source
             break;
             
-        case addSinkEvent:
-            // FIXME add sink
+        case addSinkEvent: {
+            int sourceCnt = 0; // sinkControls...
+            NSView *fr = [[NSView alloc] initWithFrame:CGRectMake(0, 30 * sourceCnt, 300, 30)];
+            // id docView = [sinkControls documentView];
+            [sinkControls addSubview:fr];
+            NSTextField *label = [[NSTextField alloc] initWithFrame: CGRectMake(0, 0, 100, 30)];
+            [label setEditable:NO];
+            [label setSelectable:NO];
+            [label setStringValue: [NSString stringWithUTF8String: 
+                                    event -> evtInfo.sourceSinkName]];
+            [fr addSubview:label];
+            NSTextField *out = [[NSTextField alloc] initWithFrame:CGRectMake(100, 0, 200, 30)];
+            [out setEditable:NO];
+            [out setSelectable: NO];
+            [out setTag:event -> targetHash];
+            [out setStringValue: @""];
+            [fr addSubview:out];
+            [self layoutControls];
+        }
+            
             break;
             
-        case setSinkEvent:
-            // FIXME set sink value
+        case setSinkEvent: {
+            id sinkText = [self findSink: event -> targetHash];
+            if (sinkText) {
+                switch (event -> eventType) {
+                    case doubleVisiType:
+                        [sinkText setDoubleValue:event -> evtValue.number];
+                        break;
+
+                    case stringVisiType:
+                        [sinkText setStringValue:[NSString stringWithUTF8String: event -> evtValue.text]];
+                        break;
+
+                    case boolVisiType:
+                        if (event -> evtValue.boolValue) {
+                            [sinkText setStringValue:@"true"];
+                        } else {
+                            [sinkText setStringValue:@"false"];
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+                [sinkText setNeedsDisplay];
+            }
+        }
             break;
             
         default:

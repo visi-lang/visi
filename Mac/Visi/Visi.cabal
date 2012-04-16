@@ -24,6 +24,8 @@ Library
         pretty,
         text,
         uuid,
+        SHA,
+        utf8-string,
         random
 
 

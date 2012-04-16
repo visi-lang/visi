@@ -2,7 +2,7 @@ module Visi.Model (Model, SinkActionInfo, newModel, setSourceValue, createSinkAc
     SinkAction, addSinkAction, removeSinkAction, modelSources, modelSinks, setModelCode,
     runSinkActions, calcSourceSinkDeltas,
     SourceSinkAction(AddSourceAction, AddSinkAction, RemoveSourceAction, RemoveSinkAction),
-
+    stringFromHash,
     setDefaultSinkAction, removeDefaultSinkAction) where
     
 {- ***** BEGIN LICENSE BLOCK *****
@@ -39,28 +39,27 @@ import Visi.Executor
 import Visi.Typer
 import Visi.Expression
 
-type SinkAction a = Model a -> Int -> Value -> IO ()
+type SinkAction a = Model a -> T.Text -> Value -> IO ()
 
 data SourceSinkAction = 
-    AddSourceAction Int T.Text Type |
-    RemoveSourceAction Int |
-    AddSinkAction Int T.Text Type |
-    RemoveSinkAction Int
+    AddSourceAction T.Text Type |
+    RemoveSourceAction T.Text |
+    AddSinkAction T.Text Type |
+    RemoveSinkAction T.Text
     deriving (Show, Eq)
 
 data Model a = Model {
     name :: T.Text,
     code :: Maybe T.Text,
     letScope :: Either VisiError LetScope,
-    sources :: Map.Map Int (T.Text, Type, Value),
-    sinks :: Map.Map Int (SinkStuff a),
+    sources :: Map.Map T.Text (Type, Value),
+    sinks :: Map.Map T.Text (SinkStuff a),
     defaultSinkAction :: Maybe (SinkAction a),
     localData :: Maybe a
     } deriving (Show)
 
 data SinkStuff a = SinkStuff {sinkName :: T.Text, sinkType :: Type, sinkValue :: Value,
     sinkExpression :: Maybe Expression,
-    sinkGuid :: Int,
     sinkActions :: [SinkActionInfo a]} deriving (Show)
 
 data SinkActionInfo a = SinkActionInfo UUID (SinkAction a) deriving (Show)
@@ -100,41 +99,38 @@ validModel model =
 -- | Calculate the difference in sources and sinks between the two models
 calcSourceSinkDeltas :: Model a -> Model a -> [SourceSinkAction]
 calcSourceSinkDeltas old new = 
-  let pairIt (a, b, _) = (a,b) in
-  let cvt = Map.map pairIt in
-  let oldSource = cvt $ modelSources old in
-  let newSource = cvt $ modelSources new in
+  let oldSource = Map.map fst $ modelSources old in
+  let newSource = Map.map fst $ modelSources new in
   let cmp a b = if a == b then Nothing else Just a in
-  let diff = Map.differenceWith cmp in
-  let removeSource = diff oldSource newSource in
-  let addSource = Map.toList $ diff newSource oldSource in
-  let oldSink = cvt $ modelSinks old in
-  let newSink = cvt $ modelSinks new in
-  let removeSinks = diff oldSink newSink in
-  let addSinks = Map.toList $ diff newSink oldSink in
+  let removeSource = Map.differenceWith cmp oldSource newSource in
+  let addSource = ( Map.toList $ (Map.differenceWith cmp newSource oldSource)) in
+  let oldSink = Map.map fst $ modelSinks old in
+  let newSink = Map.map fst $ modelSinks new in
+  let removeSinks = Map.differenceWith cmp oldSink newSink in
+  let addSinks = ( Map.toList $ (Map.differenceWith cmp newSink oldSink)) in
   (map RemoveSourceAction $ Map.keys removeSource) ++
-    (map (\(n, (name, t)) -> AddSourceAction n name t) addSource) ++
+    (map (\(n, t) -> AddSourceAction n t) addSource) ++
     (map RemoveSinkAction $ Map.keys removeSinks) ++
-    (map (\(n, (name, t)) -> AddSinkAction n name t) addSinks)
+    (map (\(n, t) -> AddSinkAction n t) addSinks)
 
 -- | get the sources of the Model
-modelSources :: Model a -> Map.Map Int (T.Text, Type, Value)
+modelSources :: Model a -> Map.Map T.Text (Type, Value)
 modelSources = sources
 
-modelSinks :: Model a -> Map.Map Int (T.Text, Type, Value)
+modelSinks :: Model a -> Map.Map T.Text (Type, Value)
 modelSinks model = 
-  let pairMe sink = (sinkName sink, sinkType sink, sinkValue sink) in
+  let pairMe sink = (sinkType sink, sinkValue sink) in
   Map.map pairMe $ sinks model
 
 fst3 (a, _, _) = a
 
-mergeSourceInfo :: Map.Map Int (T.Text, Type, Value) -> [(Int, T.Text, Type)] -> Map.Map Int (T.Text, Type, Value)
+mergeSourceInfo :: Map.Map T.Text (Type, Value) -> [(T.Text, Type)] -> Map.Map T.Text (Type, Value)
 mergeSourceInfo old new =
     Map.fromList $ map lookItUp new
     where
-        lookItUp (guid, name, tpe) = case Map.lookup guid old of
-            Just (oldName, oldType, oldVal) | oldType == tpe -> (guid, (name, tpe, oldVal))
-            _ -> (guid, (name, tpe, defaultValueForType tpe))
+        lookItUp (name, tpe) = case Map.lookup name old of
+            Just (oldType, oldVal) | oldType == tpe -> (name, (tpe, oldVal))
+            _ -> (name, (tpe, defaultValueForType tpe))
 
 -- | sets or updates the model code
 setModelCode :: T.Text -> Model a -> Either (VisiError, Model a) (Model a, [T.Text])
@@ -172,7 +168,7 @@ setModelCode theCode model =
 
 
 -- | Set a value in a model, recompute the model and list all the Sinks that changed
-setSourceValue :: T.Text -> Value -> Model a -> Either VisiError (Model a, [Int])
+setSourceValue :: T.Text -> Value -> Model a -> Either VisiError (Model a, [T.Text])
 setSourceValue name value model = 
     let theSources = sources model in
     case (Map.lookup name theSources, letScope model) of
@@ -190,13 +186,22 @@ setSourceValue name value model =
             Right (model {sources = newSources, sinks = recalcSinks}, Map.keys sinks')
         _ -> Right (model, [])
 
-runSinkActions :: [Int] -> Model a -> IO ()
+runSinkActions :: [T.Text] -> Model a -> IO ()
 runSinkActions names model =
     do
         let actions = collectSinkActions names model
         mapM_ passthru actions
 
-collectSinkActions :: [Int] -> Model a -> [IO ()]
+stringFromHash :: Model a -> Int -> Maybe T.Text
+stringFromHash model num =
+  let sourceNames = Map.keys $ sources model in
+  let sinkNames = Map.keys $ sinks model in
+  let found = filter (\a -> num == intHash a) (sourceNames ++ sinkNames) in
+  case found of
+    a:_ -> Just a
+    _ -> Nothing
+
+collectSinkActions :: [T.Text] -> Model a -> [IO ()]
 collectSinkActions names model =
     do
         let snk = sinks model
@@ -209,13 +214,13 @@ collectSinkActions names model =
         let (SinkActionInfo _ func) = action
         return $ func model sn sv
 
-addSinkAction :: Int -> SinkActionInfo a -> Model a -> Model a
+addSinkAction :: T.Text -> SinkActionInfo a -> Model a -> Model a
 addSinkAction name action model =
     model {sinks = updateSinks $ sinks model}
     where updateSinks sinkMap = Map.adjust (\s -> s {sinkActions = action:(sinkActions s)}) name sinkMap 
 
 
-removeSinkAction :: Int -> SinkActionInfo a -> Model a -> Model a
+removeSinkAction :: T.Text -> SinkActionInfo a -> Model a -> Model a
 removeSinkAction name action model =
     model {sinks = updateSinks $ sinks model}
     where updateSinks sinkMap = Map.adjust (\s -> s {sinkActions = filter (/= action) (sinkActions s)}) name sinkMap

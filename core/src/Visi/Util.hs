@@ -1,6 +1,6 @@
 module Visi.Util (flatten, VisiError(TypeError, ParsingError, DefaultError), ThrowsError,
 					passthru, listify, justFunc, vtrace, justOr, (|-), unsafeRandom,
-                    buildMessageQueue,
+                    buildMessageQueue, intHash,
                     runOnThread) where
 
 import Control.Monad.Error
@@ -12,7 +12,9 @@ import qualified Data.Map as Map
 import System.IO.Unsafe
 import Control.Concurrent
 import Data.IORef
-
+import Data.Digest.Pure.SHA
+import qualified Data.Text as T
+import Data.ByteString.Lazy.UTF8
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -130,6 +132,11 @@ runOnThread =
     forkOS loopIt -- FIXME get a real thread pool
     forkOS loopIt
     return run
+
+-- | calculate the hash of a text string and return the right-most bits
+intHash :: T.Text -> Int
+intHash text =
+    fromIntegral $ integerDigest $ sha1 $ fromString $ T.unpack text
 
 (|-) :: Either b a -> (a -> Either b c) -> Either b c
 (Right a) |- f = f a

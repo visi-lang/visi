@@ -63,12 +63,12 @@ foreign import ccall "wrapper"
 foreign export ccall startProcess :: VoidPtr -> IO (FunPtr (VoidPtr -> IO ()))
 startProcess objcId =
     do
-        handler <- runApp $ AppCallback (doError objcId) (doSourceSink objcId) (doSetSinks objcId)
-        wrapIt $ handleMsg  handler
+        (model, handler) <- runApp $ AppCallback (doError objcId) (doSourceSink objcId) (doSetSinks objcId)
+        wrapIt $ handleMsg model handler
 
-handleMsg handler msg =
+handleMsg model handler msg =
     do
-        myMsg <- convertFromC msg
+        myMsg <- convertFromC model msg
         case myMsg of
           Just myMsg' -> handler myMsg'
           _ -> return ()
