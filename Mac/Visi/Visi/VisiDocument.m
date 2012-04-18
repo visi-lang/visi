@@ -28,8 +28,6 @@ void freeEvent(visi_event *evt) {
             break;
             
         case removeSourceEvent:
-            break;
-            
         case removeSinkEvent:
             break;
             
@@ -132,7 +130,7 @@ void sendEvent(const void *theId, visi_event *evt) {
     cmd.cmd = setSourceCmd;
     cmd.targetHash = tag;
     cmd.cmdType = boolVisiType;
-    cmd.cmdInfo.boolValue = [sender boolValue];
+    if ([sender state] != NSOffState) {cmd.cmdInfo.boolValue = 1;} else {cmd.cmdInfo.boolValue = 0;};
     id fieldName = objc_getAssociatedObject(sender, &fieldNameKey);
     cmd.cmdTarget = [fieldName UTF8String];
     callIntoVisi(&cmd);
@@ -239,7 +237,10 @@ void sendEvent(const void *theId, visi_event *evt) {
 
                 case boolVisiType:
                 {
-                    
+                    out = [[NSButton alloc] initWithFrame:CGRectMake(100, 0, 18, 18)];
+                    [out setButtonType:NSSwitchButton];
+                    [out setTarget:self];
+                    [out setAction:@selector(grabBool:)];
                 }
                     break;
             }

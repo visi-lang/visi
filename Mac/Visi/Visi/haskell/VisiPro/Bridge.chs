@@ -53,11 +53,6 @@ getTarget what = do
 
 mask = 0x7ffffffffff
 
-findHash model val =
-  let testV = val .&. mask in
-  let test a = vtrace ("Testing " ++ (show a) ++ " masked " ++ (show (a .&. mask)) ++ " against " ++ (show testV)) $ (a .&. mask) == testV in
-  stringFromHash model test
-
 doError objcId err = 
   do
     ptr <- mallocBytes {#sizeof visi_event #}
@@ -76,7 +71,6 @@ doSourceSink objcId sourceSinkInfo =
                               ptr <- mallocBytes {#sizeof visi_event #}
                               name' <- newString name
                               {#set visi_event->evtInfo.sourceSinkName #} ptr name'
-                              putStrLn $ "Setting source " ++ (show name) ++ " hash " ++ (show $ (intHash name) .&. mask)
                               {#set visi_event->targetHash #} ptr $ fromIntegral $ ((intHash name) .&. mask)
                               {#set visi_event->cmd #} ptr $ enumMe cmd
                               {#set visi_event->eventType #} ptr $ enumMe tpe
