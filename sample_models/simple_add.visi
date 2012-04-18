@@ -1,0 +1,20 @@
+# Simple Add
+
+This model is a simple demonstration of adding two numbers.
+The numbers are defined by `?num1` and `?num2` which
+are `Sources` and then the resulting `Sum` is the sum
+of the two numbers.
+
+```
+?num1 // the first input
+?num2 // the second input
+
+"Sum" = num1 + num2
+```
+
+As with the other example documents, the logic
+of the model is in the blocks with the triple back-ticks.
+
+To see how the model works, enter numbers in the input
+fields.  Note that you can only input numbers.  If you try
+to input non-numeric values, the input field will reject them.

@@ -1,0 +1,33 @@
+# Separate Logic
+
+This model demonstrates creating functions that
+have logic that's separate from Sources and Sinks
+and some logic (`calcTax`) that is a function
+that references a Source.
+
+```
+?taxable
+?nonTaxable
+?taxRate
+
+?hasSalesTax
+
+times a b = a * b // a stand alone function that multiplies two numbers
+
+calcTax on = times on taxRate // a function that references 
+
+noTax on = 0
+
+taxCalcFunc = if hasSalesTax then calcTax else noTax // choose the method of tax calculation
+
+tax = taxCalcFunc taxable
+
+subTotal = nonTaxable + taxable
+total = subTotal + tax
+
+"Tax" = tax
+"Subtotal" =subTotal
+"Total" = total
+
+
+```

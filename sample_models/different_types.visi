@@ -1,0 +1,19 @@
+# Different Types
+
+This model demonstrates how Visi's type inference
+determines the type of the different Sources and
+presents the correct controls based on the types.
+
+The model also demonstrates how you can build a model
+where multiples Sinks depend on a single Source.
+
+```
+?string
+?number
+?which_to_use
+
+"Times 2" = number * 2
+"Str Len" = len string
+
+"Choice" = "You chose the " & (if which_to_use then "String: " & string else "Number: " & (show number))
+```

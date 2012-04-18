@@ -1,0 +1,13 @@
+# Hello World
+
+This is a "Hello World" sample model.  It defines a `Sink` (a place
+to send the results of a computation) called `Greeting` and 
+sets the Sink to the constant String "Hello, World!"
+
+```
+"Greeting" = "Hello, World!"
+
+```
+
+Note that this file is the model.  It is also a [Markdown](http://daringfireball.net/projects/markdown/)
+document.  This encourages the modeler to tell a story around the business logic.

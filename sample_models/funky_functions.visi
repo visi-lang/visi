@@ -1,0 +1,63 @@
+# Funky Functions
+
+Visi allows you to define functions.  For example,
+this function calculates the factorial of a number:
+
+```
+fact n = 
+  nf = floor n
+  if nf < 1 then 1 else nf * fact (nf - 1)
+```
+
+Visi also allows you to create functions that 
+just return the value that was passed in:
+
+```
+id x = x
+```
+
+Visi has higher order functions, so you can have
+a function that takes a function and a parameter
+as an input and applies that function to the parameter:
+
+```
+apply f p = f p
+```
+
+We can build a function that takes a function and two
+function choices and a parameter.
+If the function applied to
+the parameter is true, return first function applied to
+the parameter, otherwise
+return the second function applied to the parameter:
+
+```
+choose f c1 c2 p = if (f p) then (apply c1 p) else (apply c2 p)
+```
+
+We can create a function that tests if a value is greater than
+or equal to 25 or less than 1:
+
+```
+gt25 n = (n >= 25) || (n <= 1)
+```
+
+Let's work this all together to create a function that chooses
+which function to use based on the value being over 25, 
+but this function is partially applied, so it won't be run until
+we insert the last parameter:
+
+```
+factIfUnder25 = choose gt25 id fact
+```
+
+Let's build sources and sinks:
+```
+?num
+
+"Fact if 25" = factIfUnder25 num
+
+"Twice" = factIfUnder25 (num * 2)
+```
+
+

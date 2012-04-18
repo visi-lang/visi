@@ -84,6 +84,7 @@ eval1 sourceVars scope (SourceExp _ (FuncName name) _) = fromMaybe UndefinedValu
 builtInExp = [ boolTrue,  boolFalse, builtInConcat, builtInIf, builtInAdd 
              , builtInMult, builtInSub, builtInDiv, builtInAnd, builtInOr
              , builtInReverse, builtInEq, builtInLen, builtInShow
+             , builtInGt, builtInGte, builtInLt, builtInLte, builtInFloor
              ]
 
 funcDoubleDouble = tFun (TPrim PrimDouble) (TPrim PrimDouble)
@@ -130,6 +131,51 @@ builtInEq = BuiltIn (FuncName $ T.pack "==") (tFun eqVar (tFun eqVar $ TPrim Pri
                    eqThing v = FuncValue partialEq
                      where partialEq :: Value -> Value
                            partialEq v' = BoolValue $ v == v'
+
+
+builtInGt :: Expression
+builtInGt = BuiltIn (FuncName $ T.pack ">") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+             where gtThing :: Value -> Value
+                   gtThing (DoubleValue v) = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt (DoubleValue v') = BoolValue (v > v')
+                           partialGt _ = UndefinedValue
+                   gtThing _ = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt _ = UndefinedValue
+
+builtInGte :: Expression
+builtInGte = BuiltIn (FuncName $ T.pack ">=") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+             where gtThing :: Value -> Value
+                   gtThing (DoubleValue v) = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt (DoubleValue v') = BoolValue $ v >= v'
+                           partialGt _ = UndefinedValue
+                   gtThing _ = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt _ = UndefinedValue
+
+builtInLt :: Expression
+builtInLt = BuiltIn (FuncName $ T.pack "<") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+             where gtThing :: Value -> Value
+                   gtThing (DoubleValue v) = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt (DoubleValue v') = BoolValue $ v < v'
+                           partialGt _ = UndefinedValue
+                   gtThing _ = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt _ = UndefinedValue                           
+
+builtInLte :: Expression
+builtInLte = BuiltIn (FuncName $ T.pack "<=") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+             where gtThing :: Value -> Value
+                   gtThing (DoubleValue v) = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt (DoubleValue v') = BoolValue $ v <= v'
+                           partialGt _ = UndefinedValue
+                   gtThing _ = FuncValue partialGt
+                     where partialGt :: Value -> Value
+                           partialGt _ = UndefinedValue
 
 builtInAnd :: Expression
 builtInAnd = BuiltIn (FuncName $ T.pack "&&") funcBoolBoolBool andThing
@@ -196,6 +242,12 @@ builtInMult = BuiltIn (FuncName $ T.pack "*") funcDoubleDoubleDouble multThing
                     multThing _ = FuncValue partialMult
                      where partialMult :: Value -> Value
                            partialMult _ = UndefinedValue
+
+
+builtInFloor :: Expression
+builtInFloor = BuiltIn (FuncName $ T.pack "floor") (tFun (TPrim PrimDouble) (TPrim PrimDouble)) floorThing
+             where floorThing (DoubleValue d) = DoubleValue $ (fromIntegral (floor d)) 
+                   floorThing _ = UndefinedValue
 
 builtInLen :: Expression
 builtInLen = BuiltIn (FuncName $ T.pack "len") (tFun (TPrim PrimStr) (TPrim PrimDouble)) lenThing
