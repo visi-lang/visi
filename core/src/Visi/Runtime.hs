@@ -59,7 +59,7 @@ runApp callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) 
   do
     let sinkAction model name value = setSinksCallback [(name, value)]
     let theModel = setDefaultSinkAction sinkAction $ newModel (T.pack "MyModel") Nothing
-    runIt <- buildMessageQueue (theModel, callback) doRunRun
+    runIt <- buildMessageQueue (theModel, callback) $ doRunRun
     return (theModel, runIt)
 
 processSourceSetting callback@(AppCallback errorCallback sourceSinkCallback setSinksCallback) name value model =
@@ -79,17 +79,17 @@ doRunRun (model, callback@(AppCallback errorCallback sourceSinkCallback setSinks
       StopRunning -> return Nothing
 
       SetProgramText text -> case setModelCode text model of
-                              Left (err, model') -> do
-                                errorCallback $ Just err
-                                return $ Just (model', callback)
+                                        Left (err, model') -> do
+                                          errorCallback $ Just err
+                                          return $ Just (model', callback)
 
-                              Right (model', updates) -> do
-                                -- putStrLn $ "The model is " ++ show model'
-                                errorCallback Nothing
-                                let sourceSinkDeltas = calcSourceSinkDeltas model model'
-                                sourceSinkCallback sourceSinkDeltas
-                                runSinkActions updates model'
-                                return $ Just (model', callback)
+                                        Right (model', updates) -> do
+                                          -- putStrLn $ "The model is " ++ show model'
+                                          errorCallback Nothing
+                                          let sourceSinkDeltas = calcSourceSinkDeltas model model'
+                                          sourceSinkCallback sourceSinkDeltas
+                                          runSinkActions updates model'
+                                          return $ Just (model', callback)
 
       SetValueSource name value -> do
         updatedModel <- processSourceSetting callback name value model

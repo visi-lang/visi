@@ -192,12 +192,13 @@ runSinkActions names model =
         let actions = collectSinkActions names model
         mapM_ passthru actions
 
-stringFromHash :: Model a -> Int -> Maybe T.Text
-stringFromHash model num =
+stringFromHash :: Model a -> (Int -> Bool) -> Maybe T.Text
+stringFromHash model func =
   let sourceNames = Map.keys $ sources model in
   let sinkNames = Map.keys $ sinks model in
-  let found = filter (\a -> num == intHash a) (sourceNames ++ sinkNames) in
-  case found of
+  let names = sourceNames ++ sinkNames in
+  let found = filter (\a -> func $ intHash a) names in
+  case vtrace ("names " ++ show names ++ " Found " ++ show found) found of
     a:_ -> Just a
     _ -> Nothing
 

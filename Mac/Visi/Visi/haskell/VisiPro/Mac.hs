@@ -64,11 +64,13 @@ foreign export ccall startProcess :: VoidPtr -> IO (FunPtr (VoidPtr -> IO ()))
 startProcess objcId =
     do
         (model, handler) <- runApp $ AppCallback (doError objcId) (doSourceSink objcId) (doSetSinks objcId)
-        wrapIt $ handleMsg model handler
+        wrapIt $ handleMsg handler
 
-handleMsg model handler msg =
+
+
+handleMsg handler msg =
     do
-        myMsg <- convertFromC model msg
+        myMsg <- convertFromC msg
         case myMsg of
           Just myMsg' -> handler myMsg'
           _ -> return ()

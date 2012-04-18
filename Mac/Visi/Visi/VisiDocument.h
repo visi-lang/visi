@@ -7,6 +7,7 @@
 //
 
 #import <Cocoa/Cocoa.h>
+#import <objc/runtime.h>
 
 #import "include/VisiBridge.h"
 
@@ -30,8 +31,10 @@
 - (IBAction)runCode:(id) sender;
 - (IBAction)grabBool:(id)sender;
 - (IBAction)grabText:(id)sender;
+- (IBAction)grabNumber:(id)sender;
 - (void) windowWillClose: (NSNotification *) notification;
 - (void)runEvent:(visi_event *)event;
+-(void) controlTextDidChange:(NSNotification *)aNotification;
 
 // - (void) findCopyOrRemove: (SourceSinkInfo *) ss;
 - (void) layoutControls;					

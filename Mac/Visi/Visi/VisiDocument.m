@@ -6,6 +6,7 @@
 //  Copyright (c) 2012 David Pollak. All rights reserved.
 //
 
+#import <Cocoa/Cocoa.h>
 #import "VisiDocument.h"
 #import "RunCommandOnMainThread.h"
 
@@ -16,6 +17,9 @@ void setText(NSTextView *tv, NSString *txt) {
     [[tv textStorage] replaceCharactersInRange: NSMakeRange(0, [cur length]) 
                                     withString:txt];
 }
+
+static char fieldNameKey;
+static char isNumericField;
 
 void freeEvent(visi_event *evt) {
     switch (evt -> cmd) {
@@ -69,35 +73,72 @@ void sendEvent(const void *theId, visi_event *evt) {
     callIntoVisi(&cmd);
 }
 
-/*
-- (IBAction)grabBool:(id)sender {
-    NamedSwitch *sw = sender;
-    BOOL b = sw.on;
-    NSString *ns = sw.name;
-    setSourceString([ns cStringUsingEncoding:[NSString defaultCStringEncoding]], BoolSourceType, b ? "t" : "0");
+-(void) controlTextDidChange:(NSNotification *)aNotification {
+    id obj = [aNotification object];
+    if (objc_getAssociatedObject(obj,
+                                  &isNumericField)) {
+        NSString *sv = [obj stringValue];
+        NSError *error = NULL;
+        NSRegularExpression *regex = [NSRegularExpression         
+                                      regularExpressionWithPattern:@"[-+]?[0-9]*\\.?[0-9]*"
+                                      options:NSRegularExpressionCaseInsensitive
+                                      error:&error];
+        NSRange rangeOfFirstMatch = [regex rangeOfFirstMatchInString:sv options:0 range:NSMakeRange(0, [sv length])];
+        
+        if (!NSEqualRanges(rangeOfFirstMatch, NSMakeRange(NSNotFound, 0))) {
+            
+            NSString *substringForFirstMatch = [sv substringWithRange:rangeOfFirstMatch];
+            [obj setStringValue:substringForFirstMatch];
+        } else {
+            [obj setStringValue:@"0"];
+        }
+
+        [self grabNumber:obj];
+    } else {
+        [self grabText:obj];
+    }
 }
+
 
 - (IBAction)grabText:(id)sender {
-    NamedText *sw = sender;
-    NSString *b = sw.text;
-    NSString *ns = sw.name;
-    setSourceString([ns cStringUsingEncoding:[NSString defaultCStringEncoding]], [sw delegate] == nil ? StringSourceType : NumberSourceType, 
-                    [b cStringUsingEncoding:[NSString defaultCStringEncoding]]);
+    NSInteger tag = [sender tag];
+    visi_command cmd;
+    cmd.cmd = setSourceCmd;
+    cmd.targetHash = tag;
+    cmd.cmdType = stringVisiType;
+    cmd.cmdInfo.text = [[sender stringValue] UTF8String];
+    id fieldName = objc_getAssociatedObject(sender, &fieldNameKey);
+    if (fieldName) {
+        cmd.cmdTarget = [fieldName UTF8String];
+        callIntoVisi(&cmd);
+    }
 }
-*/
+
+- (IBAction)grabNumber:(id)sender {
+    NSInteger tag = [sender tag];
+    visi_command cmd;
+    cmd.cmd = setSourceCmd;
+    cmd.targetHash = tag;
+    cmd.cmdType = doubleVisiType;
+    cmd.cmdInfo.number = [sender doubleValue];
+    id fieldName = objc_getAssociatedObject(sender, &fieldNameKey);
+    cmd.cmdTarget = [fieldName UTF8String];
+    callIntoVisi(&cmd);    
+}
 
 - (IBAction)grabBool:(id)sender {
-    /*
-    NamedSwitch *sw = sender;
-    BOOL b = sw.on;
-    NSString *ns = sw.name;
-    setSourceString([ns cStringUsingEncoding:[NSString defaultCStringEncoding]], BoolSourceType, b ? "t" : "0");
-     */
+    NSInteger tag = [sender tag];
+    visi_command cmd;
+    cmd.cmd = setSourceCmd;
+    cmd.targetHash = tag;
+    cmd.cmdType = boolVisiType;
+    cmd.cmdInfo.boolValue = [sender boolValue];
+    id fieldName = objc_getAssociatedObject(sender, &fieldNameKey);
+    cmd.cmdTarget = [fieldName UTF8String];
+    callIntoVisi(&cmd);
 }
 
-- (IBAction)grabText:(id)sender {
-    
-}
+
 
 - (id)findSink:(NSInteger) hash {
     id first = [sourceControls viewWithTag:hash];
@@ -106,10 +147,8 @@ void sendEvent(const void *theId, visi_event *evt) {
 }
 
 - (void) layoutControls {
- //[self layoutControls: [sourceControls contentView]];
- //   [self layoutControls: [sinkControls contentView]];
   [self layoutControls: sourceControls];
-   [self layoutControls: sinkControls];
+  [self layoutControls: sinkControls];
 }
 
 - (void) layoutControls:(id)view {
@@ -162,9 +201,57 @@ void sendEvent(const void *theId, visi_event *evt) {
             
         case addSourceEvent:
         {
+            int sourceCnt = 0; // sinkControls...
+            NSView *fr = [[NSView alloc] initWithFrame:CGRectMake(0, 30 * sourceCnt, 300, 30)];
+            [sourceControls addSubview:fr];
+            NSTextField *label = [[NSTextField alloc] initWithFrame: CGRectMake(0, 0, 100, 30)];
+            [label setEditable:NO];
+            [label setSelectable:NO];
+            [label setStringValue: [NSString stringWithUTF8String: 
+                                    event -> evtInfo.sourceSinkName]];
+            [fr addSubview:label];
+            id out;
             
+            switch (event -> eventType) {
+                case doubleVisiType:
+                {
+                    out = [[NSTextField alloc] initWithFrame:CGRectMake(100, 0, 200, 30)];
+                    [out setDoubleValue:0];
+                    [out setTarget:self];
+                    [out setAction:@selector(grabNumber:)];
+                    [out setDelegate:self];
+                    objc_setAssociatedObject (out,
+                                              &isNumericField,
+                                              @"true",
+                                              OBJC_ASSOCIATION_RETAIN);                                                           
+                }
+                    break;
+
+                case stringVisiType:
+                {
+                    out = [[NSTextField alloc] initWithFrame:CGRectMake(100, 0, 200, 30)];
+                    [out setTarget:self];
+                    [out setAction:@selector(grabText:)];
+                    [out setDelegate:self];
+                    
+                }
+                    break;
+
+                case boolVisiType:
+                {
+                    
+                }
+                    break;
+            }
+            objc_setAssociatedObject (out,
+                                      &fieldNameKey,
+                                      [NSString stringWithUTF8String: 
+                                       event -> evtInfo.sourceSinkName],
+                                      OBJC_ASSOCIATION_RETAIN);
+            [out setTag:event -> targetHash];
+            [fr addSubview:out];
+            [self layoutControls];
         }
-            // FIXME add source
             break;
             
         case addSinkEvent: {

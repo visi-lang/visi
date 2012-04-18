@@ -22,6 +22,7 @@
  *
  * ***** END LICENSE BLOCK *****/
 
+#define HashType long
 
 enum cmds {
  setProgramTextCmd,
@@ -36,7 +37,8 @@ typedef struct {
 		int boolValue;
 		double number;
 	} cmdInfo;
-	int targetHash;
+	HashType targetHash;
+	const char *cmdTarget;
 	int cmdType;
 } visi_command;
 
@@ -61,7 +63,7 @@ typedef struct
 		char *errorText;
 		char *sourceSinkName;
 	} evtInfo;
-	int targetHash;
+	HashType targetHash;
 	union {
 		char *text;
 		int boolValue;
