@@ -144,8 +144,6 @@ void sendEvent(const void *theId, visi_event *evt) {
 }
 
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
-    printf("Here 1\n");
-    NSString *id = aTableColumn.identifier;
     return nil;
 }
 

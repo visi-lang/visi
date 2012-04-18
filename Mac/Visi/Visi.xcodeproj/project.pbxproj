@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		DE08B054153F451500B9250A /* InfoHolder.h in Sources */ = {isa = PBXBuildFile; fileRef = DE08B051153F397000B9250A /* InfoHolder.h */; };
 		DE08B055153F451500B9250A /* InfoHolder.m in Sources */ = {isa = PBXBuildFile; fileRef = DE08B052153F397000B9250A /* InfoHolder.m */; };
 		DE2B0E3C14E4629700EC530F /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE2B0E3B14E4629700EC530F /* Cocoa.framework */; };
 		DE2B0E4614E4629700EC530F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E4414E4629700EC530F /* InfoPlist.strings */; };
@@ -17,6 +16,7 @@
 		DE2B0E5214E4629700EC530F /* VisiDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5014E4629700EC530F /* VisiDocument.xib */; };
 		DE2B0E5514E4629700EC530F /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E5314E4629700EC530F /* MainMenu.xib */; };
 		DE42EA14152B860100C16B47 /* RunCommandOnMainThread.m in Sources */ = {isa = PBXBuildFile; fileRef = DE42EA13152B860100C16B47 /* RunCommandOnMainThread.m */; };
+		DE4A980C153F5DCE00E61323 /* visi_icons.icns in Resources */ = {isa = PBXBuildFile; fileRef = DE08B056153F5BBC00B9250A /* visi_icons.icns */; };
 		DEA103F514E5F19300685CB6 /* libiconv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = DEA103F414E5F19300685CB6 /* libiconv.dylib */; };
 		DEA103F714E5F81C00685CB6 /* WholeVisi.o in Frameworks */ = {isa = PBXBuildFile; fileRef = DEA103F614E5F81C00685CB6 /* WholeVisi.o */; };
 /* End PBXBuildFile section */
@@ -34,6 +34,7 @@
 /* Begin PBXFileReference section */
 		DE08B051153F397000B9250A /* InfoHolder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InfoHolder.h; sourceTree = "<group>"; };
 		DE08B052153F397000B9250A /* InfoHolder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InfoHolder.m; sourceTree = "<group>"; };
+		DE08B056153F5BBC00B9250A /* visi_icons.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = visi_icons.icns; sourceTree = SOURCE_ROOT; };
 		DE2B0E3714E4629700EC530F /* Visi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Visi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DE2B0E3B14E4629700EC530F /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		DE2B0E3E14E4629700EC530F /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -115,6 +116,7 @@
 				DE42EA13152B860100C16B47 /* RunCommandOnMainThread.m */,
 				DE2B0E4D14E4629700EC530F /* VisiDocument.h */,
 				DE2B0E4E14E4629700EC530F /* VisiDocument.m */,
+				DE08B056153F5BBC00B9250A /* visi_icons.icns */,
 				DE2B0E5014E4629700EC530F /* VisiDocument.xib */,
 				DE2B0E5314E4629700EC530F /* MainMenu.xib */,
 				DE2B0E4214E4629700EC530F /* Supporting Files */,
@@ -209,6 +211,7 @@
 				DE2B0E4C14E4629700EC530F /* Credits.rtf in Resources */,
 				DE2B0E5214E4629700EC530F /* VisiDocument.xib in Resources */,
 				DE2B0E5514E4629700EC530F /* MainMenu.xib in Resources */,
+				DE4A980C153F5DCE00E61323 /* visi_icons.icns in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,7 +222,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DE08B054153F451500B9250A /* InfoHolder.h in Sources */,
 				DE08B055153F451500B9250A /* InfoHolder.m in Sources */,
 				DE2B0E4814E4629700EC530F /* main.m in Sources */,
 				DE2B0E4F14E4629700EC530F /* VisiDocument.m in Sources */,

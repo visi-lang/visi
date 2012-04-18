@@ -12,7 +12,7 @@
 #import "include/VisiBridge.h"
 #import "InfoHolder.h"
 
-@interface VisiDocument : NSDocument{
+@interface VisiDocument : NSDocument <NSTextFieldDelegate> {
 	NSTextView *editor;
 	NSScrollView *output;
 	NSTextView *errorInfo;
