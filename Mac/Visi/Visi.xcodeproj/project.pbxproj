@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DE08B054153F451500B9250A /* InfoHolder.h in Sources */ = {isa = PBXBuildFile; fileRef = DE08B051153F397000B9250A /* InfoHolder.h */; };
+		DE08B055153F451500B9250A /* InfoHolder.m in Sources */ = {isa = PBXBuildFile; fileRef = DE08B052153F397000B9250A /* InfoHolder.m */; };
 		DE2B0E3C14E4629700EC530F /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE2B0E3B14E4629700EC530F /* Cocoa.framework */; };
 		DE2B0E4614E4629700EC530F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = DE2B0E4414E4629700EC530F /* InfoPlist.strings */; };
 		DE2B0E4814E4629700EC530F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = DE2B0E4714E4629700EC530F /* main.m */; };
@@ -30,6 +32,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		DE08B051153F397000B9250A /* InfoHolder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InfoHolder.h; sourceTree = "<group>"; };
+		DE08B052153F397000B9250A /* InfoHolder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InfoHolder.m; sourceTree = "<group>"; };
 		DE2B0E3714E4629700EC530F /* Visi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Visi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DE2B0E3B14E4629700EC530F /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		DE2B0E3E14E4629700EC530F /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -114,6 +118,8 @@
 				DE2B0E5014E4629700EC530F /* VisiDocument.xib */,
 				DE2B0E5314E4629700EC530F /* MainMenu.xib */,
 				DE2B0E4214E4629700EC530F /* Supporting Files */,
+				DE08B051153F397000B9250A /* InfoHolder.h */,
+				DE08B052153F397000B9250A /* InfoHolder.m */,
 			);
 			path = Visi;
 			sourceTree = "<group>";
@@ -213,6 +219,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DE08B054153F451500B9250A /* InfoHolder.h in Sources */,
+				DE08B055153F451500B9250A /* InfoHolder.m in Sources */,
 				DE2B0E4814E4629700EC530F /* main.m in Sources */,
 				DE2B0E4F14E4629700EC530F /* VisiDocument.m in Sources */,
 				DE42EA14152B860100C16B47 /* RunCommandOnMainThread.m in Sources */,

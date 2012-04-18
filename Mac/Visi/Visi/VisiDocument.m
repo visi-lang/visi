@@ -136,7 +136,115 @@ void sendEvent(const void *theId, visi_event *evt) {
     callIntoVisi(&cmd);
 }
 
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView {
+    if (aTableView == sourceControls) {
+        return [sourceInfo count];
+    }
+    return [sinkInfo count];
+}
 
+- (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
+    printf("Here 1\n");
+    NSString *id = aTableColumn.identifier;
+    return nil;
+}
+
+- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
+    NSString *id = tableColumn.identifier;
+    if ([id isEqualToString:@"sink_name"]) {
+        InfoHolder *info = [sinkInfo objectAtIndex:row];
+        NSTextField *tf = [[NSTextField alloc] init];
+        [tf setBezeled:NO];
+        [tf setBordered:NO];
+        [tf setEditable:NO];
+        [tf setSelectable:NO];
+        [tf setDrawsBackground:NO];
+        [tf setStringValue:[info name]];
+        return tf;
+    }
+
+    if ([id isEqualToString:@"source_name"]) {
+        InfoHolder *info = [sourceInfo objectAtIndex:row];
+        NSTextField *tf = [[NSTextField alloc] init];
+        [tf setBezeled:NO];
+        [tf setBordered:NO];
+        [tf setEditable:NO];
+        [tf setSelectable:NO];
+        [tf setDrawsBackground:NO];
+        [tf setStringValue:[info name]];
+        return tf;
+    }    
+    
+    if ([id isEqualToString:@"sink_value"]) {
+        InfoHolder *info = [sinkInfo objectAtIndex:row];
+        NSTextField *tf = [[NSTextField alloc] init];
+        [tf setBezeled:NO];
+        [tf setBordered:NO];
+        [tf setEditable:NO];
+        [tf setSelectable:NO];
+        [tf setDrawsBackground:NO];
+        [tf setTag:[info hash]];
+        [tf setStringValue:[info value]];
+        return tf;
+    }
+
+    if ([id isEqualToString:@"source_control"]) {
+        InfoHolder *info = [sourceInfo objectAtIndex:row];
+        NSString *vt = [info value];
+        if ([vt isEqualToString:@"num"]) {
+            NSTextField *out = [[NSTextField alloc] init];
+            [out setTarget:self];
+            [out setAction:@selector(grabNumber:)];
+            [out setDelegate:self];
+            
+            [out setDrawsBackground:NO];
+            objc_setAssociatedObject (out,
+                                      &fieldNameKey,
+                                      [info name],
+                                      OBJC_ASSOCIATION_RETAIN);
+            [out setTag:[info hash]];
+            objc_setAssociatedObject (out,
+                                      &isNumericField,
+                                      @"true",
+                                      OBJC_ASSOCIATION_RETAIN);                                                           
+
+            return out;            
+        }
+        
+        if ([vt isEqualToString:@"str"]) {
+            NSTextField *out = [[NSTextField alloc] init];
+            [out setTarget:self];
+            [out setAction:@selector(grabText:)];
+            [out setDelegate:self];
+
+            [out setDrawsBackground:NO];
+            objc_setAssociatedObject (out,
+                                      &fieldNameKey,
+                                      [info name],
+                                      OBJC_ASSOCIATION_RETAIN);
+            [out setTag:[info hash]];
+
+            return out;
+        }
+        
+        if ([vt isEqualToString:@"bool"]) {
+            NSButton * out = [[NSButton alloc] init];
+            [out setButtonType:NSSwitchButton];
+            [out setTitle:@""];
+            [out setTarget:self];
+            [out setAction:@selector(grabBool:)];            
+            objc_setAssociatedObject (out,
+                                      &fieldNameKey,
+                                      [info name],
+                                      OBJC_ASSOCIATION_RETAIN);
+            [out setTag:[info hash]];
+            return out;
+        }
+    }
+    
+    
+    return nil;
+}
 
 - (id)findSink:(NSInteger) hash {
     id first = [sourceControls viewWithTag:hash];
@@ -166,6 +274,9 @@ void sendEvent(const void *theId, visi_event *evt) {
     self = [super init];
     callIntoVisi = Nil;
     if (self) {
+        sourceInfo = [[NSArray alloc] init];
+        sinkInfo = [[NSArray alloc] init];
+        
         self.base = @"";
         callIntoVisi = startProcess((__bridge void *) self);
     }
@@ -186,121 +297,117 @@ void sendEvent(const void *theId, visi_event *evt) {
             break;
 
         case removeSourceEvent:
+        {
+            int pos = [InfoHolder find:sourceInfo withHash:event -> targetHash];
+            if (pos >= 0) {
+                NSMutableArray *mut = [[NSMutableArray alloc] init];
+                [mut addObjectsFromArray: sourceInfo];
+                [mut removeObjectAtIndex: pos];
+                sourceInfo = [NSArray arrayWithArray:mut];
+                [sourceControls removeRowsAtIndexes:[NSIndexSet indexSetWithIndex: pos]
+                                      withAnimation:NSTableViewAnimationSlideUp];
+            }
+        }
+            break;
+            
         case removeSinkEvent:
         {
-            id ui = [self findSink: event -> targetHash];
-            if (ui) {
-                id parent = [ui superview];
-                [parent removeFromSuperview];
-                [self layoutControls];
+            int pos = [InfoHolder find:sinkInfo withHash:event -> targetHash];
+            if (pos >= 0) {
+                NSMutableArray *mut = [[NSMutableArray alloc] init];
+                [mut addObjectsFromArray: sinkInfo];
+                [mut removeObjectAtIndex: pos];
+                sinkInfo = [NSArray arrayWithArray:mut];
+                [sinkControls removeRowsAtIndexes:[NSIndexSet indexSetWithIndex: pos]
+                                      withAnimation:NSTableViewAnimationSlideUp];
             }
         }
             break;
             
         case addSourceEvent:
         {
-            int sourceCnt = 0; // sinkControls...
-            NSView *fr = [[NSView alloc] initWithFrame:CGRectMake(0, 30 * sourceCnt, 300, 30)];
-            [sourceControls addSubview:fr];
-            NSTextField *label = [[NSTextField alloc] initWithFrame: CGRectMake(0, 0, 100, 30)];
-            [label setEditable:NO];
-            [label setSelectable:NO];
-            [label setStringValue: [NSString stringWithUTF8String: 
-                                    event -> evtInfo.sourceSinkName]];
-            [fr addSubview:label];
-            id out;
+            InfoHolder *ih = [[InfoHolder alloc]
+                              initWithName:
+                                [NSString stringWithUTF8String:
+                                 event -> evtInfo.sourceSinkName]
+                                                        value:@""
+                              hash:event -> targetHash];
             
             switch (event -> eventType) {
                 case doubleVisiType:
-                {
-                    out = [[NSTextField alloc] initWithFrame:CGRectMake(100, 0, 200, 30)];
-                    [out setDoubleValue:0];
-                    [out setTarget:self];
-                    [out setAction:@selector(grabNumber:)];
-                    [out setDelegate:self];
-                    objc_setAssociatedObject (out,
-                                              &isNumericField,
-                                              @"true",
-                                              OBJC_ASSOCIATION_RETAIN);                                                           
-                }
+                    [ih updateValue:@"num"];
                     break;
-
-                case stringVisiType:
-                {
-                    out = [[NSTextField alloc] initWithFrame:CGRectMake(100, 0, 200, 30)];
-                    [out setTarget:self];
-                    [out setAction:@selector(grabText:)];
-                    [out setDelegate:self];
                     
-                }
+                case stringVisiType:
+                    [ih updateValue:@"str"];
                     break;
-
+                    
                 case boolVisiType:
-                {
-                    out = [[NSButton alloc] initWithFrame:CGRectMake(100, 0, 18, 18)];
-                    [out setButtonType:NSSwitchButton];
-                    [out setTarget:self];
-                    [out setAction:@selector(grabBool:)];
-                }
+                    [ih updateValue:@"bool"];
                     break;
             }
-            objc_setAssociatedObject (out,
-                                      &fieldNameKey,
-                                      [NSString stringWithUTF8String: 
-                                       event -> evtInfo.sourceSinkName],
-                                      OBJC_ASSOCIATION_RETAIN);
-            [out setTag:event -> targetHash];
-            [fr addSubview:out];
-            [self layoutControls];
+            
+            NSUInteger sz = [sourceInfo count];
+            sourceInfo = [sourceInfo arrayByAddingObject:ih];
+            
+            [sourceControls insertRowsAtIndexes: [NSIndexSet indexSetWithIndex:sz]
+                                withAnimation:NSTableViewAnimationSlideDown];
         }
             break;
             
-        case addSinkEvent: {
-            int sourceCnt = 0; // sinkControls...
-            NSView *fr = [[NSView alloc] initWithFrame:CGRectMake(0, 30 * sourceCnt, 300, 30)];
-            // id docView = [sinkControls documentView];
-            [sinkControls addSubview:fr];
-            NSTextField *label = [[NSTextField alloc] initWithFrame: CGRectMake(0, 0, 100, 30)];
-            [label setEditable:NO];
-            [label setSelectable:NO];
-            [label setStringValue: [NSString stringWithUTF8String: 
-                                    event -> evtInfo.sourceSinkName]];
-            [fr addSubview:label];
-            NSTextField *out = [[NSTextField alloc] initWithFrame:CGRectMake(100, 0, 200, 30)];
-            [out setEditable:NO];
-            [out setSelectable: NO];
-            [out setTag:event -> targetHash];
-            [out setStringValue: @""];
-            [fr addSubview:out];
-            [self layoutControls];
+        case addSinkEvent: 
+        {
+            InfoHolder *ih = [[InfoHolder alloc] 
+                              initWithName:
+                                [NSString stringWithUTF8String:
+                                 event -> evtInfo.sourceSinkName]
+                              value: @""
+                              hash: event -> targetHash];
+            
+            NSUInteger sz = [sinkInfo count];
+            sinkInfo = [sinkInfo arrayByAddingObject:ih];
+
+            [sinkControls 
+             insertRowsAtIndexes: 
+                [NSIndexSet indexSetWithIndex:sz]
+                                        withAnimation:NSTableViewAnimationSlideDown];
         }
             
             break;
             
         case setSinkEvent: {
-            id sinkText = [self findSink: event -> targetHash];
-            if (sinkText) {
+            int i = [InfoHolder find:sinkInfo withHash:event -> targetHash];
+            if (i >= 0) {
+                InfoHolder *ih = [sinkInfo objectAtIndex:i];
+                NSString *str = @"";
                 switch (event -> eventType) {
-                    case doubleVisiType:
-                        [sinkText setDoubleValue:event -> evtValue.number];
+                    case doubleVisiType: {
+                        NSTextField *ttf = [[NSTextField alloc] init];
+                        [ttf setDoubleValue: event -> evtValue.number];
+                        str = [ttf stringValue];
+                    }
                         break;
-
+                        
                     case stringVisiType:
-                        [sinkText setStringValue:[NSString stringWithUTF8String: event -> evtValue.text]];
+                        str = [NSString stringWithUTF8String: event -> evtValue.text];
                         break;
-
+                        
                     case boolVisiType:
                         if (event -> evtValue.boolValue) {
-                            [sinkText setStringValue:@"true"];
+                            str = @"true";
                         } else {
-                            [sinkText setStringValue:@"false"];
+                            str = @"false";
                         }
                         break;
-
+                        
                     default:
                         break;
                 }
-                [sinkText setNeedsDisplay];
+                [ih updateValue:str];
+                
+                NSTextField *tf = [sinkControls viewWithTag:event -> targetHash];
+                [tf setStringValue:str];
+                [tf setNeedsDisplay:YES];
             }
         }
             break;

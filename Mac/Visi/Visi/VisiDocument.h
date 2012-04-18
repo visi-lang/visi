@@ -10,22 +10,23 @@
 #import <objc/runtime.h>
 
 #import "include/VisiBridge.h"
+#import "InfoHolder.h"
 
 @interface VisiDocument : NSDocument{
 	NSTextView *editor;
 	NSScrollView *output;
 	NSTextView *errorInfo;
-	NSArray *currentControls;
-	NSMutableArray *newControls;
     NSString *base;
+    NSArray *sourceInfo;
+    NSArray *sinkInfo;
     cmdFunc callIntoVisi;
 }
 
 @property (retain, nonatomic) IBOutlet NSTextView *editor;
 @property (retain, nonatomic) IBOutlet NSTextView *errorInfo;
 @property (retain, nonatomic) IBOutlet NSString *base;
-@property (retain, nonatomic) IBOutlet NSView *sourceControls;
-@property (retain, nonatomic) IBOutlet NSView *sinkControls;
+@property (retain, nonatomic) IBOutlet NSTableView *sourceControls;
+@property (retain, nonatomic) IBOutlet NSTableView *sinkControls;
 
 
 - (IBAction)runCode:(id) sender;
@@ -35,6 +36,11 @@
 - (void) windowWillClose: (NSNotification *) notification;
 - (void)runEvent:(visi_event *)event;
 -(void) controlTextDidChange:(NSNotification *)aNotification;
+
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView;
+- (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex;
+
+- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row;
 
 // - (void) findCopyOrRemove: (SourceSinkInfo *) ss;
 - (void) layoutControls;					
