@@ -132,15 +132,13 @@ findTicks :: MParser ()
 findTicks =
   do
     col <- curColumn
-    if col == 1 then (try threeMarksToEnd) <|> (anyChar >> findTicks)
-    else anyChar >> findTicks
+    if col == 1 then (try threeMarksToEnd) <|> (anyChar >> findTicks) else anyChar >> findTicks
 
 findTicksOrEOF :: MParser ()
 findTicksOrEOF = eof <|>
   do
     col <- curColumn
-    if col == 1 then (try threeMarksToEnd) <|> (anyChar >> findTicksOrEOF)
-    else anyChar >> findTicksOrEOF
+    if col == 1 then (try threeMarksToEnd) <|> (anyChar >> findTicksOrEOF) else anyChar >> findTicksOrEOF
 
 threeMarksToEnd =
   do
@@ -152,8 +150,7 @@ findCodeBlockLine :: MParser ()
 findCodeBlockLine =
   do
     col <- curColumn
-    if col == 1 then threeMarksToEnd
-    else anyChar >> findCodeBlockLine
+    if col == 1 then threeMarksToEnd else anyChar >> findCodeBlockLine
 
 whileNotEnd = whileNot (eol <|> eof)
 

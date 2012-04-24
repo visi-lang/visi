@@ -39,7 +39,7 @@
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView;
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex;
-
+- (void)textDidChange:(NSNotification *)aNotification;
 - (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row;
 
 // - (void) findCopyOrRemove: (SourceSinkInfo *) ss;

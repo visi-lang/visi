@@ -71,9 +71,17 @@ void sendEvent(const void *theId, visi_event *evt) {
     callIntoVisi(&cmd);
 }
 
+- (void)textDidChange:(NSNotification *)aNotification {
+    id obj = [aNotification object];
+    if (obj == editor) {
+        [self runCode:obj];
+    }
+}
 -(void) controlTextDidChange:(NSNotification *)aNotification {
     id obj = [aNotification object];
-    if (objc_getAssociatedObject(obj,
+    if (obj == editor) {
+        [self runCode:obj];
+    } else if (objc_getAssociatedObject(obj,
                                   &isNumericField)) {
         NSString *sv = [obj stringValue];
         NSError *error = NULL;
