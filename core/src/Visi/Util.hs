@@ -15,6 +15,8 @@ import Data.IORef
 import Data.Digest.Pure.SHA
 import qualified Data.Text as T
 import Data.ByteString.Lazy.UTF8
+import qualified Control.Exception as E
+import System.IO (hPutStrLn, stderr)
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -108,12 +110,15 @@ buildMessageQueue start func =
         let runIt v = do
             doIt <- readIORef running
             if doIt then runOnThread $ putMVar mvar v else return ()
-        let loopy state = do
-            v <- takeMVar mvar
-            res <- func state v
-            case res of
-                Just state' -> loopy state'
-                _ -> writeIORef running False
+        let loopy state = E.catch (do
+                                      v <- takeMVar mvar
+                                      res <- func state v
+                                      case res of
+                                          Just state' -> loopy state'
+                                          _ -> writeIORef running False)
+                                  (\e -> do let err = show (e :: E.SomeException)
+                                            hPutStrLn stderr ("Warning: Execution Failure: " ++ show e)
+                                            loopy state)
         runOnThread $ loopy start
         return $ runIt
 

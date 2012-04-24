@@ -37,20 +37,20 @@ import Visi.Expression
 import qualified Data.Map as Map
 
 data TIState = TIState {tiSupply :: Int, tiDepth :: Int, 
-                        tiHasTilde :: Bool, tiInLiterate :: Bool} deriving (Show)
+                        tiHasLitCode :: Bool, tiInLiterate :: Bool} deriving (Show)
 type MParser = Parsec String TIState
 
 -- | parse a line of input
 parseLine :: String -> Either VisiError Expression
 parseLine str = case runParser line TIState {tiSupply = 0, tiDepth = 0, 
-                                             tiHasTilde = False, tiInLiterate = False} str str of
+                                             tiHasLitCode = False, tiInLiterate = False} str str of
                   Left err -> Left $ ParsingError err
                   Right res -> Right res
 
 -- | parse many lines of input and return a List of expressions
 parseLines :: String -> Either VisiError [Expression]
 parseLines str = case runParser doLines TIState{tiSupply = 0, tiDepth = 0,
-                                                tiHasTilde = False, tiInLiterate = True} str str of
+                                                tiHasLitCode = False, tiInLiterate = True} str str of
                     Left err -> Left $ ParsingError err
                     Right res -> Right res
                     
@@ -93,19 +93,19 @@ TokenParser{ parens = m_parens
 
 
 line :: MParser Expression
-line = do info <- dataDefinition <|> try funcDef <|> try letDef
+line = do info <- try dataDefinition <|> try funcDef <|> try letDef
           mySpaces
           try eol <|> try eof
           return info
 
 narc id = id
 
-getHasTilde = tiHasTilde <$> getState
+getHasLitCode = tiHasLitCode <$> getState
 
-setHasTilde b =
+setHasLitCode b =
   do
     st <- getState
-    setState st{tiHasTilde = b}
+    setState st{tiHasLitCode = b}
 
 inLiterate = tiInLiterate <$> getState
 
@@ -115,57 +115,64 @@ setInLiterate b =
     setState st{tiInLiterate = b}
 
 
-manyTilde =
+testForLitPair =
   do
-    manyTill anyChar $ try findTildeLine
+    manyTill anyChar $ try findCodeBlockLine
     anyChar
-    manyTill anyChar $ try findTildeLine
+    manyTill anyChar $ try findCodeBlockLine
     return True
 
-testForTilde =
-  do
-    which <- lookAhead (try manyTilde) <|> return False
-    setHasTilde which
-
-findTildeLine =
+findCodeBlockLine =
   do
     manyTill anyChar tryEnd
     threeMarks
-    whileNot tryEnd
+    whileNotEnd
+
+whileNotEnd = whileNot (eol <|> eof)
+
+testForLiterate =
+  do
+    which <- lookAhead (try testForLitPair) <|> return False
+    setHasLitCode which
 
 
-doLines = testForTilde >> blankLines >> stmtparser <* blankLines <* eof
+
+
+doLines = testForLiterate >> blankLines >> stmtparser <* blankLines <* eof
     where
       stmtparser :: MParser [Expression]
       stmtparser = many $ blankLines >> line <* blankLines
 
 mySpaces = try m_whiteSpace
 
-tryEnd = try eol <|> try eof
+tryEnd = try (eol <|> eof)
+
+threeMarks :: MParser ()
 threeMarks =
   do
     char '`'
     char '`'
     char '`'
+    return ()
 
 blankLine =
   do
-    tilde <- getHasTilde
+    hasLit <- getHasLitCode
     inLit <- inLiterate
-    if not tilde then
+    if not hasLit then
         (do
             mySpaces
             eol) <?> "Blank Line"
       else
         if inLit then
           (do
-            try $ manyTill anyChar $ try findTildeLine
+            try $ findCodeBlockLine
             setInLiterate False) <|>
           () <$ anyChar
         else
           (do
             threeMarks
-            whileNot tryEnd
+            whileNotEnd
             setInLiterate True
             tryEnd) <|>
           (do

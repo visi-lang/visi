@@ -66,7 +66,6 @@ data Type = TVar T.Text
 
 newtype FuncName = FuncName T.Text deriving (Eq, Ord)
 
-
 instance Show FuncName where
   show (FuncName name) = T.unpack name
 

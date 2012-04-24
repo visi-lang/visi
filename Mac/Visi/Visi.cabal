@@ -10,7 +10,7 @@ Library
     Build-tools: c2hs  
     GHC-Options: -threaded -O0 -optl-Wl 
     -- Include-dirs: /Users/dpp//TeamSpace/proj/visi/Mac/Visi/include
-    extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface, FlexibleInstances 
+    extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface, FlexibleInstances, ScopedTypeVariables
     Hs-Source-Dirs: Visi/haskell, ../../core/src
     Other-Modules: VisiPro.Mac, VisiPro.Bridge, Visi.Util, Visi.Runtime, Visi.Expression, Visi.Parse, Visi.Executor, Visi.Typer, Visi.Model
     Build-Depends:
