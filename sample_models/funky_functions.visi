@@ -52,6 +52,7 @@ factIfUnder25 = choose gt25 id fact
 ```
 
 Let's build sources and sinks:
+
 ```
 ?num
 
@@ -59,5 +60,4 @@ Let's build sources and sinks:
 
 "Twice" = factIfUnder25 (num * 2)
 ```
-
 

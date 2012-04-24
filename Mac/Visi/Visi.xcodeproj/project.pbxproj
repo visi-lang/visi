@@ -182,7 +182,7 @@
 		DE2B0E2E14E4629600EC530F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0420;
+				LastUpgradeCheck = 0430;
 			};
 			buildConfigurationList = DE2B0E3114E4629600EC530F /* Build configuration list for PBXProject "Visi" */;
 			compatibilityVersion = "Xcode 3.2";
