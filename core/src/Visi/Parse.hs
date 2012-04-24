@@ -117,16 +117,43 @@ setInLiterate b =
 
 testForLitPair =
   do
-    manyTill anyChar $ try findCodeBlockLine
-    anyChar
-    manyTill anyChar $ try findCodeBlockLine
+    findTicks
+    findTicks    
     return True
 
+toCol1 :: MParser ()
+toCol1 =
+  eof <|> testCol1
+  where testCol1 = do
+                    col <- curColumn
+                    if col == 1 then return () else anyChar >> toCol1
+
+findTicks :: MParser ()
+findTicks =
+  do
+    col <- curColumn
+    if col == 1 then (try threeMarksToEnd) <|> (anyChar >> findTicks)
+    else anyChar >> findTicks
+
+findTicksOrEOF :: MParser ()
+findTicksOrEOF = eof <|>
+  do
+    col <- curColumn
+    if col == 1 then (try threeMarksToEnd) <|> (anyChar >> findTicksOrEOF)
+    else anyChar >> findTicksOrEOF
+
+threeMarksToEnd =
+  do
+    threeMarks <?> "Three markes to end"
+    toCol1
+
+
+findCodeBlockLine :: MParser ()
 findCodeBlockLine =
   do
-    manyTill anyChar tryEnd
-    threeMarks
-    whileNotEnd
+    col <- curColumn
+    if col == 1 then threeMarksToEnd
+    else anyChar >> findCodeBlockLine
 
 whileNotEnd = whileNot (eol <|> eof)
 
@@ -155,29 +182,17 @@ threeMarks =
     char '`'
     return ()
 
+blankLine :: MParser ()
 blankLine =
   do
     hasLit <- getHasLitCode
     inLit <- inLiterate
-    if not hasLit then
-        (do
-            mySpaces
-            eol) <?> "Blank Line"
+    if not hasLit then (try mySpaces >> eol) <?> "Blank Line"
       else
-        if inLit then
-          (do
-            try $ findCodeBlockLine
-            setInLiterate False) <|>
-          () <$ anyChar
-        else
-          (do
-            threeMarks
-            whileNotEnd
-            setInLiterate True
-            tryEnd) <|>
-          (do
-              mySpaces
-              tryEnd) <?> "Literate Sep Line or Blank Line"
+        if inLit then (try findTicksOrEOF >> setInLiterate False) 
+        else eof <|>
+             (try findCodeBlockLine >> setInLiterate True) <|>
+             (try mySpaces >> tryEnd) <?> "Literate Sep Line or Blank Line"
 
 
 whileNot end =  scan
@@ -185,7 +200,8 @@ whileNot end =  scan
                                  <|>
                               (anyChar >> scan)
 
-blankLines = many blankLine
+blankLines :: MParser ()
+blankLines = eof <|> optional (try blankLine >> optional blankLines)
 
 eol :: MParser ()
 eol = do char '\n'
@@ -262,7 +278,6 @@ sourceOrSinkName = try m_identifier <|> try m_stringLiteral
 
 sinkFunc =
     do
-      mySpaces
       sinkName <- m_stringLiteral
       mySpaces
       char '='
@@ -310,7 +325,7 @@ letAndThenExp atCol =
 
 sourceFunc =
     do
-      mySpaces
+      -- mySpaces
       char '?'
       sourceName <- m_identifier
       mySpaces
@@ -475,6 +490,9 @@ expression =
 
 curColumn :: MParser Int
 curColumn = sourceColumn <$> getPosition
+
+curLine :: MParser Int
+curLine = sourceLine <$> getPosition
 
 newLetId prefix =
     do
