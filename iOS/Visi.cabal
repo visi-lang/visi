@@ -31,6 +31,8 @@ Executable Visi
         pretty,
         text,
         SHA,
+        aeson,
+        regex-pcre-builtin,
         utf8-string,
         uuid
 

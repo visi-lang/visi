@@ -41,18 +41,25 @@ import Text.Parsec.Error
 import System.Directory
 import System.Environment
 import System.IO
+import Visi.Markdown
 
 main :: IO ()
 main = 
     do
         argv <- getArgs
-        path <- canonicalizePath $ head argv
-        revisedTests <- mapM (loadSamples path) syntaxTests
-        l1 <- testOMatic revisedTests -- paths
-        let allL = l1
-        mapM_ snd allL
-        let errs = sum $ map fst allL
-        putStrLn $ "Ran " ++ show (length allL) ++ " tests, " ++ show errs ++ " errors"
+        case argv of
+          "--markdown":file:_ -> do
+            contents <- readFile file
+            putStrLn $ markdown contents
+          name:_ -> do
+                      path <- canonicalizePath $ head argv
+                      revisedTests <- mapM (loadSamples path) syntaxTests
+                      l1 <- testOMatic revisedTests -- paths
+                      let allL = l1
+                      mapM_ snd allL
+                      let errs = sum $ map fst allL
+                      putStrLn $ "Ran " ++ show (length allL) ++ " tests, " ++ show errs ++ " errors"
+          _ -> putStrLn "run_test --markdown file | test_dir"
  
 loadSamples path (param, func) =
   if ".md" `List.isSuffixOf` param then

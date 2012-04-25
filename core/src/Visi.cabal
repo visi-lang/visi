@@ -21,4 +21,6 @@ Executable visi
                      text,
                      utf8-string,
 		                 uuid,
+                     regex-pcre-builtin,
+                     aeson,
                      SHA

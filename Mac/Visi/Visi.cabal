@@ -25,6 +25,8 @@ Library
         text,
         uuid,
         SHA,
+        aeson,
+        regex-pcre-builtin,
         utf8-string,
         random
 

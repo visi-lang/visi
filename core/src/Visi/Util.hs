@@ -1,6 +1,6 @@
-module Visi.Util (flatten, VisiError(TypeError, ParsingError, DefaultError), ThrowsError,
+module Visi.Util (flatten, Stringable, VisiError(TypeError, ParsingError, DefaultError), ThrowsError,
 					passthru, listify, justFunc, vtrace, justOr, (|-), unsafeRandom,
-                    buildMessageQueue, intHash,
+                    buildMessageQueue, intHash, hexHash,
                     runOnThread) where
 
 import Control.Monad.Error
@@ -17,6 +17,7 @@ import qualified Data.Text as T
 import Data.ByteString.Lazy.UTF8
 import qualified Control.Exception as E
 import System.IO (hPutStrLn, stderr)
+
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -139,9 +140,22 @@ runOnThread =
     return run
 
 -- | calculate the hash of a text string and return the right-most bits
-intHash :: T.Text -> Int
+intHash :: Stringable a => a -> Int
 intHash text =
-    fromIntegral $ integerDigest $ sha1 $ fromString $ T.unpack text
+    fromIntegral $ integerDigest $ sha1 $ fromString $ cvtToString text
+
+hexHash :: Stringable a => a -> String
+hexHash text = showDigest $ sha1 $ fromString $ cvtToString text
+
+class Stringable s where
+    cvtToString :: s -> String
+
+instance Stringable String where
+    cvtToString s = s
+
+instance Stringable T.Text where
+    cvtToString s = T.unpack s
+
 
 (|-) :: Either b a -> (a -> Either b c) -> Either b c
 (Right a) |- f = f a

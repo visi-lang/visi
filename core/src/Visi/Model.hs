@@ -38,6 +38,7 @@ import Visi.Parse
 import Visi.Executor
 import Visi.Typer
 import Visi.Expression
+import Visi.Markdown
 
 type SinkAction a = Model a -> T.Text -> Value -> IO ()
 
