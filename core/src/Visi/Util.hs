@@ -17,7 +17,8 @@ import qualified Data.Text as T
 import Data.ByteString.Lazy.UTF8
 import qualified Control.Exception as E
 import System.IO (hPutStrLn, stderr)
-
+import qualified Data.ByteString as B
+import qualified Data.ByteString.UTF8 as UB
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -155,6 +156,9 @@ instance Stringable String where
 
 instance Stringable T.Text where
     cvtToString s = T.unpack s
+
+instance Stringable B.ByteString where
+    cvtToString = UB.toString
 
 
 (|-) :: Either b a -> (a -> Either b c) -> Either b c
