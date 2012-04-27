@@ -1,9 +1,13 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Visi.Util (flatten, Stringable, VisiError(TypeError, ParsingError, DefaultError), ThrowsError,
 					passthru, listify, justFunc, vtrace, justOr, (|-), unsafeRandom,
                     buildMessageQueue, intHash, hexHash,
                     runOnThread) where
 
 import Control.Monad.Error
+import Control.Monad.Instances ()
 import Text.Parsec
 import Debug.Trace
 import System.IO.Unsafe
@@ -12,6 +16,7 @@ import qualified Data.Map as Map
 import System.IO.Unsafe
 import Control.Concurrent
 import Data.IORef
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Digest.Pure.SHA
 import qualified Data.Text as T
 import Data.ByteString.Lazy.UTF8
@@ -76,23 +81,19 @@ instance Show VisiError where show = showError
 instance Error VisiError where
     noMsg = DefaultError "An error has occurred"
     strMsg = DefaultError
-    
-justOr thing err = case thing of
-                    (Just v) -> {-return-} v
-                    _ -> err
-                    
+
+justOr :: Maybe a -> a -> a
+justOr thing err = fromMaybe err thing
 
 -- | Turn a Maybe into a List of 0 or 1 element
-listify (Just a) = [a]
-listify _ = []
+listify :: Maybe a -> [a]
+listify = maybeToList
 
-passthru x = x
+passthru :: a -> a
+passthru = id
 
-justFunc val maybe func =
-	case maybe of
-		Just x -> func x
-		_ -> val
-
+justFunc :: b -> Maybe a -> (a -> b) -> b
+justFunc val m func = maybe val func m
 
 -- | Build a non-blocking message queue and associated
 -- | place to pull values placed in the Queue.  Basically,
@@ -162,5 +163,4 @@ instance Stringable B.ByteString where
 
 
 (|-) :: Either b a -> (a -> Either b c) -> Either b c
-(Right a) |- f = f a
-(Left b) |- _ = Left b
+(|-) = (>>=)
