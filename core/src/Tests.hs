@@ -48,8 +48,8 @@ main =
     do
         argv <- getArgs
         case argv of
-          "--markdown":file:_ -> do
-            contents <- readFile file
+          "--markdown":file -> do
+            contents <- readFile $ unwords file
             putStrLn $ markdown contents
           name:_ -> do
                       path <- canonicalizePath $ head argv
@@ -232,13 +232,11 @@ syntaxTests =
      ,("res n = n.fizzbin\n\
        \frog = (res \"foo\") & \"1\"", testTypes [("frog", testPrimStr)] . checktype)
 
-{-
      ,("res n = \n\
        \  x = n.fizzbin\n\
        \  y = n.meowfizz\n\
        \  x + y\n\
        \frog = (res 44) + 1", testTypes [("frog", testPrimDouble)] . checktype)
--}
 
      ,("woof n =\n\
        \  x = n.fizzbin\n\
@@ -347,7 +345,7 @@ testResults list res =
     Left err -> Just $ show err
     Right grp ->
       let exprs = buildLetScope grp in
-      let testIt (funcName, expVal) = case eval Map.empty exprs $ Var $ FuncName $ T.pack funcName of
+      let testIt (funcName, expVal) = case eval Map.empty exprs $ Var NoSourceLoc $ FuncName $ T.pack funcName of
                                           v | expVal == v -> Nothing
                                           v -> Just $ "Funcname " ++ funcName ++ " yielded " ++ show v ++ " expected " ++ show expVal
       in

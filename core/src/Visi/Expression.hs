@@ -3,6 +3,7 @@ module Visi.Expression (
                                        SinkExp, SourceExp, InvokeMethod,
                                        Var, BuiltIn, ValueConst,
                                        Group),
+                            SourceLoc(NoSourceLoc, SourceFromURL, SourceLoc),
                            AllTypeVars(AllTypeVars),
                            VarScope, LetScope, TVarInfo(TVarInfo),
                            Type(TVar, TPrim, TOper, StructuralType),
@@ -10,8 +11,13 @@ module Visi.Expression (
                            LetId(LetId),
                            Prim(PrimDouble, PrimBool, PrimStr),
                            valuePrim,
+                           SourcePoint, SourceSpan,
+                           builtInLoc,
                            tFun, funcOperName,
                            defaultValueForType,
+                           getSourceLoc,
+                           HasSourceLoc,
+                           SourceInfo,
                            Value(DoubleValue, StrValue, BoolValue, FuncValue, UndefinedValue)) where
 
 {- ***** BEGIN LICENSE BLOCK *****
@@ -46,17 +52,26 @@ newtype LetId = LetId T.Text deriving (Eq, Ord, Show)
 
 type CanBeGeneric = Bool
 
-data Expression = LetExp LetId FuncName CanBeGeneric Type Expression
-                  | InnerLet Type Expression Expression -- defines a Let plus an expression to be evaluated in the scope of the Let
-                  | SinkExp LetId FuncName Type Expression
-                  | SourceExp LetId FuncName Type
-                  | InvokeMethod LetId FuncName Type
-                  | FuncExp FuncName Type Expression
-                  | Apply LetId Type Expression Expression
-                  | Var FuncName
-                  | BuiltIn FuncName Type (Value -> Value)
-                  | ValueConst Value
-                  | Group (Map.Map FuncName Expression) Type Expression
+type SourcePoint = (Int, Int)
+type SourceSpan = (SourcePoint, SourcePoint)
+type SourceInfo = (SourceSpan, T.Text)
+
+data SourceLoc = NoSourceLoc 
+                 | BuiltInSource String SourceLoc
+                 | SourceFromURL String SourceInfo SourceLoc
+                 | SourceLoc SourceInfo SourceLoc deriving (Show, Eq)
+
+data Expression = LetExp SourceLoc LetId FuncName CanBeGeneric Type Expression
+                  | InnerLet SourceLoc Type Expression Expression -- defines a Let plus an expression to be evaluated in the scope of the Let
+                  | SinkExp SourceLoc LetId FuncName Type Expression
+                  | SourceExp SourceLoc LetId FuncName Type
+                  | InvokeMethod SourceLoc LetId FuncName Type
+                  | FuncExp SourceLoc FuncName Type Expression
+                  | Apply SourceLoc LetId Type Expression Expression
+                  | Var SourceLoc FuncName
+                  | BuiltIn SourceLoc FuncName Type (Value -> Value)
+                  | ValueConst SourceLoc Value
+                  | Group SourceLoc (Map.Map FuncName Expression) Type Expression
 
 data Type = TVar T.Text
             | TPrim Prim
@@ -77,19 +92,39 @@ tFun t1 t2 = TOper funcOperName [t1,t2]
 
 startsWithLetter (a:b) = isLetter a
 
+
+class HasSourceLoc a where
+  getSourceLoc :: a -> SourceLoc
+
+instance HasSourceLoc SourceLoc where
+  getSourceLoc a = a
+
+instance HasSourceLoc Expression where
+  getSourceLoc (LetExp sl _ (FuncName name) _ t1 exp) = sl
+  getSourceLoc (InnerLet sl _ letExp evalExp) = sl
+  getSourceLoc (Apply sl _ t2 _ right) = sl
+  getSourceLoc (FuncExp sl (FuncName param) rt exp) = sl
+  getSourceLoc (InvokeMethod sl _ (FuncName name) _) = sl
+  getSourceLoc (Var sl (FuncName name)) = sl
+  getSourceLoc (ValueConst sl v) = sl
+  getSourceLoc (Group sl map _ _) = sl
+  getSourceLoc (BuiltIn sl (FuncName name) tpe _) = sl
+  getSourceLoc (SinkExp sl _ (FuncName name) tpe _) = sl
+  getSourceLoc (SourceExp sl _ (FuncName name) tpe) = sl
+
 instance Show Expression where
-  show (LetExp _ (FuncName name) _ t1 exp) = "let " ++ T.unpack name ++ " = " ++ show exp ++ " :: " ++ show t1
-  show (InnerLet _ letExp evalExp) = show letExp ++ "\n" ++ show evalExp
-  show (Apply _ t2 (Apply t1 _ (Var (FuncName name)) left) right) = show left ++ " " ++ T.unpack name ++ " " ++ show right
-  show (FuncExp (FuncName param) rt exp) = "func " ++ T.unpack param ++ " = " ++ show exp ++ " :: " ++ show rt
-  show (Apply _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
-  show (InvokeMethod _ (FuncName name) _) = "#" ++ T.unpack name
-  show (Var (FuncName name)) = T.unpack name
-  show (ValueConst v) = show v
-  show (Group map _ _) = "Group " ++ show map
-  show (BuiltIn (FuncName name) tpe _) = T.unpack name ++ " :: " ++ show tpe
-  show (SinkExp _ (FuncName name) tpe _) = "Sink: " ++ T.unpack name ++ " :: " ++ show tpe
-  show (SourceExp _ (FuncName name) tpe) = "Source: " ++ T.unpack name ++ " :: " ++ show tpe
+  show (LetExp _ _ (FuncName name) _ t1 exp) = "let " ++ T.unpack name ++ " = " ++ show exp ++ " :: " ++ show t1
+  show (InnerLet _ _ letExp evalExp) = show letExp ++ "\n" ++ show evalExp
+  show (Apply _ _ t2 (Apply _ t1 _ (Var _ (FuncName name)) left) right) = show left ++ " " ++ T.unpack name ++ " " ++ show right
+  show (FuncExp _ (FuncName param) rt exp) = "func " ++ T.unpack param ++ " = " ++ show exp ++ " :: " ++ show rt
+  show (Apply _ _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
+  show (InvokeMethod _ _ (FuncName name) _) = "#" ++ T.unpack name
+  show (Var _ (FuncName name)) = T.unpack name
+  show (ValueConst _ v) = show v
+  show (Group _ map _ _) = "Group " ++ show map
+  show (BuiltIn _ (FuncName name) tpe _) = T.unpack name ++ " :: " ++ show tpe
+  show (SinkExp _ _ (FuncName name) tpe _) = "Sink: " ++ T.unpack name ++ " :: " ++ show tpe
+  show (SourceExp _ _ (FuncName name) tpe) = "Source: " ++ T.unpack name ++ " :: " ++ show tpe
 
 
 
@@ -118,6 +153,8 @@ valuePrim (DoubleValue _) = Just $ TPrim PrimDouble
 valuePrim (StrValue _) = Just $ TPrim PrimStr
 valuePrim (BoolValue _) = Just $ TPrim PrimBool
 valuePrim _ = Nothing
+
+builtInLoc name = BuiltInSource name NoSourceLoc
 
 data Value = DoubleValue Double
              | StrValue T.Text

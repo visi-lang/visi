@@ -35,14 +35,30 @@ import Data.Maybe ( catMaybes )
 import Visi.Util
 import Visi.Expression
 import qualified Data.Map as Map
+import Data.Array
 
 data TIState = TIState {tiSupply :: Int, tiDepth :: Int, 
+                        tiSourceUrl :: Maybe String,
+                        tiSource :: (Array Int Int, T.Text),
                         tiHasLitCode :: Bool, tiInLiterate :: Bool} deriving (Show)
 type MParser = Parsec String TIState
+
+textLines str =
+  let txt = T.pack str in
+  let noCrLf = T.replace (T.pack "\r\n") (T.pack "\n") txt in
+  let noCr = T.replace (T.pack "\r") (T.pack "\n") noCrLf in
+  let doChar (pos, offsets) char = if char == '\n' then (pos + 1, (pos + 1):offsets) else (pos + 1, offsets) in
+  let (_,offsets) = T.foldl' doChar (0, [0]) noCr in
+  let revOff = reverse offsets in
+  let offArray = listArray (0, length revOff) revOff in
+  (offArray, noCr)
+
 
 -- | parse a line of input
 parseLine :: String -> Either VisiError Expression
 parseLine str = case runParser line TIState {tiSupply = 0, tiDepth = 0, 
+                                             tiSourceUrl = Nothing,
+                                             tiSource = textLines str,
                                              tiHasLitCode = False, tiInLiterate = False} str str of
                   Left err -> Left $ ParsingError err
                   Right res -> Right res
@@ -50,23 +66,22 @@ parseLine str = case runParser line TIState {tiSupply = 0, tiDepth = 0,
 -- | parse many lines of input and return a List of expressions
 parseLines :: String -> Either VisiError [Expression]
 parseLines str = case runParser doLines TIState{tiSupply = 0, tiDepth = 0,
+                                                tiSourceUrl = Nothing,
+                                                tiSource = textLines str,
                                                 tiHasLitCode = False, tiInLiterate = True} str str of
                     Left err -> Left $ ParsingError err
                     Right res -> Right res
                     
 
 mkGroup :: [Expression] -> Expression
-mkGroup expLst = Group (Map.fromList $ expLst >>= funcName) (TPrim PrimDouble) (ValueConst $ DoubleValue 1.0)
-
-mkString _ [] = ""
-mkString _ [s] = s
-mkString sep (h:t) = h ++ sep ++ mkString sep t
+mkGroup expLst = Group (foldr (\a -> \b -> getSourceLoc a) NoSourceLoc expLst) (Map.fromList $ expLst >>= funcName) (TPrim PrimDouble) 
+                       (ValueConst NoSourceLoc $ DoubleValue 1.0)
 
 funcName :: Expression -> [(FuncName, Expression)]
-funcName exp@(LetExp _ name _ _ _) = [(name, exp)]
-funcName exp@(BuiltIn name _ _) = [(name, exp)]
-funcName exp@(SinkExp _ name _ _) = [(name, exp)]
-funcName exp@(SourceExp _ name _) = [(name, exp)]
+funcName exp@(LetExp _ _ name _ _ _) = [(name, exp)]
+funcName exp@(BuiltIn _ name _ _) = [(name, exp)]
+funcName exp@(SinkExp _ _ name _ _) = [(name, exp)]
+funcName exp@(SourceExp _ _ name _) = [(name, exp)]
 funcName _ = []
 
 
@@ -262,6 +277,7 @@ structInner =
 -- | Did we find a 
 dataDefinition =
   do
+    startPos <- currentPos
     m_reserved "struct"
     mySpaces
     name <- typeName
@@ -269,21 +285,24 @@ dataDefinition =
     mySpaces
     char '='
     defs <- sepBy1 structInner (char '|')
-    return $ ValueConst $ BoolValue False -- FIXME finish data definition
+    sourceLoc <- calcSourceLoc startPos
+    return $ ValueConst sourceLoc $ BoolValue False -- FIXME finish data definition
 
 sourceOrSinkName = try m_identifier <|> try m_stringLiteral
 
 sinkFunc =
     do
+      startPos <- currentPos
       sinkName <- m_stringLiteral
       mySpaces
       char '='
       mySpaces
       exp <- expressionOrLetAndExp
       mySpaces
+      sourceLoc <- calcSourceLoc startPos
       rt <- newTyVar "Sink"
       letId <- newLetId "SinkLet"
-      return $ SinkExp letId (FuncName $ T.pack sinkName) rt exp
+      return $ SinkExp sourceLoc letId (FuncName $ T.pack sinkName) rt exp
 
 consumeUntilNotWhitespaceOrEOL :: MParser ()
 consumeUntilNotWhitespaceOrEOL = try $ consumeUntilNotWhitespaceOrEOL' <|> mySpaces
@@ -308,6 +327,7 @@ expressionOrLetAndExp =
 
 letAndThenExp atCol =
   do
+    startPos <- currentPos
     letExp <- try normalFunc <|> try letDef
     try eol
     consumeUntilNotWhitespaceOrEOL
@@ -316,22 +336,25 @@ letAndThenExp atCol =
             then parserFail "Expressions not lined up"
             else try (letAndThenExp atCol) <|> expression
     tpe <- newTyVar "innerlet"
-    return $ InnerLet tpe letExp expr
+    sourceLoc <- calcSourceLoc startPos
+    return $ InnerLet sourceLoc tpe letExp expr
 
 
 
 sourceFunc =
     do
-      -- mySpaces
+      startPos <- currentPos
       char '?'
       sourceName <- m_identifier
       mySpaces
       tpe <- newTyVar "source"
       letId <- newLetId "SourceLet"
       seLetId <- newLetId "SourceExp"
-      return $ LetExp letId (FuncName $ T.pack sourceName) False tpe $ SourceExp seLetId (FuncName $ T.pack sourceName) tpe
+      sourceLoc <- calcSourceLoc startPos
+      return $ LetExp sourceLoc letId (FuncName $ T.pack sourceName) False tpe $ SourceExp sourceLoc seLetId (FuncName $ T.pack sourceName) tpe
 
 normalFunc = do 
+              startPos <- currentPos
               name <- m_identifier
               param <- many1 m_identifier
               mySpaces
@@ -341,16 +364,19 @@ normalFunc = do
               mySpaces
               rt <- newTyVar "r"
               letId <- newLetId "normal"
+              sourceLoc <- calcSourceLoc startPos
               pTypes <- mapM makeVars param
+              let foldFunc (funcName, pt) (exp, rt) = (FuncExp sourceLoc funcName pt exp, tFun pt rt)
               let (wholeExp, ft) = foldr foldFunc (exp, rt) pTypes
-              return $ LetExp letId (FuncName $ T.pack name) True ft wholeExp
+              return $ LetExp sourceLoc letId (FuncName $ T.pack name) True ft wholeExp
               where makeVars param = do pt <- newTyVar "p"
                                         return (FuncName $ T.pack param, pt)
-                    foldFunc (funcName, pt) (exp, rt) = (FuncExp funcName pt exp, tFun pt rt)
+                    
 
 letDef :: MParser Expression
 letDef = 
   do
+    startPos <- currentPos
     curCol <- curColumn
     name <- m_identifier
     mySpaces
@@ -360,7 +386,8 @@ letDef =
     mySpaces
     t1 <- newTyVar "L"
     letId <- newLetId "Let"
-    return $ LetExp letId (FuncName $ T.pack name) False t1 exp
+    sourceLoc <- calcSourceLoc startPos
+    return $ LetExp sourceLoc letId (FuncName $ T.pack name) False t1 exp
 
 buildType t = tFun (TPrim PrimBool) $ ifType t
 ifType t = tFun t $ tFun t t
@@ -391,13 +418,15 @@ expression =
       try(constExp) <?> "Looking for Term"
     funcParamExp = 
       do
+        startPos <- currentPos
         funcExp <- try(parenExp) <|> try(methodInv) <|> try(identifier)
         mySpaces
         rest <- many1(try(parenExp) <|> try(ifElseExp) <|> try(methodInv) <|> try(identifier)  <|> try(constExp) <?> "parameter")
         mySpaces
         restWithVars <- mapM makeVars rest
         letId <- newLetId "func"
-        let buildApply exp (exp2, t2) =  Apply letId t2 exp exp2
+        sourceLoc <- calcSourceLoc startPos
+        let buildApply exp (exp2, t2) =  Apply sourceLoc letId t2 exp exp2
         return $ foldl' buildApply funcExp restWithVars
         where makeVars exp = do t2 <- newTyVar "RetType"
                                 return (exp, t2)
@@ -417,16 +446,23 @@ expression =
         ret <- try(strConstExp) <|> try(numConstExp) <?> "Constant"
         mySpaces
         return ret
-    strConstExp = (ValueConst . StrValue . T.pack) <$> m_stringLiteral
+    strConstExp = 
+      do
+        startPos <- currentPos
+        str <- m_stringLiteral
+        sourceLoc <- calcSourceLoc startPos
+        return $ ValueConst sourceLoc $ StrValue $ T.pack str
     decMore = (:) <$> char '.' <*> many1 (oneOf "0123456789")
     numConstExp = 
       do
         mySpaces
+        startPos <- currentPos
         optMin <- optionMaybe(char '-')
         digits <- many1 $ oneOf "0123456789"
         optDec <- optionMaybe $ decMore
+        sourceLoc <- calcSourceLoc startPos
         mySpaces
-        return $ ValueConst $ DoubleValue $ 
+        return $ ValueConst sourceLoc $ DoubleValue $ 
           read $ case (optMin, digits, optDec) of
                    (Nothing, d, Nothing) -> d
                    (Just(_), d, Nothing) -> '-' : d
@@ -435,44 +471,57 @@ expression =
     identifier = 
       do
         mySpaces
+        startPos <- currentPos
         ret <- try functionInvocationName
+        sourceLoc <- calcSourceLoc startPos
         mySpaces
-        return $ (Var . FuncName . T.pack) ret
+        return $ Var sourceLoc $ FuncName $ T.pack ret
     methodInv =
       do
+        startPos <- currentPos
         target <- try(parenExp) <|> try(identifier) <|> try(constExp)
         mySpaces
         char '.'
         mySpaces
-        (Var method@(FuncName methText)) <- identifier
+        sourceLoc <- calcSourceLoc startPos
+        (Var _ method@(FuncName methText)) <- identifier
         letId <- newLetId $ "Method_" ++ T.unpack methText
         retType <- newTyVar $ "Method_" ++ T.unpack methText
         let targetType = StructuralType (Map.singleton methText retType)
-        return $ Apply letId retType (InvokeMethod letId method $ tFun targetType retType) target
+        return $ Apply sourceLoc letId retType (InvokeMethod sourceLoc letId method $ tFun targetType retType) target
     ifElseExp = 
       do
+        startPos <- currentPos
         m_reserved "if"
         mySpaces
+        e1s <- currentPos
         boolExp <- expression
+        e1l <- calcSourceLoc e1s
         mySpaces
         m_reserved "then"
         mySpaces
+        e2s <- currentPos
         trueExp <- expression
+        e2l <- calcSourceLoc e2s
         mySpaces
         m_reserved "else"
         mySpaces
+        e3s <- currentPos
         falseExp <- expression
+        e3l <- calcSourceLoc e3s
+        sourceLoc <- calcSourceLoc startPos
         mySpaces
         theType <- newTyVar "IfElse"
         letId <- newLetId "IfElse"
-        return $ Apply letId theType 
-                   (Apply letId (tFun theType theType)
-                    (Apply letId (ifType theType) 
-                               (Var (FuncName $ T.pack "$ifelse"))
+        return $ Apply e3l letId theType 
+                   (Apply e2l letId (tFun theType theType)
+                    (Apply e1l letId (ifType theType) 
+                               (Var sourceLoc (FuncName $ T.pack "$ifelse"))
                                boolExp) trueExp) falseExp
     oprFuncExp =
       do
         mySpaces
+        startPos <- currentPos
         left <- term
         mySpaces
         opr <- many1 $ oneOf "+-*/&|=><!?"
@@ -483,7 +532,33 @@ expression =
         t4 <- newTyVar "OAt4"
         letId <- newLetId $ "binary" ++ opr
         right <- expression <?> "Looking for right side of exp"
-        return $ Apply letId t2 (Apply letId t4 (Var (FuncName $ T.pack opr)) left) right
+        sourceLoc <- calcSourceLoc startPos
+        return $ Apply sourceLoc letId t2 (Apply sourceLoc letId t4 (Var sourceLoc (FuncName $ T.pack opr)) left) right
+
+currentPos :: MParser SourcePoint
+currentPos = 
+  do
+    col <- curColumn
+    line <- curLine
+    return $ (line, col)
+
+getSourceInfo :: SourceSpan -> MParser SourceInfo
+getSourceInfo off@((startLine, startOff), (endLine, endOff)) =
+  do
+    (arr, txt) <- fmap tiSource getState
+    let first = (startOff - 1) + (arr ! (startLine - 1))
+    let last = endOff + (arr ! (endLine - 1))
+    let len = last - first
+    return $ (off, T.take len $ T.drop first txt)
+
+calcSourceLoc :: SourcePoint -> MParser SourceLoc
+calcSourceLoc startPos =
+  do
+    endPos <- currentPos
+    sourceUrl <- fmap tiSourceUrl getState
+    let span = (startPos, endPos)
+    info <- getSourceInfo span
+    return $ (maybe (SourceLoc info) (\u -> SourceFromURL u info) sourceUrl) NoSourceLoc
 
 curColumn :: MParser Int
 curColumn = sourceColumn <$> getPosition
