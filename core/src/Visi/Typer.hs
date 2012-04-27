@@ -39,59 +39,49 @@ type Nongen = Set.Set Type
 type TypeVars = Map.Map T.Text TVarInfo
 type TypeMap = Map.Map Type Type
 type MethodMap = Map.Map Type (Map.Map T.Text Type)
-type StateThrow = StateT (TypeVars, TypeMap ,Expression, MethodMap) ThrowsError
+type StateThrow = StateT StateInfo ThrowsError
+
+type TypeAlias = Int
+
+type MagicMapping = Map.Map TypeAlias [(TypeAlias, Type)]
+
+data StateInfo = StateInfo {si_cnt :: Int, si_mapping :: MagicMapping ,
+                            si_typeVars :: TypeVars, si_typeMap :: TypeMap, si_expression:: Expression, si_methodMap :: MethodMap}
 
 collectTypes :: Expression -> ThrowsError [(T.Text, Type)]
 collectTypes exp = 
     do
-        (a, s) <- runStateT (processTypes exp) (Map.empty, Map.empty, Var $ FuncName $ T.pack "Starting",
-                    Map.fromList [((TPrim PrimDouble), 
-                                    (Map.fromList [((T.pack "fizzbin"), (TPrim PrimDouble))
-                                                  ,((T.pack "meowfizz"), (TPrim PrimDouble))]))
-                                 ,((TPrim PrimStr), (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))])
+        (a, s) <- runStateT (processTypes exp) StateInfo{ si_typeVars = Map.empty,
+                                                          si_typeMap = Map.empty, 
+                                                          si_cnt = 1,
+                                                          si_mapping = Map.empty,
+                                                          si_expression = Var NoSourceLoc $ FuncName $ T.pack "Starting",
+                                                          si_methodMap = Map.fromList [((TPrim PrimDouble), 
+                                                                          (Map.fromList [((T.pack "fizzbin"), (TPrim PrimDouble))
+                                                                          ,((T.pack "meowfizz"), (TPrim PrimDouble))]))
+                                                                          ,((TPrim PrimStr), (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))]}
         return a
+
         
+
 getATV :: StateThrow TypeVars
-getATV =
-    do
-        (atv, _, _, _) <- get
-        return atv
- 
+getATV = fmap si_typeVars get
+
 putATV :: TypeVars -> StateThrow ()      
-putATV atv =
-    do
-        (_, m, e, meth) <- get
-        put (atv, m, e, meth)
+putATV atv = get >>= (\s -> put s{si_typeVars = atv})
         
-getTypeMap =
-    do
-        (_, tm, _, _) <- get
-        return tm
+getTypeMap = fmap si_typeMap get
 
-putTypeMap tm =
-    do
-        (atv, _, e, meth) <- get
-        put (atv, tm, e, meth)
+putTypeMap tm = get >>= (\s -> put s{si_typeMap = tm})
         
-getCurExp =
-    do
-        (_, _, e, _) <- get
-        return e
+getCurExp = fmap si_expression get
         
-putCurExp e =
-    do
-        (atv, m, _, meth) <- get
-        put (atv, m, e, meth)
+putCurExp e = get >>= (\s -> put s{si_expression = e})
 
-getMethMap =
-    do
-        (_, _, _, meth) <- get
-        return meth
+getMethMap = fmap si_methodMap get
 
-putMethMap mm =
-    do
-        (atv, tm, e, _) <- get
-        put (atv, tm, e, mm)
+putMethMap mm = get >>= (\s -> put s{si_methodMap = mm})
+
 
 findTVI :: Type -> StateThrow TVarInfo
 findTVI (TVar t1)  = 
@@ -180,7 +170,7 @@ newVariable =
 
 hasMethods clz (StructuralType theMap) =
     do
-        methMap <- getMethMap
+        methMap <- vtrace ("hasMethods for " ++ show clz ++ " and " ++ show theMap) getMethMap
         case (Map.lookup clz methMap) of
             Just meths -> 
                 do
@@ -189,12 +179,12 @@ hasMethods clz (StructuralType theMap) =
                             case (Map.lookup name meths) of
                                 Just otype -> 
                                     do 
-                                        tpe' <- prune tpe
+                                        tpe' <- vtrace ("Pruning " ++ show tpe ++ " and " ++ show otype ++ " for clz " ++ show clz) prune tpe
                                         otype' <- prune otype
                                         unify tpe' otype'
                                 _ -> throwError $ TypeError $ "Failed to find method " ++ T.unpack name ++ " on " ++ show clz
                     mapM_ testAndUnify methPairs
-            _ -> throwError $ TypeError $ "No known methods for " ++ show clz
+            _ -> throwError $ TypeError $ "No known methods for " ++ show clz ++ " theMap " ++ show theMap
 
 
 testSameGen (TVar _) (TVar _) = True
@@ -292,13 +282,13 @@ createTypeVar e (TOper n p) =
 createTypeVar _ t = prune t
         
 calcType :: VarScope -> Nongen -> Expression -> StateThrow Type
-calcType scope nongen (Var funcName) = gettype scope nongen funcName
-calcType scope nongen (ValueConst v) = case valuePrim v of
+calcType scope nongen (Var _ funcName) = gettype scope nongen funcName
+calcType scope nongen (ValueConst _ v) = case valuePrim v of
     Just tpe -> return tpe
     _ -> throwError $ TypeError $ "Expection primative value but got value: " ++ show v
-calcType scope nongen (BuiltIn _ t _) = prune t
-calcType scope nongen (SourceExp _ _ t) = prune t
-calcType scope nongen e@(LetExp _ name canBeGen t1 exp) = 
+calcType scope nongen (BuiltIn _ _ t _) = prune t
+calcType scope nongen (SourceExp _ _ _ t) = prune t
+calcType scope nongen e@(LetExp _ _ name canBeGen t1 exp) = 
     do
         putCurExp e
         t1' <- createTypeVar e t1
@@ -306,7 +296,7 @@ calcType scope nongen e@(LetExp _ name canBeGen t1 exp) =
         rt <- calcType scope' (if canBeGen then nongen else Set.insert t1' nongen) exp
         unify t1' rt
         prune t1'
-calcType scope nongen e@(SinkExp _ name t1 exp) = 
+calcType scope nongen e@(SinkExp _ _ name t1 exp) = 
     do
         putCurExp e
         t1' <- createTypeVar e t1
@@ -315,7 +305,7 @@ calcType scope nongen e@(SinkExp _ name t1 exp) =
         unify t1' rt
         prune t1'
 
-calcType scope nongen e@(FuncExp paramName pt exp) =
+calcType scope nongen e@(FuncExp _ paramName pt exp) =
     do
         putCurExp e
         pt' <- createTypeVar e pt
@@ -323,14 +313,14 @@ calcType scope nongen e@(FuncExp paramName pt exp) =
         rt <- calcType scope' (Set.insert pt' nongen) exp
         pt'' <- prune pt'
         return $ tFun pt'' rt
-calcType scope nongen e@(InvokeMethod letId method@(FuncName methodText) (TOper oprName [source, dest])) =
+calcType scope nongen e@(InvokeMethod _ letId method@(FuncName methodText) (TOper oprName [source, dest])) =
     do
         putCurExp e
         t1' <- createTypeVar e dest
         source' <- prune source
         let ret = TOper oprName [source', t1']
         return ret
-calcType scope nongen e@(Apply letId t1 exp1 exp2) =
+calcType scope nongen e@(Apply _ letId t1 exp1 exp2) =
     do
         putCurExp e
         t1' <- createTypeVar e t1
@@ -342,9 +332,9 @@ calcType scope nongen e@(Apply letId t1 exp1 exp2) =
         unify (tFun argType ret) funType'
         let (TOper _ [_, ret']) = funType'
         return ret'
-calcType scope nongen (InnerLet t letExp actualExp) = 
+calcType scope nongen (InnerLet _ t letExp actualExp) = 
     do
-        let (LetExp _ name canBeGen t1 exp) = letExp
+        let (LetExp _ _ name canBeGen t1 exp) = letExp
         t1' <- createTypeVar exp t1
         t' <- createTypeVar actualExp t
         let scope' = Map.insert name t1' scope
@@ -352,7 +342,7 @@ calcType scope nongen (InnerLet t letExp actualExp) =
         calcType scope' nongen' letExp
         ret <- calcType scope' nongen' actualExp
         prune ret
-calcType scope nongen (Group exprs _ exp) =
+calcType scope nongen (Group _ exprs _ exp) =
     do
         let it name e t1 = do
                                 t1' <- createTypeVar e t1
@@ -371,7 +361,7 @@ showStructType _ rest = rest
 genPull (_, t, True) = [t]
 genPull _ = []
 
-isNongen (LetExp _ _ _ _ (SourceExp _ _ t1)) = True
+isNongen (LetExp _ _ _ _ _ (SourceExp _ _ _ t1)) = True
 isNongen e = False
 
 nv (name, value, _) = (name, value)
@@ -379,17 +369,17 @@ nv (name, value, _) = (name, value)
 
 -- | Take an Expression which should be a Group and turn it into a scope of top level expressions
 buildLetScope :: Expression -> LetScope
-buildLetScope (Group exprs _ _) = exprs
+buildLetScope (Group _ exprs _ _) = exprs
 buildLetScope _ = Map.empty
 
-processExp it (name, e@(LetExp _ _ _ t1 _)) = it name e t1
-processExp it (name, e@(SinkExp _ _ t1 _)) = it name e t1
-processExp it (name, e@(SourceExp _ _ t1)) = it name e t1
-processExp it (name, e@(BuiltIn _ t1 _)) = it name e t1
+processExp it (name, e@(LetExp _ _ _ _ t1 _)) = it name e t1
+processExp it (name, e@(SinkExp _ _ _ t1 _)) = it name e t1
+processExp it (name, e@(SourceExp _ _ _ t1)) = it name e t1
+processExp it (name, e@(BuiltIn _ _ t1 _)) = it name e t1
 
 -- we have to repeated run the typer to get all the synthetic variables resolved
 processTypes' :: Expression -> [(T.Text, Type)] -> StateThrow [(T.Text, Type)]
-processTypes' e@(Group exprs _ _) org =
+processTypes' e@(Group _ exprs _ _) org =
     do
         calcType Map.empty Set.empty e
         let nameType (FuncName name) e t = do

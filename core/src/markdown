@@ -1,0 +1,4 @@
+#! /bin/sh
+
+echo "Moose"
+`dirname $0`/run_test --markdown "`pwd`/$1"

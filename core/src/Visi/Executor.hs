@@ -35,22 +35,22 @@ import Visi.Expression
 calcSinks :: [Expression] ->  Map.Map T.Text Type -> [(T.Text, Expression, Type)]
 calcSinks exprs map = 
     exprs >>= sinker
-    where sinker (SinkExp _ (FuncName name) _ expr) = [(name, expr, map Map.! name)]
+    where sinker (SinkExp _ _ (FuncName name) _ expr) = [(name, expr, map Map.! name)]
           sinker _ = []
 
 -- | given a list of Expressions, the expression to Type Map, return the name and type
 calcSources :: [Expression] -> Map.Map T.Text Type -> [(T.Text, Type)]
 calcSources exprs map = 
     exprs >>= sinker
-    where sinker (SourceExp _ (FuncName name) _) = [(name, map Map.! name)]
-          sinker (LetExp _ _ _ _ expr) = calcSources [expr] map
+    where sinker (SourceExp _ _ (FuncName name) _) = [(name, map Map.! name)]
+          sinker (LetExp _ _ _ _ _ expr) = calcSources [expr] map
           sinker _ = []
 
 {-                        SinkExp LetId FuncName Type !Expression
                           | SourceExp LetId FuncName Type             
 -}
 
-updateScope (LetExp _ funcName _ _ exp) curScope = Map.insert funcName exp curScope
+updateScope (LetExp _ _ funcName _ _ exp) curScope = Map.insert funcName exp curScope
 
 maybeChan :: Maybe a -> (a -> IO ()) -> IO ()
 maybeChan (Just param) f = f param
@@ -64,18 +64,18 @@ eval sourceVars scope exp =
      res -- trace ("Eval "++show exp++" res "++show res) res
 
 eval1 :: SourceVars -> LetScope -> Expression -> Value
-eval1 sourceVars scope (LetExp _ funcName _ _ exp) = eval sourceVars scope exp
-eval1 sourceVars scope (InnerLet _ letExp actualExp) = eval sourceVars (updateScope letExp scope) actualExp
-eval1 sourceVars scope (FuncExp funcName p exp) = FuncValue doFuncApply
-     where doFuncApply v = eval sourceVars (Map.insert funcName (ValueConst v) scope) exp
-eval1 sourceVars scope (Apply _ _ e1 e2) =
+eval1 sourceVars scope (LetExp _ _ funcName _ _ exp) = eval sourceVars scope exp
+eval1 sourceVars scope (InnerLet _ _ letExp actualExp) = eval sourceVars (updateScope letExp scope) actualExp
+eval1 sourceVars scope (FuncExp _ funcName p exp) = FuncValue doFuncApply
+     where doFuncApply v = eval sourceVars (Map.insert funcName (ValueConst NoSourceLoc v) scope) exp
+eval1 sourceVars scope (Apply _ _ _ e1 e2) =
      let (FuncValue exp) = eval sourceVars scope e1 in
      let param = eval sourceVars scope e2 in
      exp param
-eval1 sourceVars scope (Var funcName) = eval sourceVars scope $ scope Map.! funcName
-eval1 sourceVars scope (BuiltIn _ _ func) = FuncValue func
-eval1 sourceVars scope (ValueConst v) = v
-eval1 sourceVars scope (SourceExp _ (FuncName name) _) = fromMaybe UndefinedValue $ Map.lookup name sourceVars
+eval1 sourceVars scope (Var _ funcName) = eval sourceVars scope $ scope Map.! funcName
+eval1 sourceVars scope (BuiltIn _ _ _ func) = FuncValue func
+eval1 sourceVars scope (ValueConst _ v) = v
+eval1 sourceVars scope (SourceExp _ _ (FuncName name) _) = fromMaybe UndefinedValue $ Map.lookup name sourceVars
         
 -- eval1 _ _ what = error $ "Yikes... don't know how to deal with: " ++ show what
 --                  | Group !(Map.Map FuncName Expression) Type !Expression
@@ -97,14 +97,14 @@ funcStrStr = tFun (TPrim PrimStr) (TPrim PrimStr)
 funcStrStrStr = tFun (TPrim PrimStr) funcStrStr
 
 boolTrue :: Expression
-boolTrue = LetExp (LetId $ T.pack "boolTrue") (FuncName $ T.pack "true") False (TPrim PrimBool) (ValueConst $ BoolValue True)
+boolTrue = LetExp (builtInLoc "boolTrue") (LetId $ T.pack "boolTrue") (FuncName $ T.pack "true") False (TPrim PrimBool) (ValueConst NoSourceLoc $ BoolValue True)
 
 boolFalse :: Expression
-boolFalse = LetExp (LetId $ T.pack "boolFalse") (FuncName $ T.pack "false") False (TPrim PrimBool) (ValueConst $ BoolValue False)
+boolFalse = LetExp (builtInLoc "boolFalse") (LetId $ T.pack "boolFalse") (FuncName $ T.pack "false") False (TPrim PrimBool) (ValueConst NoSourceLoc $ BoolValue False)
 
 ifTVar = TVar $ T.pack "IfElse##"
 builtInIf :: Expression
-builtInIf = BuiltIn (FuncName $ T.pack "$ifelse") (tFun (TPrim PrimBool) (tFun ifTVar (tFun ifTVar ifTVar)))  ifThing
+builtInIf = BuiltIn (builtInLoc "If/Then/Else") (FuncName $ T.pack "$ifelse") (tFun (TPrim PrimBool) (tFun ifTVar (tFun ifTVar ifTVar)))  ifThing
              where ifThing :: Value -> Value
                    ifThing (BoolValue v) = FuncValue ifElse
                         where ifElse true = FuncValue $ elseThing true
@@ -114,7 +114,7 @@ builtInIf = BuiltIn (FuncName $ T.pack "$ifelse") (tFun (TPrim PrimBool) (tFun i
                            elseThing true false = UndefinedValue
 
 builtInAdd :: Expression
-builtInAdd = BuiltIn (FuncName $ T.pack "+") funcDoubleDoubleDouble addThing
+builtInAdd = BuiltIn (builtInLoc "+") (FuncName $ T.pack "+") funcDoubleDoubleDouble addThing
              where addThing :: Value -> Value
                    addThing (DoubleValue v) = FuncValue partialAdd
                      where partialAdd :: Value -> Value
@@ -126,7 +126,7 @@ builtInAdd = BuiltIn (FuncName $ T.pack "+") funcDoubleDoubleDouble addThing
 
 eqVar = TVar $ T.pack "Eq##"
 builtInEq :: Expression
-builtInEq = BuiltIn (FuncName $ T.pack "==") (tFun eqVar (tFun eqVar $ TPrim PrimBool)) eqThing
+builtInEq = BuiltIn (builtInLoc "==") (FuncName $ T.pack "==") (tFun eqVar (tFun eqVar $ TPrim PrimBool)) eqThing
              where eqThing :: Value -> Value
                    eqThing v = FuncValue partialEq
                      where partialEq :: Value -> Value
@@ -134,7 +134,7 @@ builtInEq = BuiltIn (FuncName $ T.pack "==") (tFun eqVar (tFun eqVar $ TPrim Pri
 
 
 builtInGt :: Expression
-builtInGt = BuiltIn (FuncName $ T.pack ">") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+builtInGt = BuiltIn (builtInLoc ">") (FuncName $ T.pack ">") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
              where gtThing :: Value -> Value
                    gtThing (DoubleValue v) = FuncValue partialGt
                      where partialGt :: Value -> Value
@@ -145,7 +145,7 @@ builtInGt = BuiltIn (FuncName $ T.pack ">") (tFun (TPrim PrimDouble) (tFun (TPri
                            partialGt _ = UndefinedValue
 
 builtInGte :: Expression
-builtInGte = BuiltIn (FuncName $ T.pack ">=") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+builtInGte = BuiltIn (builtInLoc ">=") (FuncName $ T.pack ">=") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
              where gtThing :: Value -> Value
                    gtThing (DoubleValue v) = FuncValue partialGt
                      where partialGt :: Value -> Value
@@ -156,7 +156,7 @@ builtInGte = BuiltIn (FuncName $ T.pack ">=") (tFun (TPrim PrimDouble) (tFun (TP
                            partialGt _ = UndefinedValue
 
 builtInLt :: Expression
-builtInLt = BuiltIn (FuncName $ T.pack "<") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+builtInLt = BuiltIn (builtInLoc "<") (FuncName $ T.pack "<") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
              where gtThing :: Value -> Value
                    gtThing (DoubleValue v) = FuncValue partialGt
                      where partialGt :: Value -> Value
@@ -167,7 +167,7 @@ builtInLt = BuiltIn (FuncName $ T.pack "<") (tFun (TPrim PrimDouble) (tFun (TPri
                            partialGt _ = UndefinedValue                           
 
 builtInLte :: Expression
-builtInLte = BuiltIn (FuncName $ T.pack "<=") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
+builtInLte = BuiltIn (builtInLoc "<=") (FuncName $ T.pack "<=") (tFun (TPrim PrimDouble) (tFun (TPrim PrimDouble) $ TPrim PrimBool)) gtThing
              where gtThing :: Value -> Value
                    gtThing (DoubleValue v) = FuncValue partialGt
                      where partialGt :: Value -> Value
@@ -178,7 +178,7 @@ builtInLte = BuiltIn (FuncName $ T.pack "<=") (tFun (TPrim PrimDouble) (tFun (TP
                            partialGt _ = UndefinedValue
 
 builtInAnd :: Expression
-builtInAnd = BuiltIn (FuncName $ T.pack "&&") funcBoolBoolBool andThing
+builtInAnd = BuiltIn (builtInLoc "&&") (FuncName $ T.pack "&&") funcBoolBoolBool andThing
              where andThing :: Value -> Value
                    andThing (BoolValue v) = FuncValue partialAnd
                      where partialAnd :: Value -> Value
@@ -189,7 +189,7 @@ builtInAnd = BuiltIn (FuncName $ T.pack "&&") funcBoolBoolBool andThing
                            partialAnd _ = UndefinedValue
 
 builtInOr :: Expression
-builtInOr  = BuiltIn (FuncName $ T.pack "||") funcBoolBoolBool orThing
+builtInOr  = BuiltIn (builtInLoc "||") (FuncName $ T.pack "||") funcBoolBoolBool orThing
              where orThing :: Value -> Value
                    orThing (BoolValue v) = FuncValue partialOr
                      where partialOr :: Value -> Value
@@ -200,7 +200,7 @@ builtInOr  = BuiltIn (FuncName $ T.pack "||") funcBoolBoolBool orThing
                            partialOr _ = UndefinedValue
 
 builtInConcat :: Expression
-builtInConcat = BuiltIn (FuncName $ T.pack "&") funcStrStrStr catThing
+builtInConcat = BuiltIn (builtInLoc "&") (FuncName $ T.pack "&") funcStrStrStr catThing
              where catThing :: Value -> Value
                    catThing (StrValue v) = FuncValue partialCat
                      where partialCat :: Value -> Value
@@ -211,7 +211,7 @@ builtInConcat = BuiltIn (FuncName $ T.pack "&") funcStrStrStr catThing
                            partialCat _ = UndefinedValue
 
 builtInSub :: Expression
-builtInSub = BuiltIn (FuncName $ T.pack "-") funcDoubleDoubleDouble subThing
+builtInSub = BuiltIn (builtInLoc "-") (FuncName $ T.pack "-") funcDoubleDoubleDouble subThing
              where subThing :: Value -> Value
                    subThing (DoubleValue v) = FuncValue partialSub
                      where partialSub :: Value -> Value
@@ -222,7 +222,7 @@ builtInSub = BuiltIn (FuncName $ T.pack "-") funcDoubleDoubleDouble subThing
                            partialSub _ = UndefinedValue
 
 builtInDiv :: Expression
-builtInDiv = BuiltIn (FuncName $ T.pack "/") funcDoubleDoubleDouble divThing
+builtInDiv = BuiltIn (builtInLoc "/") (FuncName $ T.pack "/") funcDoubleDoubleDouble divThing
              where divThing :: Value -> Value
                    divThing (DoubleValue v) = FuncValue partialDiv
                      where partialDiv :: Value -> Value
@@ -233,7 +233,7 @@ builtInDiv = BuiltIn (FuncName $ T.pack "/") funcDoubleDoubleDouble divThing
                            partialDiv _ = UndefinedValue
 
 builtInMult :: Expression
-builtInMult = BuiltIn (FuncName $ T.pack "*") funcDoubleDoubleDouble multThing
+builtInMult = BuiltIn (builtInLoc "*") (FuncName $ T.pack "*") funcDoubleDoubleDouble multThing
               where multThing :: Value -> Value
                     multThing (DoubleValue v) = FuncValue partialMult
                      where partialMult :: Value -> Value
@@ -245,21 +245,21 @@ builtInMult = BuiltIn (FuncName $ T.pack "*") funcDoubleDoubleDouble multThing
 
 
 builtInFloor :: Expression
-builtInFloor = BuiltIn (FuncName $ T.pack "floor") (tFun (TPrim PrimDouble) (TPrim PrimDouble)) floorThing
+builtInFloor = BuiltIn (builtInLoc "floor") (FuncName $ T.pack "floor") (tFun (TPrim PrimDouble) (TPrim PrimDouble)) floorThing
              where floorThing (DoubleValue d) = DoubleValue $ (fromIntegral (floor d)) 
                    floorThing _ = UndefinedValue
 
 builtInLen :: Expression
-builtInLen = BuiltIn (FuncName $ T.pack "len") (tFun (TPrim PrimStr) (TPrim PrimDouble)) lenThing
+builtInLen = BuiltIn (builtInLoc "len") (FuncName $ T.pack "len") (tFun (TPrim PrimStr) (TPrim PrimDouble)) lenThing
              where lenThing (StrValue str) = DoubleValue $ fromIntegral $ T.length str
                    lenThing _ = UndefinedValue
 
 builtInReverse :: Expression
-builtInReverse = BuiltIn (FuncName $ T.pack "reverse") (tFun (TPrim PrimStr) (TPrim PrimStr)) revThing
+builtInReverse = BuiltIn (builtInLoc "reverse") (FuncName $ T.pack "reverse") (tFun (TPrim PrimStr) (TPrim PrimStr)) revThing
                  where revThing (StrValue str) = StrValue $ T.reverse str
                        revThing _ = UndefinedValue
 
 builtInShow :: Expression
-builtInShow = BuiltIn (FuncName $ T.pack "show") (tFun (TPrim PrimDouble) (TPrim PrimStr)) showThing
+builtInShow = BuiltIn (builtInLoc "show") (FuncName $ T.pack "show") (tFun (TPrim PrimDouble) (TPrim PrimStr)) showThing
              where showThing (DoubleValue int) = StrValue $ T.pack $ show int
                    showThing _ = UndefinedValue
