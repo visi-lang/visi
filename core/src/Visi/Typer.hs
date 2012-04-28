@@ -34,16 +34,22 @@ import Control.Monad.Error
 import Control.Monad.State
 
 -- | An implementation based on http://dysphoria.net/2009/06/28/hindley-milner-type-inference-in-scala/
-type Nongen = Set.Set Type
+type Nongen = Set.Set TypeAlias
 
-type TypeVars = Map.Map T.Text TVarInfo
-type TypeMap = Map.Map Type Type
-type MethodMap = Map.Map Type (Map.Map T.Text Type)
+type TypeVars = Map.Map TypeAlias TVarInfo
+type TypeMap = Map.Map TypeAlias TypeAlias
+type MethodMap = Map.Map Type (Map.Map T.Text TypeAlias)
 type StateThrow = StateT StateInfo ThrowsError
 
-type TypeAlias = Int
+data AllTypeVars = AllTypeVars (Map.Map T.Text TVarInfo) deriving (Show)
 
-type MagicMapping = Map.Map TypeAlias [(TypeAlias, Type)]
+data TVarInfo = TVarInfo T.Text Expression (Maybe Type) deriving (Show)
+
+newtype TypeAlias = TypeAlias Int deriving (Show, Eq, Ord)
+
+newtype AliasPair = AliasPair (TypeAlias, Type) deriving (Show, Eq)
+
+type MagicMapping = Map.Map TypeAlias [AliasPair]
 
 data StateInfo = StateInfo {si_cnt :: Int, si_mapping :: MagicMapping ,
                             si_typeVars :: TypeVars, si_typeMap :: TypeMap, si_expression:: Expression, si_methodMap :: MethodMap}
@@ -56,13 +62,47 @@ collectTypes exp =
                                                           si_cnt = 1,
                                                           si_mapping = Map.empty,
                                                           si_expression = Var NoSourceLoc $ FuncName $ T.pack "Starting",
-                                                          si_methodMap = Map.fromList [((TPrim PrimDouble), 
+                                                          si_methodMap = Map.empty {- FIXME build method map Map.fromList [((TPrim PrimDouble), 
                                                                           (Map.fromList [((T.pack "fizzbin"), (TPrim PrimDouble))
                                                                           ,((T.pack "meowfizz"), (TPrim PrimDouble))]))
-                                                                          ,((TPrim PrimStr), (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))]}
+                                                                          ,((TPrim PrimStr), (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))] -}}
         return a
 
-        
+
+aliasForType :: Type -> StateThrow TypeAlias
+aliasForType tpe = 
+  do
+    st <- get
+    let c1 = 1 + (si_cnt st)
+    let magic = si_mapping st
+    let ta = TypeAlias c1
+    put st{si_cnt = c1, si_mapping = Map.insert ta [AliasPair (ta, tpe)] magic}
+    return ta
+
+getAlias :: TypeAlias -> StateThrow AliasPair
+getAlias ta =
+  do
+    theMap <- fmap si_mapping get
+    case Map.lookup ta theMap of
+      Just (ret:_) -> return $ ret
+      _ -> throwError $ TypeError $ "Cannot find type alias: " ++ show ta
+
+getAliasInfo :: TypeAlias -> StateThrow [AliasPair]
+getAliasInfo ta =
+  do
+    theMap <- fmap si_mapping get
+    case Map.lookup ta theMap of
+      Just ret -> return $ ret
+      _ -> throwError $ TypeError $ "Cannot find type alias: " ++ show ta
+
+reviseAlias :: TypeAlias -> Type -> StateThrow [AliasPair]
+reviseAlias ta tpe = 
+  do
+    st <- get
+    let theMap = si_mapping st
+    let lst = AliasPair (ta, tpe) : maybe [] id (Map.lookup ta theMap)
+    put st{si_mapping = Map.insert ta lst theMap}
+    return lst
 
 getATV :: StateThrow TypeVars
 getATV = fmap si_typeVars get
@@ -83,14 +123,14 @@ getMethMap = fmap si_methodMap get
 putMethMap mm = get >>= (\s -> put s{si_methodMap = mm})
 
 
-findTVI :: Type -> StateThrow TVarInfo
-findTVI (TVar t1)  = 
+findTVI :: TypeAlias -> StateThrow TVarInfo
+findTVI t1  = 
     do
         map <- getATV
         case Map.lookup t1 map of
-            (Just v) -> return v
-            _ -> throwError $ TypeError $ "Cannot find type var: " ++ T.unpack t1
-findTVI tv = throwError $ TypeError $ "Trying to look up " ++ show tv ++ " but it's not a Type Variable"
+            Just v -> return v
+            _ -> throwError $ TypeError $ "Cannot find type var: " ++ show t1
+-- findTVI tv = throwError $ TypeError $ "Trying to look up " ++ show tv ++ " but it's not a Type Variable"
 
 setTVIType (TVarInfo name exp _) newType = TVarInfo name exp newType
 

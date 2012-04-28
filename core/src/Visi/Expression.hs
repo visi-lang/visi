@@ -4,8 +4,7 @@ module Visi.Expression (
                                        Var, BuiltIn, ValueConst,
                                        Group),
                             SourceLoc(NoSourceLoc, SourceFromURL, SourceLoc),
-                           AllTypeVars(AllTypeVars),
-                           VarScope, LetScope, TVarInfo(TVarInfo),
+                           VarScope, LetScope, 
                            Type(TVar, TPrim, TOper, StructuralType),
                            FuncName(FuncName), 
                            LetId(LetId),
@@ -174,12 +173,11 @@ instance Show Value where
     show (BoolValue i) = show i
     show (FuncValue i) = "Value -> Value"
 
-data AllTypeVars = AllTypeVars (Map.Map T.Text TVarInfo) deriving (Show)
+
 
 type VarScope = Map.Map FuncName Type
 
 type LetScope = Map.Map FuncName Expression
 
-data TVarInfo = TVarInfo T.Text Expression (Maybe Type) deriving (Show)
 
 
