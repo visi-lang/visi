@@ -20,7 +20,7 @@ Executable visi
                      HUnit,
                      text,
                      utf8-string,
-		                 uuid,
+                     uuid,
                      regex-pcre-builtin,
                      aeson,
                      SHA
