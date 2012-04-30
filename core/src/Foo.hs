@@ -8,5 +8,4 @@ import Visi.Executor
 import Test.HUnit
 
 main = do
-		setSource "Hello" $ StrValue "Moo"
-		putStrLn "Howdy"
+    putStrLn "Howdy"

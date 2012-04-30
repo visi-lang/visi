@@ -8,10 +8,12 @@ Maintainer:          dpp@visi.pro
 Build-Type:          Simple
 Cabal-Version:       >=1.2
 
+-- -no-hs-main
+
 Executable visi
   Main-is:           Foo.hs
-  GHC-Options: -threaded -no-hs-main
-  extensions: ExistentialQuantification, FlexibleContexts, CPP, ForeignFunctionInterface, ScopedTypeVariables
+  GHC-Options: -threaded
+  extensions: ExistentialQuantification,  FlexibleInstances, TypeSynonymInstances, FlexibleContexts, CPP, ForeignFunctionInterface, ScopedTypeVariables
   Build-Depends:     base,
                      containers,
                      pretty,
@@ -21,6 +23,9 @@ Executable visi
                      text,
                      utf8-string,
                      uuid,
+                     bytestring,
+                     random,
+                     array,
                      regex-pcre-builtin,
                      aeson,
                      SHA

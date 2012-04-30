@@ -1,0 +1,10 @@
+Version of workspace file format:
+               1
+Time of storage:
+               "Mon Apr 30 14:07:16 PDT 2012"
+Name of the workspace:
+               "VisiL"
+File paths of contained packages:
+               ["Visi.cabal"]
+Maybe file path of an active package:
+               Just "Visi.cabal"
