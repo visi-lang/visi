@@ -34,22 +34,22 @@ import Control.Monad.Error
 import Control.Monad.State
 
 -- | An implementation based on http://dysphoria.net/2009/06/28/hindley-milner-type-inference-in-scala/
-type Nongen = Set.Set TypeAlias
+type Nongen = Set.Set TypePtr
 
-type TypeVars = Map.Map TypeAlias TVarInfo
-type TypeMap = Map.Map TypeAlias TypeAlias
-type MethodMap = Map.Map Type (Map.Map T.Text TypeAlias)
+type TypeVars = Map.Map TypePtr TVarInfo
+type TypeMap = Map.Map TypePtr TypePtr
+type MethodMap = Map.Map Type (Map.Map T.Text TypePtr)
 type StateThrow = StateT StateInfo ThrowsError
 
 data AllTypeVars = AllTypeVars (Map.Map T.Text TVarInfo) deriving (Show)
 
-data TVarInfo = TVarInfo T.Text Expression (Maybe Type) deriving (Show)
+data TVarInfo = TVarInfo TypePtr Expression (Maybe Type) deriving (Show)
 
-newtype TypeAlias = TypeAlias Int deriving (Show, Eq, Ord)
+newtype TypePtr = TypePtr Int deriving (Show, Eq, Ord)
 
-newtype AliasPair = AliasPair (TypeAlias, Type) deriving (Show, Eq)
+data TypeInfo = TypeInfo TypePtr Type (Maybe Expression) deriving (Show, Eq)
 
-type MagicMapping = Map.Map TypeAlias [AliasPair]
+type MagicMapping = Map.Map TypePtr [TypeInfo]
 
 data StateInfo = StateInfo {si_cnt :: Int, si_mapping :: MagicMapping ,
                             si_typeVars :: TypeVars, si_typeMap :: TypeMap, si_expression:: Expression, si_methodMap :: MethodMap}
@@ -69,17 +69,17 @@ collectTypes exp =
         return a
 
 
-aliasForType :: Type -> StateThrow TypeAlias
-aliasForType tpe = 
+aliasForType :: Type -> Maybe Expression -> StateThrow TypePtr
+aliasForType tpe mexp = 
   do
     st <- get
     let c1 = 1 + (si_cnt st)
     let magic = si_mapping st
-    let ta = TypeAlias c1
-    put st{si_cnt = c1, si_mapping = Map.insert ta [AliasPair (ta, tpe)] magic}
+    let ta = TypePtr c1
+    put st{si_cnt = c1, si_mapping = Map.insert ta [TypeInfo ta tpe mexp] magic}
     return ta
 
-getAlias :: TypeAlias -> StateThrow AliasPair
+getAlias :: TypePtr -> StateThrow TypeInfo
 getAlias ta =
   do
     theMap <- fmap si_mapping get
@@ -87,7 +87,7 @@ getAlias ta =
       Just (ret:_) -> return $ ret
       _ -> throwError $ TypeError $ "Cannot find type alias: " ++ show ta
 
-getAliasInfo :: TypeAlias -> StateThrow [AliasPair]
+getAliasInfo :: TypePtr -> StateThrow [TypeInfo]
 getAliasInfo ta =
   do
     theMap <- fmap si_mapping get
@@ -95,12 +95,12 @@ getAliasInfo ta =
       Just ret -> return $ ret
       _ -> throwError $ TypeError $ "Cannot find type alias: " ++ show ta
 
-reviseAlias :: TypeAlias -> Type -> StateThrow [AliasPair]
-reviseAlias ta tpe = 
+reviseAlias :: TypePtr -> Type -> Maybe Expression -> StateThrow [TypeInfo]
+reviseAlias ta tpe mexp = 
   do
     st <- get
     let theMap = si_mapping st
-    let lst = AliasPair (ta, tpe) : maybe [] id (Map.lookup ta theMap)
+    let lst = TypeInfo ta tpe mexp : maybe [] id (Map.lookup ta theMap)
     put st{si_mapping = Map.insert ta lst theMap}
     return lst
 
@@ -123,7 +123,7 @@ getMethMap = fmap si_methodMap get
 putMethMap mm = get >>= (\s -> put s{si_methodMap = mm})
 
 
-findTVI :: TypeAlias -> StateThrow TVarInfo
+findTVI :: TypePtr -> StateThrow TVarInfo
 findTVI t1  = 
     do
         map <- getATV
