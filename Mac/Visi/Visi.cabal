@@ -25,6 +25,7 @@ Library
         text,
         uuid,
         SHA,
+        bytestring,
         aeson,
         regex-pcre-builtin,
         utf8-string,
