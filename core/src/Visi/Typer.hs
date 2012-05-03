@@ -36,6 +36,7 @@ import Control.Monad.State
 -- | An implementation based on http://dysphoria.net/2009/06/28/hindley-milner-type-inference-in-scala/
 type Nongen = Set.Set TypePtr
 
+
 -- type TypeVars = Map.Map TypePtr TVarInfo
 type FreshMap = Map.Map TypePtr TypePtr
 type MethodMap = Map.Map TypePtr (Map.Map T.Text TypePtr)
@@ -50,6 +51,7 @@ newtype TypePtr = TypePtr Int deriving (Show, Eq, Ord)
 
 data TypeInfo = TypeInfo TypePtr Type (Maybe Expression) 
                 | TypeAlias TypePtr TypePtr deriving (Show, Eq)
+
 
 type MagicMapping = Map.Map TypePtr [TypeInfo]
 
