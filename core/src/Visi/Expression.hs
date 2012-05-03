@@ -70,7 +70,7 @@ data Expression = LetExp SourceLoc LetId FuncName CanBeGeneric Type Expression
                   | Var SourceLoc FuncName
                   | BuiltIn SourceLoc FuncName Type (Value -> Value)
                   | ValueConst SourceLoc Value
-                  | Group SourceLoc (Map.Map FuncName Expression) Type Expression
+                  | Group SourceLoc (Map.Map FuncName Expression) Type Expression deriving (Eq)
 
 data Type = TVar T.Text
             | TPrim Prim
@@ -94,6 +94,9 @@ startsWithLetter (a:b) = isLetter a
 
 class HasSourceLoc a where
   getSourceLoc :: a -> SourceLoc
+
+instance Eq (Value -> Value) where
+  a == b = False
 
 instance HasSourceLoc SourceLoc where
   getSourceLoc a = a

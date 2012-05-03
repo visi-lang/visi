@@ -1,0 +1,18 @@
+Version of session file format:
+               1
+Time of storage:
+               "Wed May  2 14:33:37 PDT 2012"
+Layout:        VerticalP (TerminalP {paneGroups = fromList [], paneTabs = Just TopP, currentPage = 1, detachedId = Nothing, detachedSize = Nothing}) (HorizontalP (TerminalP {paneGroups = fromList [("Browser",HorizontalP (TerminalP {paneGroups = fromList [], paneTabs = Nothing, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) (HorizontalP (TerminalP {paneGroups = fromList [], paneTabs = Nothing, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) (TerminalP {paneGroups = fromList [], paneTabs = Nothing, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) 164) 116)], paneTabs = Just BottomP, currentPage = 3, detachedId = Nothing, detachedSize = Nothing}) (TerminalP {paneGroups = fromList [], paneTabs = Nothing, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) 423) 887
+Population:    [(Just (ErrorsSt ErrorsState),[SplitP RightP,SplitP TopP]),(Just (FilesSt FilesState),[SplitP RightP,SplitP TopP]),(Just (BufferSt (BufferState "/Users/dpp/proj/visi/core/src/Foo.hs" 218)),[SplitP LeftP]),(Just (InfoSt (InfoState Nothing)),[SplitP RightP,SplitP TopP,GroupP "Browser",SplitP BottomP,SplitP BottomP]),(Just (LogSt LogState),[SplitP RightP,SplitP BottomP]),(Just (BufferSt (BufferState "/Users/dpp/proj/visi/core/src/Visi/Model.hs" 5646)),[SplitP LeftP]),(Just (ModulesSt (ModulesState 256 (PackageScope True,False) (Nothing,Nothing) (ExpanderState {packageExp = ([],[]), packageExpNoBlack = ([],[]), packageDExp = ([],[]), packageDExpNoBlack = ([],[]), workspaceExp = ([],[]), workspaceExpNoBlack = ([],[]), workspaceDExp = ([],[]), workspaceDExpNoBlack = ([],[]), systemExp = ([],[]), systemExpNoBlack = ([[0,0],[0]],[])}))),[SplitP RightP,SplitP TopP,GroupP "Browser",SplitP BottomP,SplitP TopP]),(Just (SearchSt (SearchState {searchString = "", searchScope = SystemScope, searchMode = Prefix {caseSense = False}})),[SplitP RightP,SplitP TopP]),(Just (WorkspaceSt WorkspaceState),[SplitP RightP,SplitP TopP,GroupP "Browser",SplitP TopP])]
+Window size:   (1382,856)
+Completion size:
+               (750,400)
+Workspace:     Just "/Users/dpp/proj/visi/core/src/VisiL.lkshw"
+Active pane:   Just "Model.hs"
+Toolbar visible:
+               True
+FindbarState:  (True,FindState {entryStr = "collect", entryHist = ["collect","newV","Type -> ","varscope","gettyoe","gettype","isGen","processTypes","prunedType ::","prunedTye","\\","TypeMap"], replaceStr = "", replaceHist = [], caseSensitive = False, entireWord = False, wrapAround = True, regex = False, lineNr = 1})
+Recently opened files:
+               ["/Users/dpp/proj/visi/core/src/Visi/Typer.hs","/Users/dpp/.leksah-0.12/leksah-welcome/src/Main.hs"]
+Recently opened workspaces:
+               ["/Users/dpp/proj/visi/core/src/VisiL.lkshw","/Users/dpp/leksah.lkshw"]
