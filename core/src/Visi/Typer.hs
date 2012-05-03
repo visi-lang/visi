@@ -68,7 +68,7 @@ collectTypes exp =
                                              ,((T.pack "meowfizz"), (TPrim PrimDouble))]))
                                              ,((TPrim PrimStr), 
                                                 (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))] >> processTypes exp >>= extractTypes) stateStartingPoint
-        return $ error "FIXME21 -- convert TypePtr -> Type" -- a
+        return a
 
 stateStartingPoint = StateInfo{si_freshMap = Map.empty,
                                si_cnt = 1,
@@ -94,6 +94,8 @@ extractTypes :: [(T.Text, TypePtr)] -> StateThrow [(T.Text, Type)]
 extractTypes ptr = mapM cvt ptr
     where cvt (txt, tp) = prunedToType tp >>= (\t' -> return (txt, t'))
 
+shortAlias t = aliasForType t Nothing
+
 aliasForType :: Type -> Maybe Expression -> StateThrow TypePtr
 aliasForType tpe mexp =
   do
@@ -109,38 +111,6 @@ aliasForType tpe mexp =
                     si_lookup = Map.insert tpe ta lu}
             return ta
 
-getAlias :: TypePtr -> StateThrow TypeInfo
-getAlias ta =
-  do
-    theMap <- fmap si_mapping get
-    case Map.lookup ta theMap of
-      Just (ret:_) -> return $ ret
-      _ -> throwError $ TypeError $ "Cannot find type alias: " ++ show ta
-
-getAliasInfo :: TypePtr -> StateThrow [TypeInfo]
-getAliasInfo ta =
-  do
-    theMap <- fmap si_mapping get
-    case Map.lookup ta theMap of
-      Just ret -> return $ ret
-      _ -> throwError $ TypeError $ "Cannot find type alias: " ++ show ta
-
-reviseAlias :: TypePtr -> Type -> Maybe Expression -> StateThrow [TypeInfo]
-reviseAlias ta tpe mexp =
-  do
-    st <- get
-    let theMap = si_mapping st
-    let lst = TypeInfo ta tpe mexp : maybe [] id (Map.lookup ta theMap)
-    put st{si_mapping = Map.insert ta lst theMap}
-    return lst
-
-{-
-getATV :: StateThrow TypeVars
-getATV = fmap si_typeVars get
-
-putATV :: TypeVars -> StateThrow ()
-putATV atv = get >>= (\s -> put s{si_typeVars = atv})
--}
 
 getFreshMap = fmap si_freshMap get
 
@@ -156,37 +126,6 @@ getMethMap = fmap si_methodMap get
 
 putMethMap mm = get >>= (\s -> put s{si_methodMap = mm})
 
-
-{-
-findTVI :: TypePtr -> StateThrow TVarInfo
-findTVI t1  =
-    do
-        map <- getATV
-        case Map.lookup t1 map of
-            Just v -> return v
-            _ -> throwError $ TypeError $ "Cannot find type var: " ++ show t1
--- findTVI tv = throwError $ TypeError $ "Trying to look up " ++ show tv ++ " but it's not a Type Variable"
-
-setTVIType (TVarInfo name exp _) newType = TVarInfo name exp newType
--}
-
-{-
-updateType tv nt =
-    do
-        cur <- findTVI tv
-        let updated = setTVIType cur $ Just nt
-        setATV tv updated
-
-setATV (TVar t1) newTV =
-    do
-        map <- getATV
-        putATV $ Map.insert t1 newTV map
-setATV theType _ = throwError $ TypeError $ "Trying to update a type variable, but got " ++ show theType
--}
-
--- instnce (TVarInfo _ _ i) = i
-
--- gettype _ nongen (FuncName name) | vtrace ("Gettyoe for " ++ name ++ " Nongen " ++ show nongen) False = error "Never"
 gettype :: VarScope -> Nongen -> FuncName -> StateThrow TypePtr
 gettype scope nongen name =
     case Map.lookup name scope of
@@ -205,7 +144,15 @@ fresh nongen tpe =
         return t
 
 newVariable :: StateThrow TypePtr
-newVariable = error "goo"
+newVariable =
+    do
+        cnt <- fmap si_cnt get
+        cur <- getCurExp
+        let name = T.pack $ T.unpack synthetic ++ show cnt
+        let t = TVar name
+        alias <- aliasForType t $ Just cur
+        return alias
+
 
 prunedToType :: TypePtr -> StateThrow Type
 prunedToType tp =
@@ -228,8 +175,7 @@ fresh' nongen t =
                                       _ ->
                                         do
                                             ntv <- newVariable
-                                            -- FIXME let map' = Map.insert t' ntv map
-                                            putFreshMap $ error "FIXME1" -- map'
+                                            putFreshMap $ Map.insert tp' ntv map
                                             return ntv
                   if gen then updateMap else return tp'
             (TOper name args) ->
@@ -238,12 +184,13 @@ fresh' nongen t =
                   args' <- mapM (fresh' nongen) argsp
                   newArgs <- mapM prunedToType args'
                   aliasForType (TOper name newArgs) Nothing
-            (StructuralType theMap) -> error "FIXME2"
-            {-
-                do
-
-                  revised <- mapM (\(k, v) -> do {v' <- fresh' nongen v; return (k,v')}) $ Map.toList theMap
-                  return $ StructuralType $ Map.fromList revised -}
+            (StructuralType theMap) -> do
+                  let sa (k,v) = do
+                                    v' <- shortAlias v
+                                    return (k, v')
+                  l2 <- mapM sa (Map.toList theMap)
+                  revised <- mapM (\(k, v) -> do {v' <- fresh' nongen v; v'' <- prunedToType v'; return (k,v'')}) l2
+                  shortAlias $ StructuralType $ Map.fromList revised
             _ -> return tp'
 
 syntheticString = "synthetic"
@@ -252,39 +199,25 @@ synthetic = T.pack syntheticString
 
 synthLen = T.length synthetic
 
-{-
-newVariable =
-    do
-      atv <- getATV
-      curExp <- getCurExp
-      let len = Map.size atv
-      let name = T.pack $ T.unpack synthetic ++ show len
-      let nv = TVarInfo name curExp Nothing
-      let t = TVar name
-      setATV t nv
-      return t
--}
 
-hasMethods clz t = error "FIXME3"
-{-
+hasMethods :: Type -> Type -> StateThrow ()
 hasMethods clz (StructuralType theMap) =
     do
         methMap <- vtrace ("hasMethods for " ++ show clz ++ " and " ++ show theMap) getMethMap
-        case (Map.lookup clz methMap) of
+        clz' <- shortAlias clz
+        case (Map.lookup clz' methMap) of
             Just meths ->
                 do
-                    let methPairs = Map.toList theMap
+                    let methPairs = vtrace ("Testing against " ++ show meths) (Map.toList theMap) :: [(T.Text, Type)]
+
                     let testAndUnify (name, tpe) = do
                             case (Map.lookup name meths) of
-                                Just otype ->
-                                    do
-                                        (tpe', _) <- prunedType tpe
-                                        (otype', _) <- prunedType otype
-                                        unify tpe' otype'
+                                Just otype -> do
+                                                tpe' <- shortAlias tpe
+                                                unify tpe' otype                                        
                                 _ -> throwError $ TypeError $ "Failed to find method " ++ T.unpack name ++ " on " ++ show clz
                     mapM_ testAndUnify methPairs
             _ -> throwError $ TypeError $ "No known methods for " ++ show clz ++ " theMap " ++ show theMap
--}
 
 testSameGen (TVar _) (TVar _) = True
 testSameGen a b = testSame a b
@@ -296,6 +229,7 @@ testSame mt1 mt2 = mt1 == mt2
 
 
 updateType :: TypePtr -> TypePtr -> StateThrow ()
+updateType a b | a == b = return ()
 updateType source becomes =
     do
         st <- get
@@ -304,12 +238,12 @@ updateType source becomes =
         put st{si_mapping = Map.insert source ((TypeAlias source becomes):cur) lu}
 
 unify :: TypePtr -> TypePtr -> StateThrow ()
+unify a b | a == b = return ()
 unify tp1 tp2 =
     do
         (tp1', t1') <- prunedType tp1
         (tp2', t2') <- prunedType tp2
         case (t1', t2') of
-            -- (a,b) | vtrace ("Unifying " ++ show a ++ " & " ++ show b) False -> error "Yikes"
             (a, b) | a `testSame` b -> return ()
             (a@(TVar _), b) ->
                 do
@@ -321,7 +255,14 @@ unify tp1 tp2 =
             (a@(TOper n1 p1),b@(TOper n2 p2)) ->
                 if n1 /= n2 || length p1 /= length p2
                 then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
-                else error $ "FIXME5 " ++ (show p1) ++ " and " ++ show p2 -- mapM_ (uncurry unify) $ zip p1 p2
+                else do
+                        p1' <- mapM shortAlias p1
+                        p2' <- mapM shortAlias p2
+                        mapM_ (uncurry unify) $ zip p1' p2'
+                        newTypes <- mapM prunedToType p1'
+                        let newOpr = TOper n2 newTypes
+                        ta <- shortAlias newOpr
+                        updateType tp1 ta
             (a, v@(StructuralType theMap)) ->
                 do
                   hasMethods a v
@@ -334,29 +275,24 @@ prunedType tp =
         mapping <- fmap si_mapping get
         case Map.lookup tp mapping of
             Nothing -> throwError $ TypeError $ "Unable to find type ptr " ++ show tp
-            Just ((TypeInfo _ ret _):_) -> return (tp, ret)
+            Just ((TypeInfo _ ret _):_) -> refineType tp ret
+            Just (all@((TypeAlias _ ret):rest)) | ret == tp -> error $ "Type loop " ++ show all
             Just ((TypeAlias _ ret):_) -> prunedType ret
-{-
-prune tv@(TVar _) =
+
+prune :: Type -> StateThrow Type
+prune t = shortAlias t >>= prunedToType
+
+refineType :: TypePtr -> Type -> StateThrow (TypePtr, Type)
+refineType ptr tpe@(TOper name tpes) = 
     do
-        atv <- findTVI tv
-        case instnce atv of
-            Just t ->
-              do
-                  t' <- prune t
-                  updateType tv t'
-                  return t'
-            _ -> return tv
-prune (TOper name params) =
-    do
-        params' <- mapM prune params
-        return $ TOper name params'
-prune (StructuralType theMap) =
-    do
-        revised <- mapM (\(k, v) -> do {v' <- prune v; return (k,v')}) $ Map.toList theMap
-        return $ StructuralType $ Map.fromList revised
-prune t = return t
--}
+        tpes' <- mapM prune tpes
+        if tpes == tpes' then return (ptr, tpe)
+            else do
+                    let nopr = TOper name tpes'
+                    ta <- shortAlias nopr
+                    updateType ptr ta
+                    return (ta, nopr)
+refineType tpr tpe = return (tpr, tpe)
 
 isSynthetic t =
     T.isPrefixOf synthetic t
@@ -389,7 +325,7 @@ occursInType t1 t2 =
         (tp1', t1') <- prunedType t1
         case t2' of
             v | v == t1' -> return True
-            TOper _ args -> error "FIXME8" -- occursIn args t1
+            TOper _ args -> mapM shortAlias args >>= (\ta -> occursIn ta t1)
             _ -> return False
 {-
 createTypeVar e tv@(TVar t1)  =
@@ -407,13 +343,9 @@ createTypeVar e (TOper n p) =
 createTypeVar _ t = prune t
 -}
 
-prune :: Type -> StateThrow (TypePtr, Type)
-prune t = aliasForType t Nothing >>= prunedType
-
-
-
 
 calcType :: VarScope -> Nongen -> Expression -> StateThrow TypePtr
+-- calcType _ _ x | vtrace ("Calctype for " ++ show x) False = error "ignore"
 calcType scope nongen (Var _ funcName) = gettype scope nongen funcName
 calcType scope nongen e@(ValueConst _ v) = case valuePrim v of
     Just tpe -> aliasForType tpe $ Just e
@@ -466,27 +398,14 @@ calcType scope nongen e@(Apply _ letId t1 exp1 exp2) =
         unify synt' funType
         let (TOper _ [_, ret']) = funType'
         aliasForType ret' Nothing
-{-
 calcType scope nongen e@(SinkExp _ _ name t1 exp) =
     do
         putCurExp e
-        t1' <- createTypeVar e t1
-        let scope' = Map.insert name t1' scope
+        t1' <- aliasForType t1 $ Just e
+        let scope' = Map.insert name t1 scope
         rt <- calcType scope' (Set.insert t1' nongen) exp
         unify t1' rt
-        prune t1'
-
-
-calcType scope nongen e@(InvokeMethod _ letId method@(FuncName methodText) (TOper oprName [source, dest])) =
-    do
-        putCurExp e
-        t1' <- createTypeVar e dest
-        source' <- prune source
-        let ret = TOper oprName [source', t1']
-        return ret
-
-
--}
+        return rt
 calcType scope nongen e@(Group _ exprs _ exp) =
     do
         let it name e t1 = do
@@ -500,7 +419,14 @@ calcType scope nongen e@(Group _ exprs _ exp) =
         let nongen' = nongen `Set.union` Set.fromList (pairs >>= genPull)
         mapM_ (calcType scope' nongen') $ Map.elems exprs
         aliasForType ((TOper $ T.pack "na") []) (Just e)
-
+calcType scope nongen e@(InvokeMethod _ letId method@(FuncName methodText) (TOper oprName [source, dest])) =
+    do
+        putCurExp e
+        dp <- aliasForType dest $ Just e
+        sp <- aliasForType source $ Just e
+        t1' <- prunedToType dp
+        source' <- prunedToType sp
+        aliasForType (TOper oprName [source', t1']) $ Just e
 calcType _ _ e = error $ "FIXME calcType " ++ show e
 
 
