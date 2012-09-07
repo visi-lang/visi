@@ -67,7 +67,8 @@ collectTypes exp =
                                              (Map.fromList [((T.pack "fizzbin"), (TPrim PrimDouble))
                                              ,((T.pack "meowfizz"), (TPrim PrimDouble))]))
                                              ,((TPrim PrimStr), 
-                                                (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))] >> processTypes exp >>= extractTypes) stateStartingPoint
+                                                (Map.singleton (T.pack "fizzbin") (TPrim PrimStr)))] >> processTypes exp 
+                                                  >>= extractTypes) stateStartingPoint
         return a
 
 stateStartingPoint = StateInfo{si_freshMap = Map.empty,

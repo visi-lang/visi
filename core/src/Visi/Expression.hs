@@ -117,7 +117,8 @@ instance HasSourceLoc Expression where
 instance Show Expression where
   show (LetExp _ _ (FuncName name) _ t1 exp) = "let " ++ T.unpack name ++ " = " ++ show exp ++ " :: " ++ show t1
   show (InnerLet _ _ letExp evalExp) = show letExp ++ "\n" ++ show evalExp
-  show (Apply _ _ t2 (Apply _ t1 _ (Var _ (FuncName name)) left) right) = show left ++ " " ++ T.unpack name ++ " " ++ show right
+  show (Apply _ _ t2 (Apply _ t1 _ (Var _ (FuncName name)) left) right) = show left ++ " " ++ 
+        T.unpack name ++ " " ++ show right
   show (FuncExp _ (FuncName param) rt exp) = "func " ++ T.unpack param ++ " = " ++ show exp ++ " :: " ++ show rt
   show (Apply _ _ _ e1 e2) = show e1 ++ "(" ++ show e2 ++ ")"
   show (InvokeMethod _ _ (FuncName name) _) = "#" ++ T.unpack name
