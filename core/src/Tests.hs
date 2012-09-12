@@ -243,7 +243,7 @@ syntaxTests =
        \  show x\n\
        \res n = \n\
        \  x = n.fizzbin\n\
-       \  y = n.fizzbin\n\
+       \  y = n.meowfizz\n\
        \  z = woof n\n\
        \  x + y + (len z)\n\
        \frog = (res 44) + 1", testTypes [("frog", testPrimDouble)] . checktype)
@@ -251,9 +251,23 @@ syntaxTests =
      ,("woof n =\n\
        \  x = n.fizzbin\n\
        \  show x\n\
+       \woof2 n =\n\
+       \  x = n.fizzbin\n\
+       \  x\n\
        \res n = \n\
        \  x = n.fizzbin\n\
-       \  y = n.fizzbin\n\
+       \  y = n.meowfizz\n\
+       \  z = woof n\n\
+       \  x + y + (len z)\n\
+       \frog = (res 44) + 1\n\
+       \dog = (woof2 \"44\") & (show (woof2 44))", testTypes [("frog", testPrimDouble), ("dog", testPrimStr)] . checktype)
+
+     ,("woof n =\n\
+       \  x = n.fizzbin\n\
+       \  show x\n\
+       \res n = \n\
+       \  x = n.fizzbin\n\
+       \  y = n.meowfizz\n\
        \  z = woof n\n\
        \  x + y + (len z)\n\
        \frog = (res \"44\") + 1", failsTyper . checktype)

@@ -205,12 +205,12 @@ synthLen = T.length synthetic
 hasMethods :: Type -> Type -> StateThrow ()
 hasMethods clz (StructuralType theMap) = 
     do
-        methMap <- vtrace ("hasMethods for " ++ show clz ++ " and " ++ show theMap) getMethMap
+        methMap <- getMethMap
         clz' <- shortAlias clz
         case (Map.lookup clz' methMap) of
             Just meths ->
                 do
-                    let methPairs = vtrace ("Testing against " ++ show meths) (Map.toList theMap) :: [(T.Text, Type)]
+                    let methPairs = (Map.toList theMap) :: [(T.Text, Type)]
 
                     let testAndUnify (name, tpe) = do
                             case (Map.lookup name meths) of
@@ -268,10 +268,39 @@ unify tp1 tp2 =
                         updateType tp1 ta
             (StructuralType a, StructuralType b) ->
               do
-                vtrace ("Unifying " ++ show tp1 ++ "/" ++ show tp1' ++ " and " ++ show tp2 ++ " as " ++ show t1' ++ " and " ++ show t2') $ return () -- FIXME
-            (a, v@(StructuralType theMap)) ->
-                  hasMethods a v
-            (a, b) -> throwError $ TypeError $ "Failed to unify " ++ show a ++ " & " ++ show b
+                unifiedMap <- unifyStructureMaps a b
+                newTypePtr <- shortAlias $ StructuralType unifiedMap
+                updateType tp1 newTypePtr
+
+            (a, v@(StructuralType theMap)) -> hasMethods a v
+
+            (a, b) ->
+              do
+                 dumpTypes
+                 throwError $ TypeError $ "Failed to unify " ++ show a ++ " & " ++ show b ++
+                                                   " tp1 " ++ show tp1 ++ " tp2 " ++ show tp2 ++
+                                                   " tp1' " ++ show tp1' ++ " tp2' " ++ show tp2'
+
+dumpTypes :: StateThrow ()
+dumpTypes = 
+    do
+        return ()
+
+unifyStructureMaps :: Map.Map T.Text Type -> Map.Map T.Text Type -> StateThrow (Map.Map T.Text Type)
+unifyStructureMaps m1 m2 =
+    let lst = Map.toList m1 in
+    foldM doItem m2 lst
+
+doItem :: Map.Map T.Text Type -> (T.Text, Type) -> StateThrow (Map.Map T.Text Type)
+doItem theMap (name, tpe) =
+    case Map.lookup name theMap of
+        Just t2 -> 
+            do
+                ta1 <- shortAlias tpe
+                ta2 <- shortAlias t2
+                unify ta1 ta2
+                return theMap
+        _ -> return $ Map.insert name tpe theMap
 
 prunedType :: TypePtr -> StateThrow (TypePtr, Type)
 prunedType tp = 
