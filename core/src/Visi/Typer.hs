@@ -95,6 +95,7 @@ extractTypes :: [(T.Text, TypePtr)] -> StateThrow [(T.Text, Type)]
 extractTypes ptr = mapM cvt ptr
     where cvt (txt, tp) = prunedToType tp >>= (\t' -> return (txt, t'))
 
+shortAlias :: Type -> StateThrow TypePtr
 shortAlias t = aliasForType t Nothing
 
 aliasForType :: Type -> Maybe Expression -> StateThrow TypePtr
@@ -105,8 +106,8 @@ aliasForType tpe mexp =
     case Map.lookup tpe lu of
         Just tp -> return tp
         _ -> do
-            let c1 = 1 + (si_cnt st)
-            let magic = si_mapping st
+            let c1 =  (1 + (si_cnt st))
+            let magic = (si_mapping st) --  vtrace ("Creating new type for " ++ show tpe ++ " number " ++ show c1)
             let ta = TypePtr c1
             put st{si_cnt = c1, si_mapping = Map.insert ta [TypeInfo ta tpe mexp] magic,
                     si_lookup = Map.insert tpe ta lu}
@@ -202,7 +203,7 @@ synthLen = T.length synthetic
 
 
 hasMethods :: Type -> Type -> StateThrow ()
-hasMethods clz (StructuralType theMap) =
+hasMethods clz (StructuralType theMap) = 
     do
         methMap <- vtrace ("hasMethods for " ++ show clz ++ " and " ++ show theMap) getMethMap
         clz' <- shortAlias clz
@@ -218,7 +219,8 @@ hasMethods clz (StructuralType theMap) =
                                                 unify tpe' otype                                        
                                 _ -> throwError $ TypeError $ "Failed to find method " ++ T.unpack name ++ " on " ++ show clz
                     mapM_ testAndUnify methPairs
-            _ -> throwError $ TypeError $ "No known methods for " ++ show clz ++ " theMap " ++ show theMap
+            _ -> throwError $ TypeError $ "No known methods for '" ++ show clz ++ 
+                                          "' short '" ++ show clz' ++ "' theMap '" ++ show theMap ++ "'"
 
 testSameGen (TVar _) (TVar _) = True
 testSameGen a b = testSame a b
@@ -264,10 +266,11 @@ unify tp1 tp2 =
                         let newOpr = TOper n2 newTypes
                         ta <- shortAlias newOpr
                         updateType tp1 ta
+            (StructuralType a, StructuralType b) ->
+              do
+                vtrace ("Unifying " ++ show tp1 ++ "/" ++ show tp1' ++ " and " ++ show tp2 ++ " as " ++ show t1' ++ " and " ++ show t2') $ return () -- FIXME
             (a, v@(StructuralType theMap)) ->
-                do
                   hasMethods a v
-                  return ()
             (a, b) -> throwError $ TypeError $ "Failed to unify " ++ show a ++ " & " ++ show b
 
 prunedType :: TypePtr -> StateThrow (TypePtr, Type)
