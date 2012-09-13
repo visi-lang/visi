@@ -38,6 +38,10 @@ import Visi.Model
 import Visi.Util
 import qualified Data.Text as T
 
+
+import GHC.Generics (Generic)
+import Data.Aeson (FromJSON, ToJSON, decode, encode)
+
 -- | The visi runtime... an interface between abstract systems and the current system
 -- | Right now, we only support a single app, but we'll expand to multiple running apps
  
@@ -49,7 +53,7 @@ data AppCallback = AppCallback ErrorCallback SourceSinkCallback SetSinksCallback
 
 data VisiCommand = SetProgramText T.Text
                    | SetValueSource T.Text Value
-                   | StopRunning deriving (Show)
+                   | StopRunning deriving (Show, Generic, FromJSON, ToJSON)
 
 type ExecCommand = VisiCommand -> IO ()
 

@@ -1,4 +1,4 @@
 # runhaskell  -XFlexibleContexts Foo.hs 
 
 cd `dirname $0`
-time runhaskell -XFlexibleInstances -XRankNTypes  -XFlexibleContexts -fllvm Tests.hs $@
+time runhaskell -XFlexibleInstances -XRankNTypes  -XFlexibleContexts -XDeriveGeneric -XGeneralizedNewtypeDeriving -fllvm Tests.hs $@

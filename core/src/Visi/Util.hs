@@ -25,6 +25,9 @@ import System.IO (hPutStrLn, stderr)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.UTF8 as UB
 
+import GHC.Generics (Generic)
+import Data.Aeson (FromJSON, ToJSON, decode, encode)
+
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
  *
@@ -62,7 +65,7 @@ data VisiError =
     TypeError String 
     | ParsingError ParseError
     | DefaultError String
-    -- deriving (Eq)
+    deriving (Generic, ToJSON, FromJSON)
 
 type ThrowsError = Either VisiError
 

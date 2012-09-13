@@ -47,7 +47,10 @@ import qualified Data.Map as Map
 import qualified Data.Text as T
 import Data.Char
 
-newtype LetId = LetId T.Text deriving (Eq, Ord, Show)
+import GHC.Generics (Generic)
+import Data.Aeson (FromJSON, ToJSON, decode, encode)
+
+newtype LetId = LetId T.Text deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
 type CanBeGeneric = Bool
 
@@ -58,7 +61,7 @@ type SourceInfo = (SourceSpan, T.Text)
 data SourceLoc = NoSourceLoc 
                  | BuiltInSource String SourceLoc
                  | SourceFromURL String SourceInfo SourceLoc
-                 | SourceLoc SourceInfo SourceLoc deriving (Show, Eq)
+                 | SourceLoc SourceInfo SourceLoc deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 data Expression = LetExp SourceLoc LetId FuncName CanBeGeneric Type Expression
                   | InnerLet SourceLoc Type Expression Expression -- defines a Let plus an expression to be evaluated in the scope of the Let
@@ -70,15 +73,15 @@ data Expression = LetExp SourceLoc LetId FuncName CanBeGeneric Type Expression
                   | Var SourceLoc FuncName
                   | BuiltIn SourceLoc FuncName Type (Value -> Value)
                   | ValueConst SourceLoc Value
-                  | Group SourceLoc (Map.Map FuncName Expression) Type Expression deriving (Eq)
+                  | Group SourceLoc (Map.Map FuncName Expression) Type Expression deriving (Eq, Generic, FromJSON, ToJSON)
 
 data Type = TVar T.Text
             | TPrim Prim
             | TOper T.Text [Type]
             | StructuralType (Map.Map T.Text Type) -- Structural type
-            deriving (Eq, Ord)
+            deriving (Eq, Ord, Generic, FromJSON, ToJSON)
 
-newtype FuncName = FuncName T.Text deriving (Eq, Ord)
+newtype FuncName = FuncName T.Text deriving (Eq, Ord, Generic, FromJSON, ToJSON)
 
 instance Show FuncName where
   show (FuncName name) = T.unpack name
@@ -138,7 +141,7 @@ instance Show Type where
   show (TPrim prim) = show prim
   show (StructuralType info) = "StructuralType " ++ show info
 
-data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord)
+data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord, Generic, FromJSON, ToJSON)
 
 
 defaultValueForType (TPrim PrimDouble) = DoubleValue 0.0
@@ -163,7 +166,7 @@ data Value = DoubleValue Double
              | StrValue T.Text
              | BoolValue Bool
              | UndefinedValue -- FIXME we hate undefined and it should go away 'cause it's null
-             | FuncValue (Value -> Value)
+             | FuncValue (Value -> Value) deriving (Generic, FromJSON, ToJSON)
 
 instance Eq Value where
   DoubleValue d == DoubleValue d' = d == d'
