@@ -182,7 +182,7 @@
 		DE2B0E2E14E4629600EC530F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0430;
+				LastUpgradeCheck = 0440;
 			};
 			buildConfigurationList = DE2B0E3114E4629600EC530F /* Build configuration list for PBXProject "Visi" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -326,6 +326,7 @@
 		DE2B0E5914E4629700EC530F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
 				INFOPLIST_FILE = "Visi/Visi-Info.plist";
@@ -338,6 +339,7 @@
 		DE2B0E5A14E4629700EC530F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Visi/Visi-Prefix.pch";
 				INFOPLIST_FILE = "Visi/Visi-Info.plist";
@@ -351,6 +353,7 @@
 		DE411DD914E59CE700646473 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				DEBUGGING_SYMBOLS = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -363,6 +366,7 @@
 		DE411DDA14E59CE700646473 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
