@@ -13,7 +13,7 @@ Cabal-Version:       >=1.2
 Executable visi
   Main-is:           Foo.hs
   GHC-Options: -threaded
-  extensions: ExistentialQuantification,  FlexibleInstances, TypeSynonymInstances, FlexibleContexts, CPP, ForeignFunctionInterface, ScopedTypeVariables
+  extensions: ExistentialQuantification,  FlexibleInstances, TypeSynonymInstances, FlexibleContexts, CPP, ForeignFunctionInterface, ScopedTypeVariables, DeriveGeneric, GeneralizedNewtypeDeriving
   Build-Depends:     base,
                      containers,
                      pretty,
@@ -27,5 +27,6 @@ Executable visi
                      random,
                      array,
                      regex-pcre-builtin,
+                     ghc-prim,
                      aeson,
                      SHA

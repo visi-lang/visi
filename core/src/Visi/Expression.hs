@@ -48,20 +48,27 @@ import qualified Data.Text as T
 import Data.Char
 
 import GHC.Generics (Generic)
-import Data.Aeson (FromJSON, ToJSON, decode, encode)
+import qualified Data.Aeson as JS
+import Control.Applicative ((<$>), (<*>), empty)
 
-newtype LetId = LetId T.Text deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+newtype LetId = LetId T.Text deriving (Eq, Ord, Show, Generic)
+
+instance JS.ToJSON LetId
+instance JS.FromJSON LetId
 
 type CanBeGeneric = Bool
 
 type SourcePoint = (Int, Int)
 type SourceSpan = (SourcePoint, SourcePoint)
-type SourceInfo = (SourceSpan, T.Text)
+type SourceInfo = (SourceSpan, T.Text) 
 
 data SourceLoc = NoSourceLoc 
                  | BuiltInSource String SourceLoc
                  | SourceFromURL String SourceInfo SourceLoc
-                 | SourceLoc SourceInfo SourceLoc deriving (Show, Eq, Generic, FromJSON, ToJSON)
+                 | SourceLoc SourceInfo SourceLoc deriving (Show, Eq, Generic)
+
+instance JS.ToJSON SourceLoc
+instance JS.FromJSON SourceLoc
 
 data Expression = LetExp SourceLoc LetId FuncName CanBeGeneric Type Expression
                   | InnerLet SourceLoc Type Expression Expression -- defines a Let plus an expression to be evaluated in the scope of the Let
@@ -73,15 +80,36 @@ data Expression = LetExp SourceLoc LetId FuncName CanBeGeneric Type Expression
                   | Var SourceLoc FuncName
                   | BuiltIn SourceLoc FuncName Type (Value -> Value)
                   | ValueConst SourceLoc Value
-                  | Group SourceLoc (Map.Map FuncName Expression) Type Expression deriving (Eq, Generic, FromJSON, ToJSON)
+                  | Group SourceLoc (Map.Map FuncName Expression) Type Expression deriving (Eq, Generic)
+
+instance JS.ToJSON Expression
+instance JS.FromJSON Expression
 
 data Type = TVar T.Text
             | TPrim Prim
             | TOper T.Text [Type]
             | StructuralType (Map.Map T.Text Type) -- Structural type
-            deriving (Eq, Ord, Generic, FromJSON, ToJSON)
+            deriving (Eq, Ord, Generic)
 
-newtype FuncName = FuncName T.Text deriving (Eq, Ord, Generic, FromJSON, ToJSON)
+instance JS.ToJSON Type
+instance JS.FromJSON Type
+
+instance JS.ToJSON (Value -> Value) where
+  toJSON x = JS.object [(T.pack "type") JS..= "<function>"]
+
+instance JS.FromJSON (Value -> Value) where
+  parseJSON _ = empty
+
+instance JS.ToJSON (Map.Map FuncName Expression) where -- FIXME
+  toJSON x = JS.object [(T.pack "type") JS..= "<function>"]
+
+instance JS.FromJSON (Map.Map FuncName Expression) where -- FIXME
+  parseJSON _ = empty
+
+newtype FuncName = FuncName T.Text deriving (Eq, Ord, Generic)
+
+instance JS.ToJSON FuncName
+instance JS.FromJSON FuncName
 
 instance Show FuncName where
   show (FuncName name) = T.unpack name
@@ -141,8 +169,10 @@ instance Show Type where
   show (TPrim prim) = show prim
   show (StructuralType info) = "StructuralType " ++ show info
 
-data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord, Generic, FromJSON, ToJSON)
+data Prim = PrimDouble | PrimBool | PrimStr deriving (Eq, Ord, Generic)
 
+instance JS.ToJSON Prim
+instance JS.FromJSON Prim
 
 defaultValueForType (TPrim PrimDouble) = DoubleValue 0.0
 defaultValueForType (TPrim PrimStr) = StrValue $ T.pack ""
@@ -166,7 +196,10 @@ data Value = DoubleValue Double
              | StrValue T.Text
              | BoolValue Bool
              | UndefinedValue -- FIXME we hate undefined and it should go away 'cause it's null
-             | FuncValue (Value -> Value) deriving (Generic, FromJSON, ToJSON)
+             | FuncValue (Value -> Value) deriving (Generic)
+
+instance JS.ToJSON Value
+instance JS.FromJSON Value
 
 instance Eq Value where
   DoubleValue d == DoubleValue d' = d == d'

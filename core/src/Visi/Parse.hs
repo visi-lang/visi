@@ -37,11 +37,18 @@ import Visi.Expression
 import qualified Data.Map as Map
 import Data.Array
 
+
+import GHC.Generics (Generic)
+import qualified Data.Aeson as JS
+import Control.Applicative ((<$>), (<*>), empty)
+
 data TIState = TIState {tiSupply :: Int, tiDepth :: Int, 
                         tiSourceUrl :: Maybe String,
                         tiSource :: (Array Int Int, T.Text),
                         tiHasLitCode :: Bool, tiInLiterate :: Bool} deriving (Show)
 type MParser = Parsec String TIState
+
+
 
 textLines str =
   let txt = T.pack str in

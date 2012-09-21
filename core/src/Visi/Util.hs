@@ -26,7 +26,8 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.UTF8 as UB
 
 import GHC.Generics (Generic)
-import Data.Aeson (FromJSON, ToJSON, decode, encode)
+import qualified Data.Aeson as JS
+import Control.Applicative ((<$>), (<*>), empty)
 
 {- ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1
@@ -65,7 +66,16 @@ data VisiError =
     TypeError String 
     | ParsingError ParseError
     | DefaultError String
-    deriving (Generic, ToJSON, FromJSON)
+    deriving (Generic)
+
+instance JS.ToJSON VisiError
+instance JS.FromJSON VisiError
+
+instance JS.ToJSON ParseError where
+    toJSON pe = JS.object []
+
+instance JS.FromJSON ParseError where
+    parseJSON _ = empty
 
 type ThrowsError = Either VisiError
 

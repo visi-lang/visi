@@ -53,7 +53,10 @@ data AppCallback = AppCallback ErrorCallback SourceSinkCallback SetSinksCallback
 
 data VisiCommand = SetProgramText T.Text
                    | SetValueSource T.Text Value
-                   | StopRunning deriving (Show, Generic, FromJSON, ToJSON)
+                   | StopRunning deriving (Show, Generic)
+
+instance ToJSON VisiCommand
+instance FromJSON VisiCommand
 
 type ExecCommand = VisiCommand -> IO ()
 
