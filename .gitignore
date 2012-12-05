@@ -11,3 +11,5 @@ Testly.hs
 .DS_Store
 *.xcuserstate
 *.xcuserdatad
+target
+.idea*
