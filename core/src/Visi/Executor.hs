@@ -27,8 +27,8 @@ module Visi.Executor (builtInExp, eval, maybeChan, calcSources, calcSinks) where
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import Data.Maybe (fromMaybe)
-
 import Visi.Expression
+
 
  -- | give a list of Expressions and a map of function name to type, return the function name
  -- | the expression and the type
@@ -58,24 +58,27 @@ maybeChan _ _ = return ()
 
 type SourceVars = Map.Map T.Text Value
 
-eval :: SourceVars -> LetScope -> Expression -> Value
-eval sourceVars scope exp = 
-     let res = eval1 sourceVars scope exp in
+eval :: Integer -> SourceVars -> LetScope -> Expression -> Value
+eval cnt sourceVars scope exp = 
+  if cnt > 100000 then
+    UndefinedValue
+  else
+     let res = eval1 (cnt + 1) sourceVars scope exp in
      res -- trace ("Eval "++show exp++" res "++show res) res
 
-eval1 :: SourceVars -> LetScope -> Expression -> Value
-eval1 sourceVars scope (LetExp _ _ funcName _ _ exp) = eval sourceVars scope exp
-eval1 sourceVars scope (InnerLet _ _ letExp actualExp) = eval sourceVars (updateScope letExp scope) actualExp
-eval1 sourceVars scope (FuncExp _ funcName p exp) = FuncValue doFuncApply
-     where doFuncApply v = eval sourceVars (Map.insert funcName (ValueConst NoSourceLoc v) scope) exp
-eval1 sourceVars scope (Apply _ _ _ e1 e2) =
-     let (FuncValue exp) = eval sourceVars scope e1 in
-     let param = eval sourceVars scope e2 in
-     exp param
-eval1 sourceVars scope (Var _ funcName) = eval sourceVars scope $ scope Map.! funcName
-eval1 sourceVars scope (BuiltIn _ _ _ func) = FuncValue func
-eval1 sourceVars scope (ValueConst _ v) = v
-eval1 sourceVars scope (SourceExp _ _ (FuncName name) _) = fromMaybe UndefinedValue $ Map.lookup name sourceVars
+eval1 :: Integer -> SourceVars -> LetScope -> Expression -> Value
+eval1 stop sourceVars scope (LetExp _ _ funcName _ _ exp) = eval stop sourceVars scope exp
+eval1 stop sourceVars scope (InnerLet _ _ letExp actualExp) = eval stop sourceVars (updateScope letExp scope) actualExp
+eval1 stop sourceVars scope (FuncExp _ funcName p exp) = FuncValue doFuncApply
+     where doFuncApply v = eval stop sourceVars (Map.insert funcName (ValueConst NoSourceLoc v) scope) exp
+eval1 stop sourceVars scope (Apply _ _ _ e1 e2) =
+     case eval stop sourceVars scope e1 of
+       FuncValue exp -> exp $ eval stop sourceVars scope e2
+       _ -> UndefinedValue
+eval1 stop sourceVars scope (Var _ funcName) = eval stop sourceVars scope $ scope Map.! funcName
+eval1 stop sourceVars scope (BuiltIn _ _ _ func) = FuncValue func
+eval1 stop sourceVars scope (ValueConst _ v) = v
+eval1 stop sourceVars scope (SourceExp _ _ (FuncName name) _) = fromMaybe UndefinedValue $ Map.lookup name sourceVars
         
 -- eval1 _ _ what = error $ "Yikes... don't know how to deal with: " ++ show what
 --                  | Group !(Map.Map FuncName Expression) Type !Expression

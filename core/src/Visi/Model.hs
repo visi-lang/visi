@@ -59,6 +59,7 @@ data Model a = Model {
     localData :: Maybe a
     } deriving (Show)
 
+
 data SinkStuff a = SinkStuff {sinkName :: T.Text, sinkType :: Type, sinkValue :: Value,
     sinkExpression :: Maybe Expression,
     sinkActions :: [SinkActionInfo a]} deriving (Show)
@@ -146,7 +147,7 @@ setModelCode theCode model =
                 Right lets -> do
                   let theScope = buildLetScope grp
                   let typeMap = Map.fromList lets
-                  let doEval vars (name, expr) = (name, eval vars theScope expr)
+                  let doEval vars (name, expr) = (name, eval 0 vars theScope expr)
                   let sinks' = calcSinks top typeMap
                   let theSources = calcSources top typeMap
                   let theSources' =  mergeSourceInfo (sources updatedModel) theSources
@@ -156,7 +157,7 @@ setModelCode theCode model =
                                                                                         (Map.lookup name oldSinks))
                                                                                         (fmap createSinkAction (listify $ 
                                                                                             defaultSinkAction updatedModel)) in
-                                                     let calcValue = eval sourceVars theScope expr in
+                                                     let calcValue = eval 0 sourceVars theScope expr in
                                                      (name, SinkStuff{sinkName = name, sinkType = tpe, 
                                                         sinkExpression = Just expr,
                                                          sinkValue = calcValue, sinkActions = theActions}) in
@@ -166,7 +167,6 @@ setModelCode theCode model =
                                              sinks = buildSinkMap
                                              }
                   return (model', map fst3 sinks')
-
 
 -- | Set a value in a model, recompute the model and list all the Sinks that changed
 setSourceValue :: T.Text -> Value -> Model a -> Either VisiError (Model a, [T.Text])
@@ -178,10 +178,10 @@ setSourceValue name value model =
         (Just (tpe, _), _) | (Just tpe) /= valuePrim value -> Left $ DefaultError $ "Type mismatch for source: " ++ (T.unpack name)
         (Just (tpe, oldVal), Right theScope) | oldVal /= value -> let newSources = Map.insert name (tpe, value) theSources in
             let sourceVars = Map.map snd newSources in
-            let calcValue expr = eval sourceVars theScope expr in
+            let calcValue expr = eval 0 sourceVars theScope expr in
             let sinks' = sinks model in
             let recalcIt old = case sinkExpression old of
-                                  Just expr -> old {sinkValue = eval sourceVars theScope expr}
+                                  Just expr -> old {sinkValue = eval 0 sourceVars theScope expr}
                                   _ -> old in
             let recalcSinks = Map.map recalcIt sinks' in
             Right (model {sources = newSources, sinks = recalcSinks}, Map.keys sinks')

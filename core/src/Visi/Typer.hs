@@ -130,11 +130,12 @@ putMethMap mm = get >>= (\s -> put s{si_methodMap = mm})
 
 gettype :: VarScope -> Nongen -> FuncName -> StateThrow TypePtr
 gettype scope nongen name =
-    case Map.lookup name scope of
+    case vtrace ("Looking up " ++ show name) $ Map.lookup name scope of
         Just t -> do
-          tp <- aliasForType t Nothing
+          tp <- vtrace ("Found " ++ show t) $ aliasForType t Nothing
           ret <- fresh nongen tp
-          return ret
+          real <- prunedToType ret
+          return $ vtrace ("Type found " ++ show tp ++ "/" ++ show t ++ " fresh version " ++ show ret ++ "/" ++ show real ++ " nongen " ++ show nongen) ret
         _ -> throwError $ TypeError $ "Could not find " ++ show name ++ " in scope"
 
 fresh :: Nongen -> TypePtr -> StateThrow TypePtr
@@ -216,7 +217,7 @@ hasMethods clz (StructuralType theMap) =
                             case (Map.lookup name meths) of
                                 Just otype -> do
                                                 tpe' <- shortAlias tpe
-                                                unify tpe' otype                                        
+                                                unify ("Has Methods clz "++ show clz ++ " and " ++ show theMap) tpe' otype                                        
                                 _ -> throwError $ TypeError $ "Failed to find method " ++ T.unpack name ++ " on " ++ show clz
                     mapM_ testAndUnify methPairs
             _ -> throwError $ TypeError $ "No known methods for '" ++ show clz ++ 
@@ -240,13 +241,14 @@ updateType source becomes =
         let cur = lu Map.! source
         put st{si_mapping = Map.insert source ((TypeAlias source becomes):cur) lu}
 
-unify :: TypePtr -> TypePtr -> StateThrow ()
-unify a b | a == b = return ()
-unify tp1 tp2 =
+unify :: String -> TypePtr -> TypePtr -> StateThrow ()
+-- unify a b | vtrace ("unifying " ++ show a ++ " and " ++ show b) False = error "Gaaak"
+unify _ a b | a == b = return ()
+unify why tp1 tp2 =
     do
         (tp1', t1') <- prunedType tp1
         (tp2', t2') <- prunedType tp2
-        case (t1', t2') of
+        case vtrace ("Unifying " ++ show t1' ++ " and " ++ show t2' ++ " from " ++ why) (t1', t2') of
             (a, b) | a `testSame` b -> return ()
             (a@(TVar _), b) ->
                 do
@@ -254,18 +256,20 @@ unify tp1 tp2 =
                     if oit
                       then throwError $ TypeError $  "Recursive Unification of " ++ show a ++ " and " ++ show b
                       else updateType tp1 tp2'
-            (o, v@(TVar _)) -> unify tp2' tp1'
+            (o, v@(TVar _)) -> unify ("Reverse: " ++ why) tp2' tp1'
             (a@(TOper n1 p1),b@(TOper n2 p2)) ->
                 if n1 /= n2 || length p1 /= length p2
                 then throwError $ TypeError $ "Type mismatch " ++ show a ++ " /= " ++ show b
                 else do
                         p1' <- mapM shortAlias p1
                         p2' <- mapM shortAlias p2
-                        mapM_ (uncurry unify) $ zip p1' p2'
+                        mapM_ (uncurry $ unify (why ++ ": " ++ show a ++ " and " ++ show b)) $ zip p1' p2'
                         newTypes <- mapM prunedToType p1'
                         let newOpr = TOper n2 newTypes
                         ta <- shortAlias newOpr
+                        updateType tp1 tp2
                         updateType tp1 ta
+                        updateType tp1' tp2'
             (StructuralType a, StructuralType b) ->
               do
                 unifiedMap <- unifyStructureMaps a b
@@ -298,7 +302,7 @@ doItem theMap (name, tpe) =
             do
                 ta1 <- shortAlias tpe
                 ta2 <- shortAlias t2
-                unify ta1 ta2
+                unify ("Do Item " ++ show name ++ " type " ++ show tpe) ta1 ta2
                 return theMap
         _ -> return $ Map.insert name tpe theMap
 
@@ -379,7 +383,11 @@ createTypeVar _ t = prune t
 
 calcType :: VarScope -> Nongen -> Expression -> StateThrow TypePtr
 -- calcType _ _ x | vtrace ("Calctype for " ++ show x) False = error "ignore"
-calcType scope nongen (Var _ funcName) = gettype scope nongen funcName
+calcType scope nongen (Var _ funcName) = 
+    do
+        t <- {- vtrace ("Getting type for " ++ show funcName ++ " with nongen " ++ show nongen) $ -} gettype scope nongen funcName
+        ret <- fresh nongen t
+        return {- $ vtrace ("the result is " ++ show ret) -} ret
 calcType scope nongen e@(ValueConst _ v) = case valuePrim v of
     Just tpe -> aliasForType tpe $ Just e
     _ -> throwError $ TypeError $ "Expection primative value but got value: " ++ show v
@@ -400,11 +408,11 @@ calcType scope nongen e@(LetExp _ _ name canBeGen t1 exp) =
     do
         putCurExp e
         t1' <- aliasForType t1 $ Just e
-        (_, t1'') <- prunedType t1'
+        (t1thing, t1'') <- prunedType t1'
         let scope' = Map.insert name t1'' scope
         rt <- calcType scope' (if canBeGen then nongen else Set.insert t1' nongen) exp
-        unify t1' rt
-        return t1'
+        unify ("Calc let " ++ show name) t1thing rt
+        return rt
 calcType scope nongen e@(FuncExp _ paramName pt exp) =
     do
         putCurExp e
@@ -419,25 +427,28 @@ calcType scope nongen e@(Apply _ letId t1 exp1 exp2) =
     do
         putCurExp e
         tp1 <- aliasForType t1 $ Just e
-        t1' <- prunedToType tp1
+        t1' <- {- vtrace ("Apply my type is " ++ show t1 ++ " real " ++ show tp1 ++ " exp1 " ++ show exp1) $ -}prunedToType tp1
         funType <- calcType scope nongen exp1
-        argType <- showStructType funType $ calcType scope nongen exp2
+        argType <- {- vtrace ("Fun type is " ++ show funType) $ showStructType funType $ -} calcType scope nongen exp2
         argType' <- prunedToType argType
         synt <- aliasForType (tFun argType' t1') Nothing
-        unify synt funType
-        ret <- prunedToType tp1
+        unify  ("Apply exp1 " ++ show exp1 ++ " first")  synt funType
+        syntReal <- prunedToType synt
+        funTypeReal <- prunedToType funType
+        ret <- {- vtrace ("Skipped unify of " ++ show synt ++ "/" ++ show syntReal ++ " and " ++ show funType ++ "/" ++ show funTypeReal) $ -} prunedToType tp1
         funType' <- prunedToType funType
         synt' <- aliasForType (tFun argType' ret) Nothing
-        unify synt' funType
+        unify ("Apply exp1 " ++ show exp1 ++ " second") synt' funType
         let (TOper _ [_, ret']) = funType'
-        aliasForType ret' Nothing
+        syntReal' <- prunedToType synt'
+        vtrace ("Skipped unify of " ++ show synt' ++ "/" ++ show syntReal' ++ " and " ++ show funType) $ aliasForType ret' Nothing
 calcType scope nongen e@(SinkExp _ _ name t1 exp) =
     do
         putCurExp e
         t1' <- aliasForType t1 $ Just e
         let scope' = Map.insert name t1 scope
         rt <- calcType scope' (Set.insert t1' nongen) exp
-        unify t1' rt
+        unify ("Sink " ++ show name) t1' rt
         return rt
 calcType scope nongen e@(Group _ exprs _ exp) =
     do

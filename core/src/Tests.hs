@@ -43,6 +43,7 @@ import System.Environment
 import System.IO
 import Visi.Markdown
 
+
 main :: IO ()
 main = 
     do
@@ -90,7 +91,18 @@ runTest (param, func) =
 -- syntaxTests :: ([(String, String -> Either VisiError a, Either VisiError a -> Either String ())])
 syntaxTests = 
     [
-      ("test_40_struct_parsing.md", psuccess 1 . checkparse)
+
+     ("choose b x y = if b then x else y\n\
+       \x = choose true 1 2\n", testTypes [("choose", testT $ tFun (TPrim PrimBool) $ tFun (TVar $ T.pack "synthetic45") $ tFun (TVar  $ T.pack "synthetic45")  (TVar  $ T.pack "synthetic45"))] . checktype)
+
+{-
+     ,("choose b x y = if b then x else y\n\
+       \choose2 b x y = if b then x else y\n\
+       \n = choose2 true true true\n\
+       \x = choose true 1 2\n\
+       \y = choose false \"hi\" \"dude\"\n", testTypes [("choose", testT $ tFun (TPrim PrimBool) $ tFun (TVar $ T.pack "synthetic45") $ tFun (TVar  $ T.pack "synthetic45")  (TVar  $ T.pack "synthetic45"))] . checktype)
+
+      ,("test_40_struct_parsing.md", psuccess 1 . checkparse)
 
       ,("test_41_struct_and_more.md", psuccess 6 . checkparse)
 
@@ -224,6 +236,11 @@ syntaxTests =
                   testResults [("res", StrValue $ T.pack "10")] . checkResults)
 
 
+     ,("res = fact 10\n\
+       \fact n = if n == 0 then 1 else n * fact n",
+                  testResults [("res", UndefinedValue)] . checkResults)
+
+
      ,("res n = n.age", psuccess 1 . checkparse)
 
      ,("res n = n.fizzbin\n\
@@ -283,6 +300,7 @@ syntaxTests =
 
      ,("test_15_complex_source_sink.md", testTypes [("tax", testPrimDouble)
                                 ,("taxable", testPrimDouble)] . checktype)
+-}
     ]
 
 testGenBoolFunc _ (TOper fon1 [TVar t1, 
@@ -359,7 +377,7 @@ testResults list res =
     Left err -> Just $ show err
     Right grp ->
       let exprs = buildLetScope grp in
-      let testIt (funcName, expVal) = case eval Map.empty exprs $ Var NoSourceLoc $ FuncName $ T.pack funcName of
+      let testIt (funcName, expVal) = case eval 0 Map.empty exprs $ Var NoSourceLoc $ FuncName $ T.pack funcName of
                                           v | expVal == v -> Nothing
                                           v -> Just $ "Funcname " ++ funcName ++ " yielded " ++ show v ++ " expected " ++ show expVal
       in

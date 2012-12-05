@@ -205,6 +205,7 @@ instance Eq Value where
   DoubleValue d == DoubleValue d' = d == d'
   StrValue d == StrValue d' = d == d'
   BoolValue d == BoolValue d' = d == d'
+  UndefinedValue == UndefinedValue = True
   _ == _ = False
 
 instance Show Value where
@@ -212,6 +213,7 @@ instance Show Value where
     show (StrValue i) = show i
     show (BoolValue i) = show i
     show (FuncValue i) = "Value -> Value"
+    show UndefinedValue = "UndefinedValue"
 
 
 
