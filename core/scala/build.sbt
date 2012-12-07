@@ -59,7 +59,7 @@ jarName in assembly := "visi.jar"
 
 test in assembly := {}
 
-mainClass in assembly := Some("visi.la.Main")
+mainClass in assembly := Some("visi.Main")
 
 publishArtifact in Test := false
 
