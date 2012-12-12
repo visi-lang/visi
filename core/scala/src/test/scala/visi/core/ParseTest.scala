@@ -3,7 +3,7 @@ package visi.core
 import org.specs._
 import org.specs.runner.JUnit4
 import org.specs.runner.ConsoleRunner
-
+import net.liftweb.common.Full
 
 
 class ParseTestAsTest extends JUnit4(ParseTest)
@@ -13,7 +13,7 @@ object ParseTest extends Specification {
 
   "Parser" should {
     "Find fenced code" in {
-      Parse.hasFences(
+      VisiParse.hasFences(
         """
           |I like yaks
           |and mooses
@@ -30,7 +30,7 @@ object ParseTest extends Specification {
     }
 
     "Not Find fenced code" in {
-      Parse.hasFences(
+      VisiParse.hasFences(
         """
           |I like yaks
           |and mooses
@@ -41,11 +41,29 @@ object ParseTest extends Specification {
         """.stripMargin) must_== false
     }
 
+    /*
     "parse constant" in {
-      Parse.code("foo = 99\n").isDefined must_== true
+      VisiParse.code("99\n").isDefined must_== true
+
+    }*/
+
+    "parse definition" in {
+      VisiParse.code("dog = 99\n").isDefined must_== true
 
     }
 
+    "parse source and sink and exp" in {
+      VisiParse.code(
+        """
+          |?foo
+          |
+          |"bar" = 99
+          |
+          |dog = 123
+        """.stripMargin).map(_.length) must_== Full(3)
+
+
+    }
 
   }
 

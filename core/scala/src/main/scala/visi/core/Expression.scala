@@ -10,7 +10,7 @@ package visi.core
 object Expression {
   type CanBeGeneric = Boolean
 
-  type SourcePoint = scala.util.parsing.input.Position
+  type SourcePoint = Int
   type SourceSpan = (SourcePoint, SourcePoint)
   // type SourceInfo = (SourceSpan, String)
 
@@ -25,13 +25,22 @@ object Expression {
 }
 
 import Expression._
+import net.liftweb.util.Helpers
 
 final case class LetId(id: String)
+object LetId {
+  def make: LetId = new LetId(Helpers.nextFuncName)
+}
 
 sealed trait Prim
 case object PrimDouble extends Prim
 case object PrimBool extends Prim
 case object PrimStr extends Prim
+
+
+object Type {
+  def vendVar: Type = TVar(Helpers.nextFuncName)
+}
 
 sealed trait Type
 
@@ -48,8 +57,8 @@ final case class FuncName(name: String)
 sealed trait SourceLoc
 
 final case object NoSourceLoc extends SourceLoc
-final case class BuiltInSource(src: String, loc: SourceLoc) extends SourceLoc
-final case class SourceFromURL(src: String, loc: SourceLoc) extends SourceLoc
+final case class BuiltInSource(src: String, loc: SourceSpan) extends SourceLoc
+final case class SourceFromURL(src: String, loc: SourceSpan) extends SourceLoc
 
 /**
  * An expression
