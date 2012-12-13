@@ -2,7 +2,6 @@
 dist
 *.hi
 *.o
-Main
 aw
 parsley
 TAGS
