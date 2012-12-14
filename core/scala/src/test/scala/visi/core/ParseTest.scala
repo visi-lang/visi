@@ -4,6 +4,8 @@ import org.specs._
 import org.specs.runner.JUnit4
 import org.specs.runner.ConsoleRunner
 import net.liftweb.common.Full
+import java.io.File
+import net.liftweb.util.Helpers
 
 
 class ParseTestAsTest extends JUnit4(ParseTest)
@@ -114,6 +116,20 @@ object ParseTest extends Specification {
         """.stripMargin).isDefined must_== false
     }
 
+    "Multiline if then else" in {
+      VisiParse.code(
+        """
+          |foo n =
+          |  if
+          |    n > 5
+          |  then
+          |    "foo"
+          |  else
+          |    "bar"
+          |
+        """.stripMargin).map(_.length) must_== Full(1)
+    }
+
     "parse source and sink and exp in something that's somewhat complex inside Markdown" in {
       VisiParse.code(
         """
@@ -137,6 +153,22 @@ object ParseTest extends Specification {
         """.stripMargin).map(_.length) must_== Full(3)
     }
 
+    /*
+    val dog = {
+      val f = new File("/Users/dpp/proj/visi.wiki/tests")
+      val kids = f.listFiles().toList.filter(_.getName.endsWith(".md")).filterNot(_.getName.toLowerCase.startsWith("index"))
+      val all = kids.map(f => new String(Helpers.readWholeFile(f), "UTF-8") -> f)
+      all
+    }
+
+    "Can parse all test files" in {
+      dog.map{
+        case (str, f) =>
+          println("Running "+f.getName)
+          (VisiParse.code(str).isDefined, f.getName) must_== (true, f.getName)
+      }
+    }
+*/
 
   }
 

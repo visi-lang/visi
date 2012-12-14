@@ -22,7 +22,7 @@ class VisiParse extends Parser  {
 
     // if we find fenced codeblocks, then just parse the stuff inside the fences
 
-    val res = ReportingParseRunner(expressions).run(s.transformIndents(lineCommentStart = "//"))
+    val res = RecoveringParseRunner(expressions).run(s.transformIndents(lineCommentStart = "//"))
 
     if (res.matched) res.result
     else {
@@ -36,7 +36,7 @@ class VisiParse extends Parser  {
   }
 
   def expressions: Rule1[List[Expression]] = rule("Top level") {
-    (fencedExpressions | oneOrMore(expression)) ~ zeroOrMore(EOL) ~ EOI
+    (/*fencedExpressions | */ oneOrMore(expression)) ~ zeroOrMore(EOL) ~ EOI
   }
 
   def fencedExpressions: Rule1[List[Expression]] =
@@ -57,7 +57,6 @@ class VisiParse extends Parser  {
 
   def colZero: Rule0 = toTestAction(ctx => {
     ctx.getPosition.column == 1
-    true
   })
 
   def EOL: Rule0 = rule{str("\n")}
@@ -98,15 +97,33 @@ class VisiParse extends Parser  {
   private def ifType(in: Type): Type = Expression.tFun(in, Expression.tFun(in, in))
   private def ifApplyType(in: Type): Type = Expression.tFun(TPrim(PrimBool), Expression.tFun(in, Expression.tFun(in, in)))
 
+  def operator: Rule1[Expression] = rule("Operator") {
+    (spaces ~ anyOf("+-*/&><") ~ spaces) ~> withContext((s: String, ctx) => Var(calcLoc(ctx), FuncName(s), Type.vendVar))
+  }
+
   def parenExp: Rule1[Expression] = rule {
+    (spaces ~ "(" ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) |
+    (spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) ~~> withContext((r: Expression, op: Expression, ctx) => null) | // FIXME partially apply
+    ((spaces ~ "(" ~ spaces  ~ operator ~ rightExp ~ spaces ~ spaces ~ ")" ~ spaces)) ~~> withContext((op: Expression, r: Expression, ctx) => null) | // FIXME partially apply
     spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ ")" ~ spaces
   }
 
-  def rightExp: Rule1[Expression] =
-   rule{ parenExp |
-    ifElseExp | constExp |
-   funcParamExp | identifier
+  def operatorExp: Rule1[Expression] = rule("Operator Expression") {
+    (parenExp | ifElseExp | constExp | identifier) ~ spaces ~ operator ~ spaces ~ rightExp ~~> ((a,b,c) => b) // FIXME do the right thing
+
+  }
+
+  def rightExp: Rule1[Expression] = {
+    def thing = parenExp |
+      ifElseExp |
+      operatorExp |
+      constExp |
+      funcParamExp | identifier
+   rule("Right hand expression") {
+     (INDENT ~ oneOrMore(letExpr | funcExpr) ~ rightExp ~ DEDENT) ~~> ((a, b) => b) | // FIXME Group them
+     (zeroOrMore(EOL) ~ spaces ~ zeroOrMore(EOL) ~ INDENT ~ zeroOrMore(EOL) ~ spaces ~ thing ~ zeroOrMore(EOL) ~spaces ~ zeroOrMore(EOL) ~ DEDENT ~ spaces ~ zeroOrMore(EOL) ~ spaces) | thing
    }
+  }
 
   def constExp: Rule1[Expression] = rule {
     NumberConst | stringConst
