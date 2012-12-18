@@ -3,7 +3,7 @@ import AssemblyKeys._ // put this at the top of the file
 //Project Information
 name := "Visi"
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.0-RC2"
 
 scalacOptions += "-deprecation"
 
@@ -28,7 +28,7 @@ version := "0.1-SNAPSHOT"
 // crossScalaVersions in ThisBuild    := Seq("2.9.2") 
 
 libraryDependencies ++= {
-  val liftVersion = "2.5-M3"
+  val liftVersion = "3.0-SNAPSHOT"
   Seq(
     "net.liftweb" %% "lift-util" % liftVersion % "compile",
     "net.liftweb" %% "lift-json-ext" % liftVersion % "compile")
@@ -39,10 +39,10 @@ libraryDependencies ++= {
     "org.yaml" % "snakeyaml" % "1.10",
     "junit" % "junit" % "4.7" % "test",
     "ch.qos.logback" % "logback-classic" % "1.0.6" % "compile" ,
-    "eu.henkelmann" %% "actuarius" % "0.2.4",
+    // "eu.henkelmann" %% "actuarius" % "0.2.4",
     "org.eclipse.jgit" % "org.eclipse.jgit" % "1.3.0.201202151440-r",
     "org.parboiled" %% "parboiled-scala" % "1.1.3",
-    "org.scala-tools.testing" %% "specs" % "1.6.9" % "test"
+    "org.specs2" %% "specs2" % "1.12.2" % "test"
   )
 }
 
