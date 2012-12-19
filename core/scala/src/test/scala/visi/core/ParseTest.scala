@@ -59,6 +59,19 @@ object ParseTest extends Specification {
         """.stripMargin).isDefined must_== true
           }
 
+    "parse a sink properly" in {
+      VisiParse.code(
+        """
+          |"bar" = 55
+        """.stripMargin) match {
+        case Full(List(SinkExp(_,
+        _, FuncName("bar"), TPrim(PrimDouble),ValueConst(_,DoubleValue(55.0),TPrim(PrimDouble))))) => true must_== true
+        case x =>
+          println(x)
+          true must_== false
+      }
+    }
+
     "fail to parse an indented source" in {
       VisiParse.code("      ?foo   \n").isDefined must_== false
     }
@@ -218,11 +231,14 @@ object ParseTest extends Specification {
         """.stripMargin).map(_.length) must_== Full(5)
     }
 
-    val dog = {
-      val f = new File("/home/dpp/proj/visi.wiki/tests")
+    val dog: List[(String, File)] = {
+      val f = new File(new File((new File(".")).getCanonicalFile.  getParentFile.getParentFile.getParentFile, "visi.wiki"), "tests")
+
+      if (f.exists()) {
       val kids = f.listFiles().toList.filter(_.getName.endsWith(".md")).filterNot(_.getName.toLowerCase.startsWith("index"))
       val all = kids.map(f => new String(Helpers.readWholeFile(f), "UTF-8") -> f)
       all
+      } else Nil
     }
 
     "Can parse all test files" in {

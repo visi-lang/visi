@@ -132,13 +132,13 @@ class VisiParse extends Parser  {
   private def ifApplyType(in: Type): Type = Expression.tFun(TPrim(PrimBool), Expression.tFun(in, Expression.tFun(in, in)))
 
   def operator: Rule1[Expression] = rule("Operator") {
-    (spaces ~ (anyOf("+-*/&><") | "==" | ">=" | "<=") ~ spaces) ~> withContext((s: String, ctx) => Var(calcLoc(ctx), FuncName(s), Type.vendVar))
+    (spaces ~ ((oneOrMore(anyOf("+-*/&><") | "==" | ">=" | "<=")) ~> (s => s)) ~ spaces) ~~> withContext((s: String, ctx) => Var(calcLoc(ctx), FuncName(s), Type.vendVar))
   }
 
   def parenExp: Rule1[Expression] = rule {
     (spaces ~ "(" ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) |
-    (spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) ~~> withContext((r: Expression, op: Expression, ctx) => null) | // FIXME partially apply
-    ((spaces ~ "(" ~ spaces  ~ operator ~ rightExp ~ spaces ~ spaces ~ ")" ~ spaces)) ~~> withContext((op: Expression, r: Expression, ctx) => null) | // FIXME partially apply
+    (spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) ~~> withContext((r: Expression, op: Expression, ctx) => op) | // FIXME partially apply
+    ((spaces ~ "(" ~ spaces  ~ operator ~ rightExp ~ spaces ~ spaces ~ ")" ~ spaces)) ~~> withContext((op: Expression, r: Expression, ctx) => op) | // FIXME partially apply
     spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ ")" ~ spaces
   }
 
