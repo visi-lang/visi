@@ -196,17 +196,17 @@ class VisiParse extends Parser  {
     zeroOrMore(" " | "\t")
   }
 
-    /*
+
   private def lineFeed: Rule0 = rule {
     zeroOrMore(EOL | EOI)
   }
-  */
 
 
+/*
     private def lineFeed: Rule0 = rule {
       zeroOrMore(EOL)
     }
-
+*/
 
 
     private def sink: Rule1[Expression] = {
