@@ -43,6 +43,7 @@ class VisiParse extends Parser  {
       if (showChars) {
 
         val lb = new ListBuffer[Char]
+
         @scala.annotation.tailrec
         def doIt(x: Int) {
           ib.charAt(x) match {
@@ -51,13 +52,13 @@ class VisiParse extends Parser  {
           }
         }
         doIt(0)
+
         val lst = lb.toList.map {
           case x if x >= ' ' && x.toInt <= 127 => "'"+x+"'"
           case x => x.toInt.toString
         }
 
         println("Chars "+lst.mkString(", "))
-
       }
 
       ParamFailure("Failed to parse", stuff.map(x => (x.getErrorMessage, x.getFailedMatchers.toArray.toList, x.getStartIndex, x.getEndIndex, x)))
@@ -195,10 +196,20 @@ class VisiParse extends Parser  {
     zeroOrMore(" " | "\t")
   }
 
-  private def lineFeed: Rule0 = zeroOrMore(EOL | EOI)
+    /*
+  private def lineFeed: Rule0 = rule {
+    zeroOrMore(EOL | EOI)
+  }
+  */
 
 
-  private def sink: Rule1[Expression] = {
+    private def lineFeed: Rule0 = rule {
+      zeroOrMore(EOL)
+    }
+
+
+
+    private def sink: Rule1[Expression] = {
     def anyChars: Rule1[String] = rule {oneOrMore(!"\"" ~ !EOL ~ !EOI ~ AnyChar) ~> (s => s)}
     rule {
        colZero ~ "\"" ~ anyChars ~ "\"" ~ spaces ~ "=" ~ spaces ~ rightExp ~~>

@@ -3,7 +3,7 @@ import AssemblyKeys._ // put this at the top of the file
 //Project Information
 name := "Visi"
 
-scalaVersion := "2.10.0-RC2"
+scalaVersion := "2.9.2"
 
 scalacOptions += "-deprecation"
 
@@ -28,7 +28,7 @@ version := "0.1-SNAPSHOT"
 // crossScalaVersions in ThisBuild    := Seq("2.9.2") 
 
 libraryDependencies ++= {
-  val liftVersion = "3.0-SNAPSHOT"
+  val liftVersion = "2.5-M3"
   Seq(
     "net.liftweb" %% "lift-util" % liftVersion % "compile",
     "net.liftweb" %% "lift-json-ext" % liftVersion % "compile")
