@@ -21,9 +21,42 @@ object Typer {
   def infer(in: Expression): Box[(String, Type)] = {
     val graph = new LetMap
 
-    buildGraph(graph, )
+    buildGraph(graph, in)
 
     Empty
+  }
+
+  private def buildGraph(stuff: LetMap, exp: Expression) {
+    exp match {
+    case LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) =>
+    case InnerLet(loc: SourceLoc,
+    tpe: Type, exp1: Expression, exp2: Expression) =>
+    case SinkExp(loc: SourceLoc,
+    id: LetId, name: FuncName, tpe: Type, exp: Expression) =>
+    case SourceExp(loc: SourceLoc,
+    id: LetId,
+    name: FuncName,
+    tpe: Type) =>
+    case InvokeMethod(loc: SourceLoc,
+    id: LetId,
+    name: FuncName,
+    tpe: Type) =>
+
+    case FuncExp(loc: SourceLoc,
+    name: FuncName,
+    tpe: Type,
+    exp: Expression) =>
+
+    case Apply(loc: SourceLoc,
+    id: LetId,
+    tpe: Type,
+    exp1: Expression,
+    exp2: Expression) =>
+    case Var(loc: SourceLoc, name: FuncName, tpe: Type) =>
+    case BuiltIn(loc: SourceLoc, name: FuncName, tpe: Type, _) =>
+    case ValueConst(loc: SourceLoc, value: Value, tpe: Type) =>
+    case Group(loc: SourceLoc, map: Map[FuncName, Expression], tpe: Type, exp: Expression) =>
+    }
   }
 
 
