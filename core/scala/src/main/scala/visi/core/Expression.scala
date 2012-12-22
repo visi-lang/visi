@@ -68,19 +68,24 @@ sealed trait Expression {
   def tpe: Type
 }
 
-final case class LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) extends Expression
+sealed trait HasLetId {
+  def id: LetId
+}
+
+final case class LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) extends Expression with HasLetId
+
 final case class InnerLet(loc: SourceLoc,
                            tpe: Type, exp1: Expression, exp2: Expression) extends Expression
 final case class SinkExp(loc: SourceLoc,
-                          id: LetId, name: FuncName, tpe: Type, exp: Expression) extends Expression
+                          id: LetId, name: FuncName, tpe: Type, exp: Expression) extends Expression with HasLetId
 final case class SourceExp(loc: SourceLoc,
                             id: LetId,
                             name: FuncName,
-                            tpe: Type) extends Expression
+                            tpe: Type) extends Expression with HasLetId
 final case class InvokeMethod(loc: SourceLoc,
                                id: LetId,
                                name: FuncName,
-                               tpe: Type) extends Expression
+                               tpe: Type) extends Expression with HasLetId
 
 final case class FuncExp(loc: SourceLoc,
                           name: FuncName,
@@ -91,9 +96,9 @@ final case class Apply(loc: SourceLoc,
                         id: LetId,
                         tpe: Type,
                         exp1: Expression,
-                        exp2: Expression) extends Expression
-final case class Var(loc: SourceLoc, name: FuncName, tpe: Type) extends Expression
-final case class BuiltIn(loc: SourceLoc, name: FuncName, tpe: Type, func: Value => Value) extends Expression
+                        exp2: Expression) extends Expression with HasLetId
+final case class Var(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type) extends Expression with HasLetId
+final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: Value => Value) extends Expression with HasLetId
 final case class ValueConst(loc: SourceLoc, value: Value, tpe: Type) extends Expression
 final case class Group(loc: SourceLoc, map: Map[FuncName, Expression], tpe: Type, exp: Expression) extends Expression
 

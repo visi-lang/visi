@@ -123,7 +123,7 @@ class VisiParse extends Parser  {
       Apply( loc, LetId.make, curType,
                          Apply(loc, LetId.make, Expression.tFun( curType,curType),
                          Apply(loc, LetId.make, ifType(curType),
-                           Var(loc, FuncName("$ifelse"), ifApplyType(curType)), boolExp), trueExp
+                           Var(loc, LetId.make, FuncName("$ifelse"), ifApplyType(curType)), boolExp), trueExp
                          ), falseExp)
     })
   }
@@ -132,7 +132,8 @@ class VisiParse extends Parser  {
   private def ifApplyType(in: Type): Type = Expression.tFun(TPrim(PrimBool), Expression.tFun(in, Expression.tFun(in, in)))
 
   def operator: Rule1[Expression] = rule("Operator") {
-    (spaces ~ ((oneOrMore(anyOf("+-*/&><") | "==" | ">=" | "<=")) ~> (s => s)) ~ spaces) ~~> withContext((s: String, ctx) => Var(calcLoc(ctx), FuncName(s), Type.vendVar))
+    (spaces ~ ((oneOrMore(anyOf("+-*/&><") | "==" | ">=" | "<=")) ~> (s => s)) ~ spaces) ~~> withContext((s: String, ctx) =>
+      Var(calcLoc(ctx), LetId.make, FuncName(s), Type.vendVar))
   }
 
   def parenExp: Rule1[Expression] = rule {
@@ -183,7 +184,9 @@ class VisiParse extends Parser  {
       identifierStr ~? (s => s match {
         case "then" | "else" => false
         case _ => true
-      }) ~~> withContext((s: String, ctx) => Var(calcLoc(ctx), FuncName(s), Type.vendVar))
+      }) ~~> withContext((s: String, ctx) => Var(calcLoc(ctx),
+      LetId.make,
+        FuncName(s), Type.vendVar))
     }
 
   def spaces: Rule0 = rule("Spaces") {
