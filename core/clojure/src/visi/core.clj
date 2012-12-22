@@ -8,7 +8,9 @@
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
+()
   (println "Pow " (Math/pow 2 3))
   (println "Map is " (ConcurrentHashMap.))
   (println "It's " (Date.))
+  (println "Dude" (Date.))
   (println "Hello, World!"))
