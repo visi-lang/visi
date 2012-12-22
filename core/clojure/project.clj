@@ -6,4 +6,6 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.eclipse.jgit/org.eclipse.jgit "1.3.0.201202151440-r"]
                  [org.parboiled/parboiled-java "1.1.4"]]
+  :source-paths      ["src/clojure"]
+  :java-source-paths ["src/java"]
   :main visi.core)
