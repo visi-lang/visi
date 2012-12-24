@@ -42,7 +42,7 @@ libraryDependencies ++= {
     "eu.henkelmann" %% "actuarius" % "0.2.4",
     "org.eclipse.jgit" % "org.eclipse.jgit" % "1.3.0.201202151440-r",
     "org.parboiled" %% "parboiled-scala" % "1.1.3",
-    "org.scala-tools.testing" %% "specs" % "1.6.9" % "test"
+    "org.specs2" %% "specs2" % "1.12.3" % "test"
   )
 }
 

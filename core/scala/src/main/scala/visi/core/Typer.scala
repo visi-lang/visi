@@ -10,72 +10,116 @@ import net.liftweb.common.Box._
 import java.util.concurrent.ConcurrentHashMap
 
 object Typer {
+
   private case class Ref[T](var it: T)
 
   private type TypePtr = Ref[Type]
+
   // private type VarScope = Map[FuncName, Expression]
   private case class CurState(refs: ConcurrentHashMap[Type, TypePtr])
-  private case class Depends(whatId: LetId, what: Expression, dependants: Set[LetId], predicates: Set[LetId])
+
+  private case class Depends(whatId: LetId, stack: List[Expression], what: Expression, dependants: Set[LetId], predicates: Set[LetId])
+
   private type LetMap = ConcurrentHashMap[LetId, Depends]
 
-  def infer(in: Expression): Box[(String, Type)] = {
+  def infer(in: Map[FuncName, Expression]): Box[Map[FuncName, Type]] = {
     val graph = new LetMap
 
-    buildGraph(graph, Map.empty, Nil,
-      in)
-
-    Empty
+    for {
+      one <- buildGraph(graph, Map.empty, Nil, Group(in)) ?~ "Hmmmm..."
+      // FIXME now that we've built the dependency graph, let's do type checking
+    } yield Map(FuncName("choose") -> TPrim(PrimBool))
   }
 
-  private def buildGraph(stuff: LetMap, scope: LetScope, stack: List[Expression], theExp: Expression) {
+  private def reduce[T](bs: Stream[Box[T]]): Box[T] = {
+    var ret: Box[T] = Empty
+
+    @scala.annotation.tailrec
+    def doAll(in: Stream[Box[T]]): Box[T] = {
+      if (in.isEmpty) ret
+      else (in.head, in.tail) match {
+        case (x: EmptyBox, _) => x
+        case (x, rest) => ret = x; doAll(rest)
+      }
+    }
+
+    doAll(bs)
+  }
+
+  private def crossRef(stuff: LetMap, from: HasLetId, to: HasLetId) {
+    val fromster = stuff.get(from.id)
+    val f2 = fromster.copy(predicates = fromster.predicates + to.id)
+    stuff.put(from.id, f2)
+    val toster = stuff.get(to.id)
+    val t2 = toster.copy(dependants = toster.dependants + from.id)
+    stuff.put(to.id, t2)
+  }
+
+  private def buildGraph(stuff: LetMap, scope: LetScope, stack: List[Expression], theExp: Expression): Box[Boolean] = {
     theExp match {
-    case LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) =>
-      val newMap = scope + (name -> theExp)
-      stuff.put(id, Depends(id, theExp, Set.empty, Set.empty))
-      buildGraph(stuff, newMap, theExp :: stack, exp)
+      case LetExp(loc, id, name, generic, tpe, exp) =>
+        val newMap = scope + (name -> theExp)
+        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        buildGraph(stuff, newMap, theExp :: stack, exp)
 
-    case InnerLet(loc: SourceLoc,
-    tpe: Type, exp1: Expression, exp2: Expression) =>
+      case InnerLet(loc, tpe, exp1, exp2) =>
+        val newScope = exp1 match {
+          case LetExp(loc, id, name, generic, tpe, exp) =>
+            scope + (name -> exp)
+          case _ => scope
+        }
+        reduce(Stream(buildGraph(stuff, newScope, theExp :: stack, exp1),
+        buildGraph(stuff, newScope, theExp :: stack, exp2)))
 
-    case SinkExp(loc: SourceLoc,
-    id: LetId, name: FuncName, tpe: Type, exp: Expression) =>
-      stuff.put(id, Depends(id, theExp, Set.empty, Set.empty))
-      val newMap = scope + (name -> theExp)
-      buildGraph(stuff, newMap, theExp :: stack, exp)
+      case SinkExp(loc, id, name, tpe, exp) =>
+        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        val newMap = scope + (name -> theExp)
+        buildGraph(stuff, newMap, theExp :: stack, exp)
 
-    case SourceExp(loc: SourceLoc,
-    id: LetId,
-    name: FuncName,
-    tpe: Type) =>
-      stuff.put(id, Depends(id, theExp, Set.empty, Set.empty))
+      case SourceExp(loc, id, name, tpe) =>
+        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        Full(true)
 
-    case InvokeMethod(loc: SourceLoc,
-    id: LetId,
-    name: FuncName,
-    tpe: Type) =>
+      case FuncExp(loc,id, name, tpe, exp) =>
+        val newScope = scope + (name -> theExp)
+        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        buildGraph(stuff, newScope, theExp :: stack, exp)
 
-    case FuncExp(loc: SourceLoc,
-    name: FuncName,
-    tpe: Type,
-    exp: Expression) =>
+      case Apply(loc, id, tpe, exp1, exp2) =>
+        val r1 = buildGraph(stuff, scope, theExp :: stack, exp1)
+        if (r1.isDefined) buildGraph(stuff, scope, theExp :: stack, exp2)
+        else r1
 
-    case Apply(loc: SourceLoc,
-    id: LetId,
-    tpe: Type,
-    exp1: Expression,
-    exp2: Expression) =>
+      case vexp @ Var(loc, id, name, tpe) =>
+        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        for {
+          target1 <- scope.get(name) ?~ ("Unable to find function "+name.name) ~> theExp
+          target <- Full(target1).asA[HasLetId]
+        } yield {
+          crossRef(stuff, vexp, target)
+          true
+        }
 
-    case Var(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type) =>
+      case BuiltIn(loc, id, name, tpe, _) =>
+        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        Full(true)
 
-    case BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, _) =>
-      stuff.put(id, Depends(id, theExp, Set.empty, Set.empty))
-
-    case ValueConst(loc: SourceLoc, value: Value, tpe: Type) =>
+      case ValueConst(loc: SourceLoc, value: Value, tpe: Type) =>
       // Do Nothing
+        Full(true)
 
-    case Group(loc: SourceLoc, map: Map[FuncName, Expression], tpe: Type, exp: Expression) =>
-        val newMap = map.foldLeft(scope){case (sc, (n, e2)) => sc + (n -> e2)}
-        map.values.foreach(e2 => buildGraph(stuff, newMap, theExp:: stack, e2))
+      case Group( map: Map[FuncName, Expression]) =>
+        val newMap = map.foldLeft(scope) {
+          case (sc, (n, e2)) => sc + (n -> e2)
+        }
+
+        map.values.foreach {
+          case hl: HasLetId => stuff.put(hl.id, Depends(hl.id, theExp::stack, hl, Set.empty, Set.empty))
+          case _ =>
+        }
+
+        reduce(map.values.toStream.map(v => buildGraph(stuff, newMap, theExp :: stack, v)))
+
     }
   }
 
@@ -93,12 +137,12 @@ object Typer {
   private def fresh(state: CurState, nonGen: Boolean, tpe: TypePtr): Box[TypePtr] = Empty
 
   private def calcType(scope: VarScope, state: CurState, nonGen: Boolean, expr: Expression): Box[TypePtr] =
-  expr match {
-    case Var(_, _, name, tpe) =>
-      for {
-        t <- scope.get(name) ?~ ("Unable to locate function "+name)
-        ret <- fresh(state, nonGen, Ref(t))
-      } yield ret
-    case x => ParamFailure("Unable to calculate the type for ", x)
-  }
+    expr match {
+      case Var(_, _, name, tpe) =>
+        for {
+          t <- scope.get(name) ?~ ("Unable to locate function " + name)
+          ret <- fresh(state, nonGen, Ref(t))
+        } yield ret
+      case x => ParamFailure("Unable to calculate the type for ", x)
+    }
 }

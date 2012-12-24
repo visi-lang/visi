@@ -19,9 +19,9 @@ object Expression {
   type LetScope = Map[FuncName, Expression]
 
 
-  def funcOperName = "->"
+  val FuncOperName = "->"
 
-  def tFun(t1: Type, t2: Type): Type = TOper(funcOperName, List(t1, t2))
+  def tFun(t1: Type, t2: Type): Type = TOper(FuncOperName, List(t1, t2))
 }
 
 import Expression._
@@ -68,29 +68,36 @@ sealed trait Expression {
   def tpe: Type
 }
 
-sealed trait HasLetId {
+sealed trait HasName extends Expression {
+  def name: FuncName
+}
+
+sealed trait HasLetId extends Expression {
   def id: LetId
 }
 
-final case class LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) extends Expression with HasLetId
+final case class LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) extends Expression with HasLetId with HasName
 
 final case class InnerLet(loc: SourceLoc,
                            tpe: Type, exp1: Expression, exp2: Expression) extends Expression
 final case class SinkExp(loc: SourceLoc,
-                          id: LetId, name: FuncName, tpe: Type, exp: Expression) extends Expression with HasLetId
+                          id: LetId, name: FuncName, tpe: Type, exp: Expression) extends Expression with HasLetId with HasName
 final case class SourceExp(loc: SourceLoc,
                             id: LetId,
                             name: FuncName,
-                            tpe: Type) extends Expression with HasLetId
+                            tpe: Type) extends Expression with HasLetId with HasName
+/*
 final case class InvokeMethod(loc: SourceLoc,
                                id: LetId,
                                name: FuncName,
                                tpe: Type) extends Expression with HasLetId
+*/
 
 final case class FuncExp(loc: SourceLoc,
-                          name: FuncName,
-                          tpe: Type,
-                          exp: Expression) extends Expression
+                         id: LetId,
+                         name: FuncName,
+                         tpe: Type,
+                         exp: Expression) extends Expression with HasLetId
 
 final case class Apply(loc: SourceLoc,
                         id: LetId,
@@ -98,9 +105,12 @@ final case class Apply(loc: SourceLoc,
                         exp1: Expression,
                         exp2: Expression) extends Expression with HasLetId
 final case class Var(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type) extends Expression with HasLetId
-final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: Value => Value) extends Expression with HasLetId
+final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: Value => Value) extends Expression with HasLetId with HasName
 final case class ValueConst(loc: SourceLoc, value: Value, tpe: Type) extends Expression
-final case class Group(loc: SourceLoc, map: Map[FuncName, Expression], tpe: Type, exp: Expression) extends Expression
+final case class Group(map: Map[FuncName, Expression]) extends Expression {
+  def loc: SourceLoc = sys.error("No Sourceloc for Group")
+  def tpe: Type = sys.error("No type for Group")
+}
 
 
 sealed trait Value {

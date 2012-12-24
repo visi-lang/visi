@@ -19,7 +19,7 @@ object VisiParse extends VisiParse
  */
 class VisiParse extends Parser  {
 
-  def code(str: String, showStuff: Boolean = false): Box[List[Expression]] = synchronized {
+  def code(str: String, showStuff: Boolean = false): Box[Map[FuncName, Expression]] = synchronized {
     // turn the CRLR or CR stuff into LF
     val s = str.replace("\r\n", "\n").replace("\r", "\n")
 
@@ -48,8 +48,15 @@ class VisiParse extends Parser  {
 
     val res = ReportingParseRunner(expressions).run(input)
 
-    if (res.matched) res.result
-    else {
+    if (res.matched) {
+      res.result.map{
+        lst =>
+          Map(lst.flatMap{
+            case hn: HasName => List(hn.name -> hn)
+            case _ => Nil
+          } :_*)
+      }
+    } else {
       val stuff = res.parseErrors.collect{
         case i: InvalidInputError => i
       }
@@ -66,56 +73,56 @@ class VisiParse extends Parser  {
 
   }
 
-  def expressions: Rule1[List[Expression]] = rule("Top level") {
+  private def expressions: Rule1[List[Expression]] = rule("Top level") {
     (fencedExpressions | oneOrMore(expression)) ~ endSpace ~ EOI
   }
 
-  def endSpace: Rule0 = zeroOrMore(EOL | " " | "\t" | comment)
+  private def endSpace: Rule0 = zeroOrMore(EOL | " " | "\t" | comment)
 
-  def expression: Rule1[Expression] =
+  private def expression: Rule1[Expression] =
     endSpace ~ (letExpr | funcExpr | source | sink) ~ endSpace
 
-  def fencedExpressions: Rule1[List[Expression]] =
+  private def fencedExpressions: Rule1[List[Expression]] =
     oneOrMore(notInFence ~ fence ~ zeroOrMore(spaces ~ expression ~ spaces) ~ fence ~ notInFence) ~~> (x => x.flatten)
 
 
-  def fence: Rule0 = colZero ~ "```" ~ zeroOrMore(!EOL ~ AnyChar) ~ (EOL | EOI)
+  private def fence: Rule0 = colZero ~ "```" ~ zeroOrMore(!EOL ~ AnyChar) ~ (EOL | EOI)
 
-  def notInFence: Rule0 = zeroOrMore(!fence ~ AnyChar)
+  private def notInFence: Rule0 = zeroOrMore(!fence ~ AnyChar)
 
 
 
-  def beginComment: Rule0 = rule("Begin comment"){ str("/*") }
-  def endComment: Rule0 = rule("End comment"){ str( "*/") }
-  def comment: Rule0 = rule("Comment") {beginComment ~ zeroOrMore(commentBody) ~ endComment ~ optional(EOL ~ DEDENT)}
-  def commentBody: Rule0 = rule("Comment Body") {comment | (!beginComment ~ !endComment ~ AnyChar)}
-  def AnyChar: Rule0 = ANY
+  private def beginComment: Rule0 = rule("Begin comment"){ str("/*") }
+  private def endComment: Rule0 = rule("End comment"){ str( "*/") }
+  private def comment: Rule0 = rule("Comment") {beginComment ~ zeroOrMore(commentBody) ~ endComment ~ optional(EOL ~ DEDENT)}
+  private def commentBody: Rule0 = rule("Comment Body") {comment | (!beginComment ~ !endComment ~ AnyChar)}
+  private def AnyChar: Rule0 = ANY
 
-  def colZero: Rule0 = toTestAction(ctx => {
+  private def colZero: Rule0 = toTestAction(ctx => {
     ctx.getPosition.column == 1
   })
 
-  def EOL: Rule0 = rule{str("\n")}
+  private def EOL: Rule0 = rule{str("\n")}
 
-  def LineComment: Rule0 = rule {"//" ~ zeroOrMore(!EOL ~ AnyChar) ~ (EOL | EOI)}
+  private def LineComment: Rule0 = rule {"//" ~ zeroOrMore(!EOL ~ AnyChar) ~ (EOL | EOI)}
 
-  def Integer: Rule0 = rule { optional("-") ~ (("1" - "9") ~ Digits | Digit) }
+  private def Integer: Rule0 = rule { optional("-") ~ (("1" - "9") ~ Digits | Digit) }
 
-  def Digits: Rule0 = rule { oneOrMore(Digit) }
+  private def Digits: Rule0 = rule { oneOrMore(Digit) }
 
-  def Digit: Rule0 = rule { "0" - "9" }
+  private def Digit: Rule0 = rule { "0" - "9" }
 
 
-  def identifierStr: Rule1[String] = rule {
+  private def identifierStr: Rule1[String] = rule {
     (("a" - "z" | "_") ~> ((s: String) => s) ~ zeroOrMore("a" - "z" | "_" | "A" - "Z" | "'" | "0" - "9"  ) ~> ((s: String) => s)) ~~> ((s: String, s2: String) => s + s2)
   }
 
-  def stringConst: Rule1[Expression] = rule {
+  private def stringConst: Rule1[Expression] = rule {
     "\"" ~ (zeroOrMore(!EOL ~ !"\"" ~ AnyChar) ~> withContext((s: String, ctx) => ValueConst(calcLoc(ctx),
       StrValue(s), TPrim(PrimStr)))) ~ "\""
   }
 
-  def ifElseExp: Rule1[Expression] = rule {
+  private def ifElseExp: Rule1[Expression] = rule {
     spaces ~ "if" ~ spaces ~ rightExp ~ spaces ~ "then" ~ spaces ~ rightExp ~ spaces ~ "else" ~ spaces ~ rightExp ~~>
     withContext((boolExp: Expression, trueExp: Expression, falseExp: Expression, ctx) => {
       val curType = Type.vendVar
@@ -131,24 +138,24 @@ class VisiParse extends Parser  {
   private def ifType(in: Type): Type = Expression.tFun(in, Expression.tFun(in, in))
   private def ifApplyType(in: Type): Type = Expression.tFun(TPrim(PrimBool), Expression.tFun(in, Expression.tFun(in, in)))
 
-  def operator: Rule1[Expression] = rule("Operator") {
+  private def operator: Rule1[Expression] = rule("Operator") {
     (spaces ~ ((oneOrMore(anyOf("+-*/&><") | "==" | ">=" | "<=")) ~> (s => s)) ~ spaces) ~~> withContext((s: String, ctx) =>
       Var(calcLoc(ctx), LetId.make, FuncName(s), Type.vendVar))
   }
 
-  def parenExp: Rule1[Expression] = rule {
+  private def parenExp: Rule1[Expression] = rule {
     (spaces ~ "(" ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) |
     (spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) ~~> withContext((r: Expression, op: Expression, ctx) => op) | // FIXME partially apply
     ((spaces ~ "(" ~ spaces  ~ operator ~ rightExp ~ spaces ~ spaces ~ ")" ~ spaces)) ~~> withContext((op: Expression, r: Expression, ctx) => op) | // FIXME partially apply
     spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ ")" ~ spaces
   }
 
-  def operatorExp: Rule1[Expression] = rule("Operator Expression") {
+  private def operatorExp: Rule1[Expression] = rule("Operator Expression") {
     (parenExp | ifElseExp | constExp | identifier) ~ spaces ~ operator ~ spaces ~ rightExp ~~> ((a,b,c) => b) // FIXME do the right thing
 
   }
 
-  def rightExp: Rule1[Expression] = {
+  private def rightExp: Rule1[Expression] = {
     def thing = (
       operatorExp |
       parenExp |
@@ -162,11 +169,11 @@ class VisiParse extends Parser  {
    }
   }
 
-  def constExp: Rule1[Expression] = rule {
+  private def constExp: Rule1[Expression] = rule {
     NumberConst | stringConst
   }
 
-  def funcParamExp: Rule1[Expression] = rule("Func Param Exp") {
+  private def funcParamExp: Rule1[Expression] = rule("Func Param Exp") {
     (parenExp | identifier) ~ spaces ~ oneOrMore((parenExp | ifElseExp | identifier | constExp) ~ spaces) ~~>
       withContext((funcExp: Expression, rest: List[Expression], ctx) => {
         val loc = calcLoc(ctx)
@@ -179,7 +186,7 @@ class VisiParse extends Parser  {
   }
 
 
-  def identifier: Rule1[Expression] =
+  private def identifier: Rule1[Expression] =
     rule{
       identifierStr ~? (s => s match {
         case "then" | "else" => false
@@ -189,14 +196,14 @@ class VisiParse extends Parser  {
         FuncName(s), Type.vendVar))
     }
 
-  def spaces: Rule0 = rule("Spaces") {
+  private def spaces: Rule0 = rule("Spaces") {
     zeroOrMore(" " | "\t" | comment)
   }
 
-  def lineFeed: Rule0 = zeroOrMore(EOL)
+  private def lineFeed: Rule0 = zeroOrMore(EOL)
 
 
-  def sink: Rule1[Expression] = {
+  private def sink: Rule1[Expression] = {
     def anyChars: Rule1[String] = oneOrMore(!"\"" ~ !EOL ~ !EOI ~ AnyChar) ~> (s => s)
     rule {
        colZero ~ "\"" ~ anyChars ~ "\"" ~ spaces ~ "=" ~ spaces ~ rightExp ~~>
@@ -206,35 +213,35 @@ class VisiParse extends Parser  {
     }
   }
 
-  def letExpr: Rule1[Expression] = rule {
+  private def letExpr: Rule1[Expression] = rule {
     (identifierStr ~ spaces ~ str("=") ~ spaces ~ rightExp ~ spaces ~ lineFeed )  ~~>
       withContext((name: String, exp: Expression, ctx) => {
         LetExp(calcLoc(ctx), LetId.make, FuncName(name), false, exp.tpe, exp)})
   }
 
-  def funcExpr: Rule1[Expression] = rule {
+  private def funcExpr: Rule1[Expression] = rule {
     (identifierStr ~ spaces ~ oneOrMore(identifierStr ~ spaces) ~ str("=") ~ spaces ~ rightExp ~ spaces)  ~~>
       withContext((name: String, params: List[String], exp: Expression, ctx) => {
         val loc = calcLoc(ctx)
         val pTypes = params.map(name => FuncName(name) -> Type.vendVar)
         val (wholeExp, ft) = pTypes.foldRight(exp -> Type.vendVar){
-          case ((fn, tpe), (e, r)) => FuncExp(loc, fn, tpe, e) -> Expression.tFun(tpe, r)
+          case ((fn, tpe), (e, r)) => FuncExp(loc, LetId.make, fn, tpe, e) -> Expression.tFun(tpe, r)
         }
 
         LetExp(loc, LetId.make, FuncName(name), true, ft, wholeExp)})
   }
 
-  def source: Rule1[Expression] = rule {
+  private def source: Rule1[Expression] = rule {
     colZero ~ "?" ~ identifierStr ~ spaces ~ zeroOrMore(EOL ~ EOI) ~~> withContext((s: String, ctx) => {
       SourceExp(calcLoc(ctx), LetId.make, FuncName(s), Type.vendVar)
     })
   }
 
-  def NumberConst: Rule1[Expression] = rule {
+  private def NumberConst: Rule1[Expression] = rule {
     Integer ~> withContext((x, ctx) => ValueConst(calcLoc(ctx), DoubleValue(Helpers.toInt(x)), TPrim(PrimDouble)))
   }
 
-  def calcLoc(ctx: Context[Any]): SourceLoc = SourceFromURL("filename", ctx.getStartIndex -> ctx.getCurrentIndex)
+  private def calcLoc(ctx: Context[Any]): SourceLoc = SourceFromURL("filename", ctx.getStartIndex -> ctx.getCurrentIndex)
 
 
   lazy val findFences = """(?m)(?:^|\n)```.*\n((?:.*\n)*)(?:^|\n)```""".r

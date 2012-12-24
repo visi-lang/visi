@@ -1,19 +1,26 @@
 package visi.core
 
-import org.specs._
-import org.specs.runner.JUnit4
-import org.specs.runner.ConsoleRunner
+import org.specs2.mutable._
 import net.liftweb.common.Full
 import java.io.File
 import net.liftweb.util.Helpers
 
 
-class ParseTestAsTest extends JUnit4(ParseTest)
-object ParseTestRunner extends ConsoleRunner(ParseTest)
 
-object ParseTest extends Specification {
+class ParseTest extends Specification {
+
+  lazy val dog: List[(String, File)] = {
+    val f = new File(new File((new File(".")).getCanonicalFile.  getParentFile.getParentFile.getParentFile, "visi.wiki"), "tests")
+
+    if (f.exists()) {
+      val kids = f.listFiles().toList.filter(_.getName.endsWith(".md")).filterNot(_.getName.toLowerCase.startsWith("index"))
+      val all = kids.map(f => new String(Helpers.readWholeFile(f), "UTF-8") -> f)
+      all
+    } else Nil
+  }
 
   "Parser" should {
+
     "Find fenced code" in {
       VisiParse.hasFences(
         """
@@ -59,16 +66,15 @@ object ParseTest extends Specification {
         """.stripMargin).isDefined must_== true
           }
 
+
     "parse a sink properly" in {
       VisiParse.code(
         """
           |"bar" = 55
-        """.stripMargin) match {
-        case Full(List(SinkExp(_,
-        _, FuncName("bar"), TPrim(PrimDouble),ValueConst(_,DoubleValue(55.0),TPrim(PrimDouble))))) => true must_== true
-        case x =>
-          println(x)
-          true must_== false
+        """.stripMargin).flatMap(_.get(FuncName("bar"))) match {
+        case Full(SinkExp(_,
+        _, FuncName("bar"), TPrim(PrimDouble),ValueConst(_,DoubleValue(55.0),TPrim(PrimDouble)))) => true must_== true
+        case _ => true must_!= true
       }
     }
 
@@ -91,7 +97,7 @@ object ParseTest extends Specification {
           |"bar" = 99
           |
           |dog = 123
-        """.stripMargin).map(_.length) must_== Full(3)
+        """.stripMargin).map(_.size) must_== Full(3)
     }
 
 
@@ -104,14 +110,14 @@ object ParseTest extends Specification {
           |"bar" = dog
           |
           |dog = len foo
-        """.stripMargin).map(_.length) must_== Full(3)
+        """.stripMargin).map(_.size) must_== Full(3)
     }
 
     "parse a function with parameters" in {
       VisiParse.code(
         """
           |foo bar = len bar
-        """.stripMargin).map(_.length) must_== Full(1)
+        """.stripMargin).map(_.size) must_== Full(1)
     }
 
     "Don't parse something with cruft at the end" in {
@@ -139,7 +145,7 @@ object ParseTest extends Specification {
           |
           |
           |
-        """.stripMargin).map(_.length) must_== Full(1)
+        """.stripMargin).map(_.size) must_== Full(1)
     }
 
     "Multiline if then else" in {
@@ -153,7 +159,7 @@ object ParseTest extends Specification {
           |  else
           |    "bar"
           |
-        """.stripMargin).map(_.length) must_== Full(1)
+        """.stripMargin).map(_.size) must_== Full(1)
     }
 
     "parse source and sink and exp in something that's somewhat complex inside Markdown" in {
@@ -178,7 +184,7 @@ object ParseTest extends Specification {
           |dog = len foo
           |```
           |
-        """.stripMargin).map(_.length) must_== Full(3)
+        """.stripMargin).map(_.size) must_== Full(3)
     }
 
     "Work with an inner function" in {
@@ -192,7 +198,7 @@ object ParseTest extends Specification {
           |fact n = if n == 0 then 1 else n * fact (n - 1)
           |
           |
-        """.stripMargin).map(_.length) must_== Full(2)
+        """.stripMargin).map(_.size) must_== Full(2)
     }
 
 
@@ -228,18 +234,9 @@ object ParseTest extends Specification {
           |```
           |
           |
-        """.stripMargin).map(_.length) must_== Full(5)
+        """.stripMargin).map(_.size) must_== Full(5)
     }
 
-    val dog: List[(String, File)] = {
-      val f = new File(new File((new File(".")).getCanonicalFile.  getParentFile.getParentFile.getParentFile, "visi.wiki"), "tests")
-
-      if (f.exists()) {
-      val kids = f.listFiles().toList.filter(_.getName.endsWith(".md")).filterNot(_.getName.toLowerCase.startsWith("index"))
-      val all = kids.map(f => new String(Helpers.readWholeFile(f), "UTF-8") -> f)
-      all
-      } else Nil
-    }
 
     "Can parse all test files" in {
       dog.map{
@@ -252,6 +249,7 @@ object ParseTest extends Specification {
           (res.isDefined, f.getName) must_== (true, f.getName)
       }
     }
+
   }
 
 
