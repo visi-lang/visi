@@ -45,8 +45,15 @@ object Type {
 sealed trait Type
 
 final case class TVar(id: String) extends Type
-final case class TPrim(prim: Prim) extends Type
-final case class TOper(opr: String, types: List[Type]) extends Type
+final case class TPrim(prim: Prim) extends Type {
+  override def toString = prim.toString
+}
+final case class TOper(opr: String, types: List[Type]) extends Type {
+  override def toString = types match {
+    case a :: b :: Nil if opr == Expression.FuncOperName => a.toString+" -> "+b.toString
+    case _ => "TOper("+opr+" "+types.mkString(", ")+")"
+  }
+}
 final case class StructuralType(structure: Map[String, Type]) extends Type
 
 final case class FuncName(name: String)
@@ -76,7 +83,9 @@ sealed trait HasLetId extends Expression {
   def id: LetId
 }
 
-final case class LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) extends Expression with HasLetId with HasName
+final case class LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) extends Expression with HasLetId with HasName {
+  override def toString = "Let "+name.name+" ("+tpe+") -> "+exp
+}
 
 final case class InnerLet(loc: SourceLoc,
                            tpe: Type, exp1: Expression, exp2: Expression) extends Expression
@@ -97,14 +106,20 @@ final case class FuncExp(loc: SourceLoc,
                          id: LetId,
                          name: FuncName,
                          tpe: Type,
-                         exp: Expression) extends Expression with HasLetId
+                         exp: Expression) extends Expression with HasLetId {
+  override def toString = "Func "+name.name+" ("+tpe+") -> "+exp
+}
 
 final case class Apply(loc: SourceLoc,
                         id: LetId,
                         tpe: Type,
                         exp1: Expression,
-                        exp2: Expression) extends Expression with HasLetId
-final case class Var(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type) extends Expression with HasLetId
+                        exp2: Expression) extends Expression with HasLetId {
+  override def toString = "Apply("+tpe+" ["+exp1+"] ["+exp2+"])"
+}
+final case class Var(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type) extends Expression with HasLetId {
+  override def toString = "Var "+name.name+" "+tpe
+}
 final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: Value => Value) extends Expression with HasLetId with HasName
 final case class ValueConst(loc: SourceLoc, value: Value, tpe: Type) extends Expression
 final case class Group(map: Map[FuncName, Expression]) extends Expression {

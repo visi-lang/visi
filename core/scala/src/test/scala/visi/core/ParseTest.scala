@@ -101,6 +101,23 @@ class ParseTest extends Specification {
     }
 
 
+    "An indented line should fail parsing" in {
+      VisiParse.code(
+        """
+          |/* and indented line should fail */
+          |total = subtotal + tax
+          |tax = taxable * taxRate
+          |subtotal = taxable + nonTaxable
+          |
+          |
+          |    "Total" = total // sink the total
+          |\\"Tax\" = tax // sink the tax
+          |?taxRate // source the tax rate
+          |?taxable
+          |?nonTaxable
+        """.stripMargin).isDefined must_== false
+    }
+
 
     "parse source and sink and exp in something that's somewhat complex" in {
       VisiParse.code(

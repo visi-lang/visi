@@ -38,12 +38,9 @@ object Typer {
     } yield {
       val newScope = in.foldLeft[Map[FuncName, Type]](Map.empty) {
         case (sc, (_, se: SinkExp)) => sc
-        case (sc, (n, e2)) => prune(e2.tpe) match {
-          case Full(t) => sc + (n -> t)
-          case _ => sc
-        }
+        case (sc, (n, e2)) =>
+          sc + (n -> prune(e2.tpe))
       }
-
       newScope
     }
   }
@@ -84,67 +81,88 @@ object Typer {
   }
 
 
-
-  def occursInType(t1: Type, t2: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Boolean = false // FIXME
+  def occursInType(t1: Type, t2: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Boolean = {
+    if (t1 == t2) true else {
+      (t1, t2) match {
+        case (tv: TVar, opr: TOper) => opr.types.find(tz => occursInType(tv, tz)).isDefined
+        case _ => false
+      }
+    }
+  }
 
   def unify(t1: Type, t2: Type, stack: List[Expression])(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Box[Type] =
     if (t1 == t2) Full(t1)
     else {
+      val t1p = prune(t1)
+      val t2p = prune(t2)
       for {
-        t1p <- prune(t1)
-        t2p <- prune(t2)
+
         res <- (((t1p, t2p) match {
           case (x1, x2) if x1 == x2 => Full(x1)
           case (a: TVar, b) =>
-            if (occursInType(t1, t2p)) ParamFailure("Recursive Type Unification", (t1, t2, stack))
+            if (occursInType(t1, t2p)) {
+              ParamFailure("Recursive Type Unification", (t1, t2, stack))
+            }
             else {
               updateType(t1, t2p)
-              prune(t1)
+              Full(prune(t1))
             }
           case (b, a: TVar) => unify(a, b, stack)
           case (a@TOper(na, pa), b@TOper(nb, pb)) if na == nb && pa.length == pb.length =>
             val unified: Stream[Box[Type]] = pa.toStream.zip(pb).map {
-              case (a, b) => unify(a, b, stack).flatMap(prune(_))
+              case (a, b) => unify(a, b, stack).map(prune(_))
             }
             val reduced = reduce(unified)
             if (reduced.isEmpty) reduced
             else {
               val newU = unified.toList.map(_.openOrThrowException("We tested that all the boxes are Full with the reduce method"))
               val newOpr = TOper(na, newU)
-              updateType(t1, t2p)
-              updateType(t1, newOpr)
-              updateType(t1p, t2p)
+              //updateType(t1, t2p)
+              //updateType(t1, newOpr)
+              //updateType(t1p, t2p)
               Full(newOpr)
             }
           case (a, b) =>
-            println("Hey t1 "+t1)
-            println("Hey t2 "+t2)
-            println("---------------")
             ParamFailure("Failed to unify types", (t1, t2, stack))
 
         }): Box[Type])
       } yield res
     }
 
-  def prune(t1: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Box[Type] = {
-    stuff.get(t1) match {
-      case null => Full(t1)
-      case TypeAliasInfo(nt, hist) =>
-        val thing = prune(nt)
-        if (thing != Full(nt)) {
-          thing.foreach{
-            ut =>
-              stuff.put(t1, TypeAliasInfo(ut, nt :: hist))
-          }
+  def prune(t1: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Type = {
+    t1 match {
+      case TVar(tv) =>
+        stuff.get(t1) match {
+          case null => t1
+          case TypeAliasInfo(nt, hist) =>
+            val thing = prune(nt)
+            if (thing != nt) {
+              stuff.put(t1, TypeAliasInfo(thing, nt :: hist))
+            }
+            thing
         }
-        thing
+      case TOper(n, lst) => TOper(n, lst.map(prune))
+      case x => x
     }
   }
 
-  def fresh(e: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Type = e match {
-    case TVar(x) => Type.vendVar
-    case TOper(n, lst) => TOper(n, lst.map(fresh(_)))
+  def fresh(e: Type, freshMap: ConcurrentHashMap[Type, Type], nongen: Set[Type])(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Type = e match {
+    case v if nongen.contains(v) => v
+    case v if freshMap.containsKey(v) =>
+      freshMap.get(v)
+    case TVar(x) => val ret = Type.vendVar
+    freshMap.put(e, ret)
+    ret
+    case TOper(n, lst) => val ret = TOper(n, lst.map(fresh(_, freshMap, nongen)))
+    freshMap.put(e, ret)
+    ret
     case x => x
+  }
+
+  private def tVars(in: Type): Set[Type] = in match {
+    case tv: TVar => Set(tv)
+    case TOper(_, lst) => lst.foldLeft(Set.empty: Set[Type])((s, t) => s ++ tVars(t))
+    case _ => Set.empty
   }
 
 
@@ -155,65 +173,69 @@ object Typer {
       case LetExp(loc, id, name, generic, tpe, exp) =>
         val newScope = scope + (name -> theExp)
         for {
-          expType <- buildTypes(if (generic) nongen else (nongen + tpe), newScope, theExp :: stack, exp)
+          expType <- buildTypes(if (generic) nongen else (nongen ++ tVars(tpe)), newScope, theExp :: stack, exp)
           res <- unify(tpe, expType, stack)
         } yield res
 
       case InnerLet(loc, tpe, exp1, exp2) =>
         val newScope = exp1 match {
-          case le@ LetExp(loc, id, name, generic, tpe, exp) =>
+          case le@LetExp(loc, id, name, generic, tpe, exp) =>
             scope + (name -> le)
           case _ => scope
         }
 
         for {
-          _ <- buildTypes( nongen, newScope, theExp :: stack, exp1)
-          ret1 <- buildTypes(  nongen, newScope, theExp :: stack, exp2)
+          _ <- buildTypes(nongen, newScope, theExp :: stack, exp1)
+          ret1 <- buildTypes(nongen, newScope, theExp :: stack, exp2)
           ret <- unify(tpe, ret1, stack)
         } yield ret
 
       case SinkExp(loc, id, name, tpe, exp) =>
         for {
-          rt <- buildTypes( nongen, scope, theExp :: stack, exp)
+          rt <- buildTypes(nongen, scope, theExp :: stack, exp)
           ret <- unify(tpe, rt, stack)
         } yield ret
 
       case SourceExp(loc, id, name, tpe) =>
-        prune(tpe)
+        Full(prune(tpe))
 
-      case FuncExp(loc,id, name, tpe, exp) =>
+      case FuncExp(loc, id, name, tpe, exp) =>
         val newScope = scope + (name -> theExp)
+        val t2 = prune(tpe)
         for {
-          t2 <- prune(tpe)
-          rt <- buildTypes( nongen + t2, newScope, theExp :: stack, exp)
-          t3 <- prune(t2)
-          rrt <- prune(rt)
+          rt <- buildTypes(nongen + t2, newScope, theExp :: stack, exp)
+          t3 = prune(t2)
+          rrt = prune(rt)
         } yield Expression.tFun(t3, rrt)
 
 
       case Apply(loc, id, tpe, exp1, exp2) =>
-       for {
-         tpe2 <- prune(tpe)
-         funType <- buildTypes( nongen, scope, theExp :: stack, exp1)
-         argType <- buildTypes( nongen, scope, theExp :: stack, exp2)
-         synt = Expression.tFun(argType, tpe2)
-         ret <- unify(synt, funType, stack)
-       } yield ret
+        val tpe2 = prune(tpe)
 
-      case vexp @ Var(loc, id, name, tpe) =>
         for {
-          target1 <- scope.get(name) ?~ ("Unable to find function "+name.name) ~> theExp
-          targetType = fresh(target1.tpe)
+          funType <- buildTypes(nongen, scope, theExp :: stack, exp1)
+          argType <- buildTypes(nongen, scope, theExp :: stack, exp2)
+          synt = prune(Expression.tFun(prune(argType), prune(tpe2)))
+          ret <- unify(synt, prune(funType), stack)
+        } yield {
+          prune(tpe)
+        }
+
+      case vexp@Var(loc, id, name, tpe) =>
+        for {
+          target1 <- scope.get(name) ?~ ("Unable to find function " + name.name) ~> theExp
+          pruned = prune(target1.tpe)
+          targetType = fresh(pruned, new ConcurrentHashMap[Type, Type](), nongen)
           ret <- unify(tpe, targetType, stack)
         } yield ret
 
       case BuiltIn(loc, id, name, tpe, _) =>
-        prune(tpe)
+        Full(prune(tpe))
 
       case ValueConst(loc: SourceLoc, value: Value, tpe: Type) =>
-        prune(tpe)
+        Full(prune(tpe))
 
-      case Group( map: Map[FuncName, Expression]) =>
+      case Group(map) =>
         val newScope = map.foldLeft(scope) {
           case (sc, (_, se: SinkExp)) => sc
           case (sc, (n, e2)) => sc + (n -> e2)
@@ -228,7 +250,7 @@ object Typer {
     theExp match {
       case LetExp(loc, id, name, generic, tpe, exp) =>
         val newMap = scope + (name -> theExp)
-        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         buildGraph(stuff, newMap, theExp :: stack, exp)
 
       case InnerLet(loc, tpe, exp1, exp2) =>
@@ -238,20 +260,20 @@ object Typer {
           case _ => scope
         }
         reduce(Stream(buildGraph(stuff, newScope, theExp :: stack, exp1),
-        buildGraph(stuff, newScope, theExp :: stack, exp2)))
+          buildGraph(stuff, newScope, theExp :: stack, exp2)))
 
       case SinkExp(loc, id, name, tpe, exp) =>
-        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         val newMap = scope + (name -> theExp)
         buildGraph(stuff, newMap, theExp :: stack, exp)
 
       case SourceExp(loc, id, name, tpe) =>
-        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         Full(true)
 
-      case FuncExp(loc,id, name, tpe, exp) =>
+      case FuncExp(loc, id, name, tpe, exp) =>
         val newScope = scope + (name -> theExp)
-        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         buildGraph(stuff, newScope, theExp :: stack, exp)
 
       case Apply(loc, id, tpe, exp1, exp2) =>
@@ -259,10 +281,10 @@ object Typer {
         if (r1.isDefined) buildGraph(stuff, scope, theExp :: stack, exp2)
         else r1
 
-      case vexp @ Var(loc, id, name, tpe) =>
-        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+      case vexp@Var(loc, id, name, tpe) =>
+        if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         for {
-          target1 <- scope.get(name) ?~ ("Unable to find function "+name.name) ~> theExp
+          target1 <- scope.get(name) ?~ ("Unable to find function " + name.name) ~> theExp
           target <- Full(target1).asA[HasLetId]
         } yield {
           crossRef(stuff, vexp, target)
@@ -270,24 +292,24 @@ object Typer {
         }
 
       case BuiltIn(loc, id, name, tpe, _) =>
-        if (!stuff.contains(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
+        if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         Full(true)
 
       case ValueConst(loc: SourceLoc, value: Value, tpe: Type) =>
-      // Do Nothing
+        // Do Nothing
         Full(true)
 
-      case Group( map: Map[FuncName, Expression]) =>
+      case Group(map) =>
         val newMap = map.foldLeft(scope) {
           case (sc, (n, e2)) => sc + (n -> e2)
         }
 
         map.values.foreach {
-          case hl: HasLetId => stuff.put(hl.id, Depends(hl.id, theExp::stack, hl, Set.empty, Set.empty))
+          case hl: HasLetId => stuff.put(hl.id, Depends(hl.id, theExp :: stack, hl, Set.empty, Set.empty))
           case _ =>
         }
 
-        reduce(map.values.toStream.map(v => buildGraph(stuff, newMap, theExp :: stack, v)))
+        reduce(map.map(_._2).toStream.map(v => buildGraph(stuff, newMap, theExp :: stack, v)))
 
     }
   }

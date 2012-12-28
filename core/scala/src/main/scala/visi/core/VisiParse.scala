@@ -151,7 +151,10 @@ class VisiParse extends Parser  {
   }
 
   private def operatorExp: Rule1[Expression] = rule("Operator Expression") {
-    (parenExp | ifElseExp | constExp | identifier) ~ spaces ~ operator ~ spaces ~ rightExp ~~> ((a,b,c) => b) // FIXME do the right thing
+    (parenExp | ifElseExp | constExp | identifier) ~ spaces ~ operator ~ spaces ~ rightExp ~~> withContext((a: Expression,
+                                                                                                            b: Expression,
+                                                                                                            c: Expression, ctx) =>
+      Apply(calcLoc(ctx), LetId.make, Type.vendVar, Apply(calcLoc(ctx), LetId.make, Type.vendVar, b, a), c))
 
   }
 

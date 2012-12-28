@@ -13,96 +13,171 @@ import net.liftweb.common.{Box, Full}
 class TyperTest extends Specification {
   "The Typer" should {
     "Correctly type choose" in {
-    Visi.parseAndType(
-      """
-        |choose b x y = if b then x else y
-        |x = choose true 1 2
-        |y = choose false "dog" "cat"
-        |""".stripMargin).flatMap(x => (x.types.get(FuncName("choose")): Box[Type]) ?~ "Choose not found") match {
-      case Full(TOper(Expression.FuncOperName, List(TPrim(PrimBool),
-      TOper(Expression.FuncOperName, List(TVar(x), TOper(Expression.FuncOperName, List(TVar(y), TVar(z)))))))) if
-      x == y && y == z => true must_== true
-      case bad =>
-        println("My bad: "+bad)
-        true must_!= true
-    }
+      Visi.parseAndType(
+        """
+          |choose b x y = if b then x else y
+          |awombat = choose true 1 2
+          |aslug = choose false "dog" "cat"
+          |""".stripMargin).flatMap(x => (x.types.get(FuncName("choose")): Box[Type]) ?~ "Choose not found") match {
+        case Full(TOper(Expression.FuncOperName, List(TPrim(PrimBool),
+        TOper(Expression.FuncOperName, List(TVar(x), TOper(Expression.FuncOperName, List(TVar(y), TVar(z)))))))) if
+        x == y && y == z => true must_== true
+        case bad =>
+          true must_!= true
+      }
     }
 
-    // """\n", testTypes [("choose", testT $ tFun (TPrim PrimBool) $ tFun (TVar $ T.pack "synthetic45") $ tFun (TVar  $ T.pack "synthetic45")  (TVar  $ T.pack "synthetic45"))] . checktype)
+    "Correctly type a more complex choose" in {
+      Visi.parseAndType(
+        """
+          |choose b x y = if b then x else y
+          |choose2 b x y = if b then x else y
+          |n = choose2 true true true
+          |x = choose true 1 2
+          |y = choose false "hi" "dude"
+          |""".stripMargin).flatMap(x => (x.types.get(FuncName("choose")): Box[Type]) ?~ "Choose not found") match {
+        case Full(TOper(Expression.FuncOperName, List(TPrim(PrimBool),
+        TOper(Expression.FuncOperName, List(TVar(x), TOper(Expression.FuncOperName, List(TVar(y), TVar(z)))))))) if
+        x == y && y == z => true must_== true
+        case bad =>
+          true must_!= true
+      }
+    }
+
+
+    "Correctly type a simple function" in {
+      Visi.parseAndType(
+        """
+          |add x y = x + y
+          |""".stripMargin).flatMap(x => (x.types.get(FuncName("add")): Box[Type]) ?~ "Add not found") match {
+        case Full(TOper(Expression.FuncOperName, List(TPrim(PrimDouble),
+        TOper(Expression.FuncOperName, List(TPrim(PrimDouble), TPrim(PrimDouble)))))) => true must_== true
+        case bad =>
+          true must_!= true
+      }
+    }
+
+    "Mixed string and number must fail typer" in {
+      Visi.parseAndType("f = 3 & \"hi\"").isEmpty must_== true
+    }
+
+    "Complex Mixed string and number must fail typer" in {
+      Visi.parseAndType(
+        """
+          |f = 3
+          |d = f & "hi"
+        """.stripMargin).isEmpty must_== true
+    }
+
+    "Complex string must pass typer" in {
+      Visi.parseAndType(
+        """
+          |f = "3"
+          |d = f & "hi"
+        """.stripMargin).isDefined must_== true
+    }
+
+    "String concat must pass typer" in {
+      Visi.parseAndType("f = \"3\" & \"hi\"").isDefined must_== true
+    }
+
+    "Calculate the type of multiple functions" in {
+      val toTest =
+        Visi.parseAndType(
+        """
+          |f n = if true then n else (n + 1)
+          |f2 n = if true then n else (n & "foo")
+        """.stripMargin)
+
+
+      List("f" -> testDoubleFunc _, "f2" -> testStrFunc _).map {
+        case (name, func) =>
+          (for {
+          it <- toTest
+          tpe <- it.types.get(FuncName(name))
+        } yield func(tpe)) must_== Full(true)
+      }
+
+    }
+
+    "Factorial call" in {
+      val toTest =
+        Visi.parseAndType(
+          """
+            |fact n = if n == 0 then 1 else n * fact (n - 1)
+            |res = fact 10
+          """.stripMargin)
+
+
+      List("fact" -> testDoubleFunc _, "res" -> testIsDouble _).map {
+        case (name, func) =>
+          (for {
+            it <- toTest
+            tpe <- it.types.get(FuncName(name))
+          } yield func(tpe)) must_== Full(true)
+      }
+    }
+
+    "Good or bad test" in {
+      val toTest =
+        Visi.parseAndType(
+          """
+            |fact n = if n == 0 then 1 else n * fact (n - 1)
+            |res = fact 10
+            |good = goodorbad true
+            |bad = goodorbad false
+            |goodorbad v = if v then "good" else "bad"
+          """.stripMargin)
+
+      List("fact" -> testDoubleFunc _, "good" -> testIsString _).map {
+        case (name, func) =>
+          (for {
+            it <- toTest
+            tpe <- it.types.get(FuncName(name))
+          } yield func(tpe)) must_== Full(true)
+      }
+    }
+
+    "Identity function" in {
+      val toTest =
+        Visi.parseAndType(
+          """
+            |fact n = if n == 0 then 1 else n * fact (n - 1)
+            |res = fact 10
+            |good = goodorbad true
+            |bad = goodorbad false
+            |q n = n
+            |goodorbad v = if v then "good" else "bad"
+          """.stripMargin)
+
+      List("fact" -> testDoubleFunc _, "good" -> testIsString _,
+      "q" -> testGenericFunc _).map {
+        case (name, func) =>
+          (for {
+            it <- toTest
+            tpe <- it.types.get(FuncName(name))
+          } yield func(tpe)) must_== Full(true)
+      }
+    }
+
+
   }
+
+  private def testGenericFunc(t: Type): Boolean = t match {
+    case TOper(Expression.FuncOperName, List(TVar(a), TVar(b))) => a == b
+    case _ => false
+  }
+  private def testIsString(t: Type): Boolean = t == TPrim(PrimStr)
+  private def testIsDouble(t: Type): Boolean = t == TPrim(PrimDouble)
+  private def testDoubleFunc(t: Type): Boolean =
+    t == Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble))
+  private def testStrFunc(t: Type): Boolean =
+    t == Expression.tFun(TPrim(PrimStr), TPrim(PrimStr))
 
 }
 
 /*
-"choose b x y = if b then x else y\n\
-       \x = choose true 1 2\n", testTypes [("choose", testT $ tFun (TPrim PrimBool) $ tFun (TVar $ T.pack "synthetic45") $ tFun (TVar  $ T.pack "synthetic45")  (TVar  $ T.pack "synthetic45"))] . checktype)
 
-{-
-     ,("choose b x y = if b then x else y\n\
-       \choose2 b x y = if b then x else y\n\
-       \n = choose2 true true true\n\
-       \x = choose true 1 2\n\
-       \y = choose false \"hi\" \"dude\"\n", testTypes [("choose", testT $ tFun (TPrim PrimBool) $ tFun (TVar $ T.pack "synthetic45") $ tFun (TVar  $ T.pack "synthetic45")  (TVar  $ T.pack "synthetic45"))] . checktype)
-
-      ,("test_40_struct_parsing.md", psuccess 1 . checkparse)
-
-      ,("test_41_struct_and_more.md", psuccess 6 . checkparse)
-
-      ,("test_05_parse_with_local_var.md", psuccess 1 . checkparse)
-
-      ,("test_05_parse_with_local_var.md", testTypes [("f", testDoubleFunc)] . checktype)
-
-      ,("test_21_call_a_function.md", testResults [("res", DoubleValue 36)] . checkResults)
-
-      ,("test_22_local_function.md", testResults [("res", DoubleValue 40320.0)] . checkResults)
-
-      ,("test_23_partially_applied_local_func.md",
-          testResults [("res", DoubleValue 40320.0)] . checkResults)
-
-
-      ,("test_24_proper_scoping.md", testResults [("res", DoubleValue 40320.0)] . checkResults)
-
-      ,("test_25_more_scoping.md", testResults [("res", DoubleValue 5040.0)] . checkResults)
-
-      ,("test_16_complex_local_scope.md", testResults [("res", DoubleValue (-154))] . checkResults)
-
-      ,("test_01_simple_assignment.md", psuccess 1 . checkparse)
-
-      ,("test_02_significant_spaces.md", psuccess 1 . checkparse)
-
-      ,("test_03_literate.md", psuccess 1 . checkparse)
-
-
-      ,("test_04_multi_literal.md", psuccess 14 . checkparse)
-
-      ,("test_01_simple_function.md", psuccess 1 . checkparse)
-      ,("f 33 = 44 // constant in parameter position", pfailure . checkparse)
-      ,("test_02_two_function.md", psuccess 2 . checkparse)
-      ,("test_04_if_then_else.md", psuccess 1 . checkparse)
-      ,("f a b c = f (1 + 2) 3 q w // multiple parameters to a function", psuccess 1 . checkparse)
-      ,("add41 v = v + 41", psuccess 1 . checkparse)
-      ,("\"Answer\" = add41 1", psuccess 1 . checkparse)
-      ,("and = p1 && p2", psuccess 1 . checkparse)
-      ,("\"Greeting\" = \"Hello, World!\" // Sink a constant String", psuccess 1 . checkparse)
-      ,("\"And\" = p1 && p2\n\
-         \?p1\n\
-         \?p2", psuccess 3 . checkparse)
-      ,("\"Age\" = 2011 - birthYear\n\
-         \?birthYear // birthYear infered as Number", psuccess 2 . checkparse)
-      ,("test_15_complex_source_sink.md", psuccess 8 . checkparse)
-      ,("/* and indented line should fail */\n\
-         \total = subtotal + tax\n\
-         \tax = taxable * taxRate\n\
-         \subtotal = taxable + nonTaxable\n\n\n\
-         \   \"Total\" = total // sink the total\n\
-         \\"Tax\" = tax // sink the tax\n\
-         \?taxRate // source the tax rate\n\
-         \?taxable\n\
-         \?nonTaxable", pfailure . checkparse)
-
-      ,("f = 3 & \"hi\"", failsTyper . checktype)
-      ,("f = 3\n\
-        \d = f & \"hi\"", failsTyper . checktype)
       ,("test_01_simple_assignment.md", testTypes [("a", testPrimDouble)] . checktype)
       ,("test_04_multi_literal.md", testTypes [("res", testPrimDouble)
                                   ,("f", testDoubleFunc)] . checktype)
@@ -117,9 +192,6 @@ class TyperTest extends Specification {
       ,("test_04_multi_literal.md", testTypes [("numberFunc", testDoubleFunc)
                                               ,("selfRefNumber", testDoubleFunc)] . checktype)
 
-      ,("f n = if true then n else (n + 1)\n\
-        \f2 n = if true then n else (n & \"foo\")", testTypes [("f", testDoubleFunc)
-                                                              ,("f2", testStrFunc)] . checktype)
      ,("f n = n & \"hi\"\n\
         \q n = n", testTypes [("f", testStrFunc)
                              ,("q", testGenFunc)] . checktype)
@@ -155,21 +227,7 @@ class TyperTest extends Specification {
        \b n f = c n f\n\
        \c n f = if f n then n else a n f\n", testTypes [("a", testGenBoolFunc)] . checktype)
 
-     ,("fact n = if n == 0 then 1 else n * fact (n - 1)",
-                  testTypes [("fact", testDoubleFunc)] . checktype)
-
-     ,("fact n = if n == 0 then 1 else n * fact (n - 1)\n\
-       \res = fact 10",
-                  testResults [("res", DoubleValue 3628800)] . checkResults)
-
-     ,("fact n = if n == 0 then 1 else n * fact (n - 1)\n\
-       \res = fact 10\n\
-       \good = goodorbad true\n\
-       \bad = goodorbad false\n\
-       \goodorbad v = if v then \"good\" else \"bad\"",
-                  testResults [("res", DoubleValue 3628800)
-                              ,("good", StrValue $ T.pack "good")
-                              ,("bad", StrValue $ T.pack "bad")] . checkResults)
+     ,("
 
      ,("test_04_multi_literal.md",
                   testResults [("oddRes", BoolValue True)] . checkResults)

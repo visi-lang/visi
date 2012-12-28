@@ -15,6 +15,28 @@ object Visi {
     {
       val tvar = TVar("ifelseTVar")
       Expression.tFun(TPrim(PrimBool), Expression.tFun(tvar, Expression.tFun(tvar, tvar)))
+    }, (v: Value) => BoolValue(true)),
+    FuncName("+") -> BuiltIn(NoSourceLoc, LetId("plus"), FuncName("+"),
+    {
+      Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
+    }, (v: Value) => BoolValue(true)),
+    FuncName("-") -> BuiltIn(NoSourceLoc, LetId("minus"), FuncName("-"),
+    {
+      Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
+    }, (v: Value) => BoolValue(true)),
+    FuncName("*") -> BuiltIn(NoSourceLoc, LetId("times"), FuncName("*"),
+    {
+      Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
+    }, (v: Value) => BoolValue(true)),
+    FuncName("&") -> BuiltIn(NoSourceLoc, LetId("concat"), FuncName("&"),
+    {
+      Expression.tFun(TPrim(PrimStr), Expression.tFun(TPrim(PrimStr), TPrim(PrimStr)))
+    }, (v: Value) => BoolValue(true)),
+
+      FuncName("==") -> BuiltIn(NoSourceLoc, LetId("equals"), FuncName("=="),
+    {
+      val tvar = TVar("equalsTVar")
+      Expression.tFun(tvar, Expression.tFun(tvar, TPrim(PrimBool)))
     }, (v: Value) => BoolValue(true))
 
 
