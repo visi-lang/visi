@@ -131,11 +131,22 @@ final case class Group(map: Map[FuncName, Expression]) extends Expression {
 sealed trait Value {
   type T
   def value: T
+  def toJsString: String
 }
-final case class DoubleValue(value: Double) extends Value{type T = Double}
-final case class StrValue(value: String) extends Value{type T = String}
-final case class BoolValue(value: Boolean) extends Value{type T = Boolean}
-final case class FuncValue(value: Value => Value) extends Value{type T = Value => Value}
+final case class DoubleValue(value: Double) extends Value{type T = Double
+
+  def toJsString = value.toString
+}
+final case class StrValue(value: String) extends Value{type T = String
+import Helpers._
+  def toJsString = value.encJs
+
+}
+final case class BoolValue(value: Boolean) extends Value{type T = Boolean
+
+  def toJsString = value.toString
+}
+//final case class FuncValue(value: Value => Value) extends Value{type T = Value => Value}
 // UNDEFINED?
 
 

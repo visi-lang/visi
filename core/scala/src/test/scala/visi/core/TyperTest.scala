@@ -176,6 +176,9 @@ class TyperTest extends Specification {
 
 }
 
+
+
+
 /*
 
       ,("test_01_simple_assignment.md", testTypes [("a", testPrimDouble)] . checktype)
