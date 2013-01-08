@@ -120,7 +120,7 @@ final case class Apply(loc: SourceLoc,
 final case class Var(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type) extends Expression with HasLetId {
   override def toString = "Var "+name.name+" "+tpe
 }
-final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: Value => Value) extends Expression with HasLetId with HasName
+final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: StringBuilder => Unit) extends Expression with HasLetId with HasName
 final case class ValueConst(loc: SourceLoc, value: Value, tpe: Type) extends Expression
 final case class Group(map: Map[FuncName, Expression]) extends Expression {
   def loc: SourceLoc = sys.error("No Sourceloc for Group")

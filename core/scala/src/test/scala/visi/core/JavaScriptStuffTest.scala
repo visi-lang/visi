@@ -13,94 +13,11 @@ import javax.script.ScriptEngineManager
 class JavaScriptStuffTest  extends Specification {
   val mgr = new ScriptEngineManager();
 
-  lazy val jsLibrary =
-    """
-      |function Thunk(f) {
-      |  this.$_func = f;
-      |  this.$_get = function() {
-      |    var ret = f();
-      |    this.$_get = function() {return ret;}
-      |    return ret;
-      |  }
-      |}
-      |
-      |function cloner(obj) {
-      |    if(obj == null || typeof(obj) != 'object')
-      |        return obj;
-      |
-      |    var temp = obj.constructor();
-      |
-      |    for(var key in obj)
-      |        temp[key] = obj[key];
-      |    return temp;
-      |}
-      |
-      |function Var(scope) {
-      |
-      |}
-      |
-      |function Func(compute, args, arity) {
-      |  this.$_arity = arity;
-      |  this.$_compute = compute;
-      |  this.$_args = args;
-      |  if (args.length >= arity) {
-      |    this.$_apply = function(ignore) {return this;};
-      |  } else {
-      |    this.$_apply = function(param) {
-      |      var a1 = args;
-      |      var a2 = [];
-      |      for (i in a1) a2.push(a1[i]);
-      |      a2.push(param);
-      |      return new Func(compute, a2, arity);
-      |    }
-      |  }
-      |
-      |  if (arity > args.length) {
-      |    this.$_get = function() {return this;};
-      |  } else {
-      |    this.$_get = function() {
-      |      var ret = compute(args);
-      |      this.$_get = function() {return ret;};
-      |      return ret;
-      |    }
-      |  }
-      |}
-      |
-      |function $_plusFunc() {
-      |  return new Func($_plusFunc_core, [], 2);
-      |}
-      |
-      |function $_plusFunc_core(args) {
-      |  return args[0].$_get() + args[1].$_get();
-      |}
-      |
-      |function $_timesFunc_core(args) {
-      |  return args[0].$_get() * args[1].$_get();
-      |}
-      |
-      |function $_ifelse_core(args) {
-      |  if (args[0].$_get()) return args[1].$_get();
-      |  return args[2].$_get();
-      |}
-      |
-      |function $_concat_core(args) {
-      |  return args[0].$_get() + args[1].$_get();
-      |}
-      |
-      |function $_equals_core(args) {
-      |  return args[0].$_get() == args[1].$_get();
-      |}
-      |
-      |
-      |function Const(v) {
-      |  this.$_get = function() {return v;}
-      |}
-      |
-    """.stripMargin
+
 
   "JavaScript code" should {
     "Run hello" in {
-      runScript(jsLibrary +
+      runScript(Compiler.jsLibrary +
         """
           | "hello";
         """.stripMargin) must_== "hello"
@@ -108,7 +25,7 @@ class JavaScriptStuffTest  extends Specification {
 
     "Run a $ in a function name" in {
       runScript(
-      jsLibrary +
+        Compiler.jsLibrary +
         """
           |var moo = {};
           |moo.$_frog = function() {return "meow";};
@@ -118,7 +35,7 @@ class JavaScriptStuffTest  extends Specification {
 
     "Create a thunk prototype" in {
       runScript(
-      jsLibrary +
+        Compiler.jsLibrary +
         """
           |var q = new Thunk(function() {return "hello thunk";});
           |q.$_get();
@@ -127,7 +44,7 @@ class JavaScriptStuffTest  extends Specification {
 
     "Create a thunk and const prototype" in {
       runScript(
-      jsLibrary +
+        Compiler.jsLibrary +
         """
           |
           |var q = new Const("hello thunk");
@@ -137,7 +54,7 @@ class JavaScriptStuffTest  extends Specification {
 
     "Create a function and apply it" in {
       runScript(
-      jsLibrary +
+        Compiler.jsLibrary +
         """
           |
           |var q = new Func($_concat_core, [], 2);
