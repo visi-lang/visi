@@ -2,6 +2,7 @@ package visi.core
 
 import org.specs2.mutable.Specification
 import javax.script.ScriptEngineManager
+import net.liftweb.common.Full
 
 /**
  * Created with IntelliJ IDEA.
@@ -57,12 +58,36 @@ class JavaScriptStuffTest  extends Specification {
         Compiler.jsLibrary +
         """
           |
-          |var q = new Func($_concat_core, [], 2);
+          |var q = new Func($_concat_core, [], 2, {}, false);
           |var q1 = q.$_apply(new Const("hello "));
           |var q2 = q1.$_apply(new Const("thunk"));
           |q2.$_get();
         """.stripMargin) must_== "hello thunk"
     }
+
+    "Parse a script" in {
+     val test =
+       for {
+        script <- Visi.compile(
+          """
+            |x = if 44 == 44 then 44 else 55
+            |
+            |mult y = times x y
+            |
+            |times a b = a * b
+          """.stripMargin)
+      } yield {
+         runScript(
+         Compiler.jsLibrary +
+         script +
+         "\n\nvar frog = scope['mult'].$_apply(new Const(10)); frog.$_get();"
+         )
+       }
+
+      test must_== Full(440)
+    }
+
+
   }
 
   def runScript(str: String): Any = {

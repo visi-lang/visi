@@ -28,7 +28,7 @@ object Compiler {
       |    if(obj == null || typeof(obj) != 'object')
       |        return obj;
       |
-      |    var temp = obj.constructor();
+      |    var temp = {};
       |
       |    for(var key in obj)
       |        temp[key] = obj[key];
@@ -39,24 +39,25 @@ object Compiler {
       |
       |}
       |
-      |function Func(compute, args, arity, scope) {
+      |function Func(compute, args, arity, scope, subfunc) {
       |  this.$_arity = arity;
       |  this.$_compute = compute;
       |  this.$_args = args;
       |  if (args.length >= arity) {
-      |    this.$_apply = function(ignore) {return this;};
+      |    this.$_apply = function(ignore) {throw "trying to apply when the arity is complete"};
       |  } else {
       |    this.$_apply = function(param) {
       |      var a1 = args;
       |      var a2 = [];
       |      for (i in a1) a2.push(a1[i]);
       |      a2.push(param);
-      |      return new Func(compute, a2, arity);
+      |      if (subfunc) return compute(scope, a2);
+      |      return new Func(compute, a2, arity, scope, false);
       |    }
       |  }
       |
       |  if (arity > args.length) {
-      |    this.$_get = function() {return this;};
+      |    this.$_get = function() {throw "Trying to get a function"};
       |  } else {
       |    this.$_get = function() {
       |      var ret = compute(scope, args);
@@ -66,12 +67,12 @@ object Compiler {
       |  }
       |}
       |
-      |function $_plusFunc() {
-      |  return new Func($_plusFunc_core, [], 2);
-      |}
-      |
       |function $_plusFunc_core(scope, args) {
       |  return args[0].$_get() + args[1].$_get();
+      |}
+      |
+      |function $_minusFunc_core(scope, args) {
+      |  return args[0].$get() - args[1].$_get();
       |}
       |
       |function $_timesFunc_core(scope, args) {
@@ -98,15 +99,62 @@ object Compiler {
       |
     """.stripMargin
 
+  lazy val builtIn: Map[FuncName, Expression] = Map(
+    FuncName("true") -> BuiltIn(NoSourceLoc, LetId("true"), FuncName("true"), TPrim(PrimBool),
+      sb => sb.append("new Const(true)")),
+    FuncName("false") -> BuiltIn(NoSourceLoc, LetId("false"), FuncName("false"), TPrim(PrimBool),
+      sb => sb.append("new Const(false)")),
+    FuncName("$ifelse") -> BuiltIn(NoSourceLoc, LetId("ifelse"), FuncName("$ifelse"),
+    {
+      val tvar = TVar("ifelseTVar")
+      Expression.tFun(TPrim(PrimBool), Expression.tFun(tvar, Expression.tFun(tvar, tvar)))
+    }, sb => sb.append("new Func($_ifelse_core, [], 3, scope, false)")),
+    FuncName("+") -> BuiltIn(NoSourceLoc, LetId("plus"), FuncName("+"),
+    {
+      Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
+    }, sb => sb.append("new Func($_plusFunc_core, [], 2, scope, false)")),
+    FuncName("-") -> BuiltIn(NoSourceLoc, LetId("minus"), FuncName("-"),
+    {
+      Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
+    }, sb => sb.append("new Func($_minusFunc_core, [], 2, scope, false)")),
+    FuncName("*") -> BuiltIn(NoSourceLoc, LetId("times"), FuncName("*"),
+    {
+      Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
+    }, sb => sb.append("new Func($_timesFunc_core, [], 2, scope, false)")),
+    FuncName("&") -> BuiltIn(NoSourceLoc, LetId("concat"), FuncName("&"),
+    {
+      Expression.tFun(TPrim(PrimStr), Expression.tFun(TPrim(PrimStr), TPrim(PrimStr)))
+    }, sb => sb.append("new Func($_concat_core, [], 2, scope, false)")),
+
+    FuncName("==") -> BuiltIn(NoSourceLoc, LetId("equals"), FuncName("=="),
+    {
+      val tvar = TVar("equalsTVar")
+      Expression.tFun(tvar, Expression.tFun(tvar, TPrim(PrimBool)))
+    }, sb => sb.append("new Func($_equals_core, [], 2, scope, false)"))
+
+
+  )
+
+  def compile(theExp: Expression): String = {
+    val sb = new StringBuilder
+    compileToJavaScript(theExp, sb)
+    sb.toString()
+  }
+
   def compileToJavaScript(theExp: Expression, sb: StringBuilder) {
     theExp match {
-      case LetExp(loc, id, FuncName(name), generic, tpe, exp) =>
+      case LetExp(loc, id, FuncName(name), generic, tpe, exp: FuncExp) =>
         sb.append("scope["+name.encJs+"] = ")
         compileToJavaScript(exp, sb)
         sb.append(";\n\n")
 
+      case LetExp(loc, id, FuncName(name), generic, tpe, exp) =>
+        sb.append("scope["+name.encJs+"] = new Thunk(function() { return ")
+        compileToJavaScript(exp, sb)
+        sb.append(".$_get();});\n\n")
+
       case InnerLet(loc, tpe, exp1, exp2) =>
-        sb.append("scope = $_cloner(scope);\n") // clone the local scope so we don't mess with the original ref
+        sb.append("var scope = $_cloner(scope);\n") // clone the local scope so we don't mess with the original ref
         compileToJavaScript(exp1, sb)
         compileToJavaScript(exp2, sb)
 
@@ -116,14 +164,24 @@ object Compiler {
       case SourceExp(loc, id, name, tpe) =>
 
 
-      case FuncExp(loc, id, name, tpe, exp) =>
+      case FuncExp(loc, id, FuncName(name), tpe, exp) =>
+        val subfunc = exp.isInstanceOf[FuncExp]
+        sb.append("new Func(")
+        sb.append("function(zscope, zargs) {\n")
+        sb.append("var scope = $_cloner(zscope);\n")
+        sb.append("scope["+name.encJs+"] = zargs[0];\n")
+        sb.append("return ")
+        compileToJavaScript(exp, sb)
+        if (!subfunc) sb.append(".$_get()")
+        sb.append(";\n")
+        sb.append("\n}, [], 1, scope, "+subfunc+")")
 
 
       case Apply(loc, id, tpe, exp1, exp2) =>
         compileToJavaScript(exp1, sb)
         sb.append(".$_apply(\n   ")
         compileToJavaScript(exp2, sb)
-        sb.append(")\n")
+        sb.append(")")
 
 
       case vexp@Var(loc, id, FuncName(name), tpe) =>
@@ -139,6 +197,7 @@ object Compiler {
         sb.append("new Const("+value.toJsString+")")
 
       case Group(map) =>
+        sb.append("var scope = {};\n")
         map.values.foreach(e => compileToJavaScript(e, sb))
     }
 
