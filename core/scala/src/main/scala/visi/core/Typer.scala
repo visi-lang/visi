@@ -43,6 +43,7 @@ object Typer {
     for {
       one <- buildGraph(graph, Map.empty, Nil, Group(in)) ?~ "Hmmmm..."
       two <- buildTypes(Set.empty, Map.empty, Nil, Group(in))
+      three <- buildTypes(Set.empty, Map.empty, Nil, Group(in)) // FIXME deal with recursive references
     } yield {
       val newScope = in.foldLeft[Map[FuncName, Type]](Map.empty) {
         case (sc, (_, se: SinkExp)) => sc
@@ -246,8 +247,6 @@ object Typer {
 
 
   private def buildTypes(nongen: Set[Type], scope: LetScope, stack: List[Expression], theExp: Expression)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Box[Type] = {
-
-
     theExp match {
       case LetExp(loc, id, name, generic, tpe, exp) =>
         val newScope = scope + (name -> theExp)
