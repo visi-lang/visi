@@ -181,20 +181,111 @@ class DependencyTest extends Specification {
     val toTest =
       Visi.parseAndType(
         """
-          |a x = x * 4
+          |a x = (d x) * 4
           |b x = a x
           |c x = b x
+          |d x = c x
+          |z x = d x
+          |q foo =
+          |  n = 5
+          |  z foo
           |""".stripMargin)
 
     toTest.map{
       case Visi.RunableInfo(a, b, c) =>
       val pred = Typer.findAllTopLevelPredicates(c)
-      // println("pred list "+pred.keys.toList.map(c(_).what.asInstanceOf[HasName].name.name))
-      // val rec = Typer.findRecursive(pred).map(c(_).what.asInstanceOf[HasName].name.name)
-      // rec.head
-      "fact"
-    } must_== Full("fact")
+      val rec = Typer.findRecursive(pred)
+      rec.length
+    } must_== Full(4)
   }
+
+  "Recursive" in {
+    val toTest =
+      Visi.parseAndType(
+        """
+          |fact n = if n == 0 then 1 else n * fact (n - 1)
+          |res = fact 10
+          |good = goodorbad true
+          |bad = goodorbad false
+          |q n = n
+          |goodorbad v = if v then "good" else "bad"
+          |""".stripMargin)
+
+    toTest.map{
+      case Visi.RunableInfo(a, b, c) =>
+        val pred = Typer.findAllTopLevelPredicates(c)
+        val rec = Typer.findRecursive(pred)
+        rec.length
+    } must_== Full(1)
+  }
+
+
+  "Recursive statement" in {
+    val toTest =
+      Visi.parseAndType(
+        """
+          |fact n = if n == 0 then 1 else n * fact (n - 1)
+          |res = fact 10
+          |good = goodorbad true
+          |bad = goodorbad false
+          |q n = n
+          |goodorbad v = if v then "good" else "bad"
+          |?source
+          |recMe = recMe + source
+          |""".stripMargin)
+
+    toTest.map{
+      case Visi.RunableInfo(a, b, c) =>
+        val pred = Typer.findAllTopLevelPredicates(c)
+        val rec = Typer.findRecursive(pred)
+        rec.length
+    } must_== Full(2)
+  }
+
+
+  "Tracing sources and sinks" in {
+    val toTest =
+      Visi.parseAndType(
+        """
+          |?in1
+          |
+          |?in2
+          |
+          |thing = in1 + (if in2 then 1 else 0)
+          |
+          |spark = spark + in1
+          |
+          |"frog" = thing + spark
+          |
+          |"dog" = in1 * 5
+          |
+          |"moose" = in2
+          |
+          |""".stripMargin)
+
+    val res =
+      toTest.map{
+      case Visi.RunableInfo(a, b, c) =>
+        val pred = Typer.findAllTopLevelPredicates(c)
+        val deps = Typer.whatDependsOnSource(c, pred)
+
+      deps
+    }
+
+    res.map(_.length) must_== Full(2)
+    val lst = res.toList.flatMap{
+      _.map{
+      case (s, (snk, le)) => (s.name.name, (snk.map(_.name.name).sorted, le.map(_.name.name).sorted))
+      }
+    }
+
+    val in1 = lst.filter(_._1 == "in1")
+    val in2 = lst.filter(_._1 == "in2")
+
+    in1 must_== List(("in1", (List("dog", "frog"), List("spark", "thing"))))
+    in2 must_== List(("in2", (List("frog", "moose"), List("thing"))))
+  }
+
 }
 
 

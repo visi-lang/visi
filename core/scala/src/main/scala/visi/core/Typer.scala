@@ -30,7 +30,7 @@ object Typer {
 
   type DependencyMap = Map[LetId, Depends]
 
-  private implicit def lmToDM(in: LetMap): DependencyMap = {
+  private implicit def lmToDM[A, B](in: ConcurrentHashMap[A, B]): Map[A,B] = {
     import scala.collection.JavaConversions._
     Map(in.keys().toList.map(k => k -> in.get(k)) :_*)
   }
@@ -55,7 +55,7 @@ object Typer {
   }
 
   @scala.annotation.tailrec
-  def findLetThingy(lst: List[Expression]): Box[HasLetId with HasName] =
+  private def findLetThingy(lst: List[Expression]): Box[HasLetId with HasName] =
   lst match {
     case Nil => Empty
     case (e: LetExp) :: _ => Full(e)
@@ -64,55 +64,118 @@ object Typer {
     case _ :: rest => findLetThingy(rest)
   }
 
+  /**
+   * Given the dependency map and the predicates computed by findAllToLevelPredicates,
+   * create a list of all the Sources with the dependent Sinks and Parameterless Let expressions (ones that need to
+   * be recomputed
+   * @param info
+   * @param predicates
+   * @return
+   */
+  def whatDependsOnSource(info: DependencyMap, predicates: Map[LetId, Set[LetId]]): List[(SourceExp, (List[SinkExp], List[LetExp]))] = {
+    val ret: ConcurrentHashMap[SourceExp, (List[SinkExp], List[LetExp])] = new ConcurrentHashMap()
 
+    def getOrCreate(key: SourceExp): (List[SinkExp], List[LetExp]) = ret.get(key) match {
+      case null => (Nil, Nil)
+      case x => x
+    }
+
+    val preds = predicates.map {
+      case (k, v) => info(k).what -> v
+    }
+
+    preds.foreach {
+      case (k: SinkExp, set) =>
+
+        set.map(info(_).what).foreach {
+          case e: SourceExp => ret.put(e, getOrCreate(e) match {
+            case (sinks, lets) => (k :: sinks, lets)
+          })
+          case _ =>
+        }
+
+        // ignore the Let expressions that take parameters
+      case (k@LetExp(_, letId, _, _, _, exp: FuncExp), set) =>
+
+        // this must be a parameterless let expression
+      case (k@LetExp(_, letId, _, _, _, _), set) =>
+        set.map(info(_).what).foreach {
+          case e: SourceExp => ret.put(e, getOrCreate(e) match {
+            case (sinks, lets) => (sinks,k :: lets)
+          })
+          case _ =>
+        }
+
+
+      case _ =>
+    }
+
+    ret.toList
+  }
+
+
+  /**
+   * Given the DependencyMap returned from infer, find all the top level predicates
+   * @param info the dependency map
+   * @return a map of LetId to the predicates
+   */
   def findAllTopLevelPredicates(info: DependencyMap): Map[LetId, Set[LetId]] = {
     import scala.collection.JavaConversions._
 
-    val ret: ConcurrentHashMap[LetId, Set[LetId]] = new ConcurrentHashMap()
+    val first: ConcurrentHashMap[LetId, Set[LetId]] = new ConcurrentHashMap()
 
     // find all the first level predicates
     for {
       (key, theInfo) <- info
       top <- findLetThingy(theInfo.rstack)
       pred <- theInfo.predicates
-      predInfo <- info.get(pred)
+      predInfo = info(pred)
       predTop <- findLetThingy(predInfo.rstack)
     } {
       if (top.id != predTop.id || predTop.id == pred) {
-        println("pred "+predTop.name.name+" is a predicate of "+top.name.name)
-        val cur: Set[LetId] = ret.get(top.id) match {
+        val cur: Set[LetId] = first.get(top.id) match {
           case null => Set()
           case x => x
         }
 
-        ret.put(key, cur + predTop.id)
+        first.put(top.id, cur + predTop.id)
       }
     }
 
-    def deepDive(target: LetId, curSet: util.HashSet[LetId], acc: Set[LetId]): Set[LetId] = {
+    var ret: Map[LetId, Set[LetId]] = Map()
+
+    def deepDive(target: LetId, curSet: util.HashSet[LetId], depth: Int = 0): List[Set[LetId]] = {
+      curSet.add(target)
+      def doSet(s: Set[LetId]): List[Set[LetId]] = {
+        val s2 = s.filter(!curSet.contains(_))
+        s2.toList match {
+          case Nil => List(s)
+          case xs => s :: xs.flatMap(deepDive(_, curSet, depth + 1))
+        }
+      }
+
       ret.get(target) match {
-        case null => acc
-        case s if s.isEmpty => acc
-        case s =>
-          println("Target "+target+" s "+s)
-          val s2 = s.filter(!curSet.contains(_))
-          s2.foreach(curSet.add(_))
-          val acc2 = acc ++ s2
-          println("acc2 is "+acc2)
-          s2.foldLeft(acc2)((set, b) => deepDive(b, curSet, acc2) ++ acc2)
+        case None =>
+          first.get(target) match {
+            case null => Nil
+            case s if s.isEmpty => Nil
+            case s => doSet(s)
+          }
+        case Some(s) if s.isEmpty => Nil
+        case Some(s) => List(s)
       }
     }
 
     for {
-      key <- ret.keys()
+      key <- first.keys()
     } {
-      println("key "+key+" cur "+ret.get(key))
-      val set = deepDive(key, new util.HashSet[LetId](), Set.empty)
-      ret.put(key, set)
+      val curSet =  new util.HashSet[LetId]()
+      curSet.add(key)
+      val set = deepDive(key, curSet)
+      ret = ret + (key -> set.foldLeft[Set[LetId]](Set.empty)(_ ++ _))
     }
 
-
-    Map(ret.keys().toList.map(k => (k, ret.get(k))): _*)
+    ret
   }
 
   /**
@@ -151,7 +214,7 @@ object Typer {
 
   private case class TypeAliasInfo(alias: Type, history: List[Type])
 
-  def updateType(source: Type, becomes: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]) {
+  private def updateType(source: Type, becomes: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]) {
     val cur = stuff.get(source)
     cur match {
       case null => stuff.put(source, TypeAliasInfo(becomes, Nil))
@@ -161,7 +224,7 @@ object Typer {
   }
 
 
-  def occursInType(t1: Type, t2: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Boolean = {
+  private def occursInType(t1: Type, t2: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Boolean = {
     if (t1 == t2) true else {
       (t1, t2) match {
         case (tv: TVar, opr: TOper) => opr.types.find(tz => occursInType(tv, tz)).isDefined
@@ -170,7 +233,7 @@ object Typer {
     }
   }
 
-  def unify(t1: Type, t2: Type, stack: List[Expression])(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Box[Type] =
+  private def unify(t1: Type, t2: Type, stack: List[Expression])(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Box[Type] =
     if (t1 == t2) Full(t1)
     else {
       val t1p = prune(t1)
@@ -209,7 +272,7 @@ object Typer {
       } yield res
     }
 
-  def prune(t1: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Type = {
+  private def prune(t1: Type)(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Type = {
     t1 match {
       case TVar(tv) =>
         stuff.get(t1) match {
@@ -226,7 +289,7 @@ object Typer {
     }
   }
 
-  def fresh(e: Type, freshMap: ConcurrentHashMap[Type, Type], nongen: Set[Type])(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Type = e match {
+  private def fresh(e: Type, freshMap: ConcurrentHashMap[Type, Type], nongen: Set[Type])(implicit stuff: ConcurrentHashMap[Type, TypeAliasInfo]): Type = e match {
     case v if nongen.contains(v) => v
     case v if freshMap.containsKey(v) =>
       freshMap.get(v)
