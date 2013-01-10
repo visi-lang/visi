@@ -114,7 +114,6 @@ class TyperTest extends Specification {
           (for {
             it <- toTest
             tpe <- it.types.get(FuncName(name))
-            _ = println("Name "+name+" is "+tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }

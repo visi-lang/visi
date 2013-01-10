@@ -87,6 +87,25 @@ class JavaScriptStuffTest  extends Specification {
       test must_== Full(440)
     }
 
+    "Run factorial" in {
+      val test =
+        for {
+          script <- Visi.compile(
+            """
+              |fact n = if n == 0 then 1 else n * fact (n - 1)
+              |res = fact 10
+            """.stripMargin)
+        } yield {
+          runScript(
+            Compiler.jsLibrary +
+              script +
+              "\n\nvar frog = scope['res']; frog.$_get();"
+          )
+        }
+
+      test must_== Full(3628800)
+    }
+
 
   }
 

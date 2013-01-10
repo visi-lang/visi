@@ -78,7 +78,7 @@ object Compiler {
       |}
       |
       |function $_minusFunc_core(scope, args) {
-      |  return args[0].$get() - args[1].$_get();
+      |  return args[0].$_get() - args[1].$_get();
       |}
       |
       |function $_timesFunc_core(scope, args) {
