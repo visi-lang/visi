@@ -13,8 +13,8 @@ object Visi {
   def parseAndType(src: String): Box[RunableInfo] = {
     for {
       parsed <- VisiParse.code(src)
-      typed <- Typer.infer(Compiler.builtIn ++ parsed)
-    } yield RunableInfo(parsed, typed)
+      (typed, graph) <- Typer.infer(Compiler.builtIn ++ parsed)
+    } yield RunableInfo(parsed, typed, graph)
   }
 
   /**
@@ -29,6 +29,6 @@ object Visi {
     } yield Compiler.compile(Group(info.functions ++ Compiler.builtIn))
   }
 
-  final case class RunableInfo(functions: Map[FuncName, Expression], types: Map[FuncName, Type])
+  final case class RunableInfo(functions: Map[FuncName, Expression], types: Map[FuncName, Type], dependencies: Typer.DependencyMap)
 }
 

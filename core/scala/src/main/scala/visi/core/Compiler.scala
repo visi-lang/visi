@@ -16,11 +16,18 @@ object Compiler {
   lazy val jsLibrary =
     """
       |function Thunk(f) {
-      |  this.$_func = f;
-      |  this.$_get = function() {
-      |    var ret = f();
-      |    this.$_get = function() {return ret;}
-      |    return ret;
+      |  this.$_get = getFunc()
+      |
+      |  function getFunc() {
+      |    return function() {
+      |      var ret = f();
+      |      this.$_get = function() {return ret;}
+      |      return ret;
+      |    };
+      |  }
+      |
+      |  this.$_reset = function() {
+      |    this.$_get = getFunc()
       |  }
       |}
       |
@@ -40,9 +47,6 @@ object Compiler {
       |}
       |
       |function Func(compute, args, arity, scope, subfunc) {
-      |  this.$_arity = arity;
-      |  this.$_compute = compute;
-      |  this.$_args = args;
       |  if (args.length >= arity) {
       |    this.$_apply = function(ignore) {throw "trying to apply when the arity is complete"};
       |  } else {
@@ -65,6 +69,8 @@ object Compiler {
       |      return ret;
       |    }
       |  }
+      |
+      |  this.$_reset = function() {};
       |}
       |
       |function $_plusFunc_core(scope, args) {
@@ -95,6 +101,7 @@ object Compiler {
       |
       |function Const(v) {
       |  this.$_get = function() {return v;}
+      |  this.$_reset = function() {}
       |}
       |
     """.stripMargin

@@ -176,6 +176,26 @@ class TyperTest extends Specification {
 
 }
 
+class DependencyTest extends Specification {
+  "Simple dependency" in {
+    val toTest =
+      Visi.parseAndType(
+        """
+          |a x = x * 4
+          |b x = a x
+          |c x = b x
+          |""".stripMargin)
+
+    toTest.map{
+      case Visi.RunableInfo(a, b, c) =>
+      val pred = Typer.findAllTopLevelPredicates(c)
+      // println("pred list "+pred.keys.toList.map(c(_).what.asInstanceOf[HasName].name.name))
+      // val rec = Typer.findRecursive(pred).map(c(_).what.asInstanceOf[HasName].name.name)
+      // rec.head
+      "fact"
+    } must_== Full("fact")
+  }
+}
 
 
 

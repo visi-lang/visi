@@ -8,6 +8,7 @@ import Expression._
 import net.liftweb.common._
 import net.liftweb.common.Box._
 import java.util.concurrent.ConcurrentHashMap
+import java.util
 
 object Typer {
 
@@ -18,7 +19,7 @@ object Typer {
   // private type VarScope = Map[FuncName, Expression]
   private case class CurState(refs: ConcurrentHashMap[Type, TypePtr])
 
-  private case class Depends(whatId: LetId, stack: List[Expression], what: Expression, dependants: Set[LetId], predicates: Set[LetId]) {
+  case class Depends(whatId: LetId, stack: List[Expression], what: Expression, dependants: Set[LetId], predicates: Set[LetId]) {
     /**
      * The call stack with the outmost part of the call up front
      */
@@ -27,7 +28,14 @@ object Typer {
 
   private type LetMap = ConcurrentHashMap[LetId, Depends]
 
-  def infer(in: Map[FuncName, Expression]): Box[Map[FuncName, Type]] = {
+  type DependencyMap = Map[LetId, Depends]
+
+  private implicit def lmToDM(in: LetMap): DependencyMap = {
+    import scala.collection.JavaConversions._
+    Map(in.keys().toList.map(k => k -> in.get(k)) :_*)
+  }
+
+  def infer(in: Map[FuncName, Expression]): Box[(Map[FuncName, Type], DependencyMap)] = {
     val graph = new LetMap
 
     implicit val stuff = new ConcurrentHashMap[Type, TypeAliasInfo]()
@@ -41,9 +49,80 @@ object Typer {
         case (sc, (n, e2)) =>
           sc + (n -> prune(e2.tpe))
       }
-      newScope
+      newScope -> graph
     }
   }
+
+  @scala.annotation.tailrec
+  def findLetThingy(lst: List[Expression]): Box[HasLetId with HasName] =
+  lst match {
+    case Nil => Empty
+    case (e: LetExp) :: _ => Full(e)
+    case (e: SourceExp) :: _ => Full(e)
+    case (e: SinkExp) :: _ => Full(e)
+    case _ :: rest => findLetThingy(rest)
+  }
+
+
+  def findAllTopLevelPredicates(info: DependencyMap): Map[LetId, Set[LetId]] = {
+    import scala.collection.JavaConversions._
+
+    val ret: ConcurrentHashMap[LetId, Set[LetId]] = new ConcurrentHashMap()
+
+    // find all the first level predicates
+    for {
+      (key, theInfo) <- info
+      top <- findLetThingy(theInfo.rstack)
+      pred <- theInfo.predicates
+      predInfo <- info.get(pred)
+      predTop <- findLetThingy(predInfo.rstack)
+    } {
+      if (top.id != predTop.id || predTop.id == pred) {
+        println("pred "+predTop.name.name+" is a predicate of "+top.name.name)
+        val cur: Set[LetId] = ret.get(top.id) match {
+          case null => Set()
+          case x => x
+        }
+
+        ret.put(key, cur + predTop.id)
+      }
+    }
+
+    def deepDive(target: LetId, curSet: util.HashSet[LetId], acc: Set[LetId]): Set[LetId] = {
+      ret.get(target) match {
+        case null => acc
+        case s if s.isEmpty => acc
+        case s =>
+          println("Target "+target+" s "+s)
+          val s2 = s.filter(!curSet.contains(_))
+          s2.foreach(curSet.add(_))
+          val acc2 = acc ++ s2
+          println("acc2 is "+acc2)
+          s2.foldLeft(acc2)((set, b) => deepDive(b, curSet, acc2) ++ acc2)
+      }
+    }
+
+    for {
+      key <- ret.keys()
+    } {
+      println("key "+key+" cur "+ret.get(key))
+      val set = deepDive(key, new util.HashSet[LetId](), Set.empty)
+      ret.put(key, set)
+    }
+
+
+    Map(ret.keys().toList.map(k => (k, ret.get(k))): _*)
+  }
+
+  /**
+   * Find all the defintions that are recursive
+   * @param in the Map returned from findALlTopLevelPredicates
+   * @return a List of LetIds that are recursive
+   */
+  def findRecursive(in: Map[LetId, Set[LetId]]): List[LetId] =
+  in.filter {
+    case (key, value) => value.contains(key)
+  }.keys.toList
 
   private def reduce[T](bs: Stream[Box[T]]): Box[T] = {
     var ret: Box[T] = Empty
@@ -173,7 +252,7 @@ object Typer {
       case LetExp(loc, id, name, generic, tpe, exp) =>
         val newScope = scope + (name -> theExp)
         for {
-          expType <- buildTypes(if (generic) nongen else (nongen ++ tVars(tpe)), newScope, theExp :: stack, exp)
+          expType <- buildTypes(if (generic) nongen else (nongen ++ tVars(tpe)), newScope, theExp +: stack, exp)
           res <- unify(tpe, expType, stack)
         } yield res
 
@@ -185,14 +264,14 @@ object Typer {
         }
 
         for {
-          _ <- buildTypes(nongen, newScope, theExp :: stack, exp1)
-          ret1 <- buildTypes(nongen, newScope, theExp :: stack, exp2)
+          _ <- buildTypes(nongen, newScope, theExp +: stack, exp1)
+          ret1 <- buildTypes(nongen, newScope, theExp +: stack, exp2)
           ret <- unify(tpe, ret1, stack)
         } yield ret
 
       case SinkExp(loc, id, name, tpe, exp) =>
         for {
-          rt <- buildTypes(nongen, scope, theExp :: stack, exp)
+          rt <- buildTypes(nongen, scope, theExp +: stack, exp)
           ret <- unify(tpe, rt, stack)
         } yield ret
 
@@ -203,7 +282,7 @@ object Typer {
         val newScope = scope + (name -> theExp)
         val t2 = prune(tpe)
         for {
-          rt <- buildTypes(nongen + t2, newScope, theExp :: stack, exp)
+          rt <- buildTypes(nongen + t2, newScope, theExp +: stack, exp)
           t3 = prune(t2)
           rrt = prune(rt)
         } yield Expression.tFun(t3, rrt)
@@ -213,8 +292,8 @@ object Typer {
         val tpe2 = prune(tpe)
 
         for {
-          funType <- buildTypes(nongen, scope, theExp :: stack, exp1)
-          argType <- buildTypes(nongen, scope, theExp :: stack, exp2)
+          funType <- buildTypes(nongen, scope, theExp +: stack, exp1)
+          argType <- buildTypes(nongen, scope, theExp +: stack, exp2)
           synt = prune(Expression.tFun(prune(argType), prune(tpe2)))
           ret <- unify(synt, prune(funType), stack)
         } yield {
@@ -251,7 +330,7 @@ object Typer {
       case LetExp(loc, id, name, generic, tpe, exp) =>
         val newMap = scope + (name -> theExp)
         if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
-        buildGraph(stuff, newMap, theExp :: stack, exp)
+        buildGraph(stuff, newMap, theExp +: stack, exp)
 
       case InnerLet(loc, tpe, exp1, exp2) =>
         val newScope = exp1 match {
@@ -259,13 +338,13 @@ object Typer {
             scope + (name -> exp)
           case _ => scope
         }
-        reduce(Stream(buildGraph(stuff, newScope, theExp :: stack, exp1),
-          buildGraph(stuff, newScope, theExp :: stack, exp2)))
+        reduce(Stream(buildGraph(stuff, newScope, theExp +: stack, exp1),
+          buildGraph(stuff, newScope, theExp +: stack, exp2)))
 
       case SinkExp(loc, id, name, tpe, exp) =>
         if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         val newMap = scope + (name -> theExp)
-        buildGraph(stuff, newMap, theExp :: stack, exp)
+        buildGraph(stuff, newMap, theExp +: stack, exp)
 
       case SourceExp(loc, id, name, tpe) =>
         if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
@@ -274,11 +353,11 @@ object Typer {
       case FuncExp(loc, id, name, tpe, exp) =>
         val newScope = scope + (name -> theExp)
         if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
-        buildGraph(stuff, newScope, theExp :: stack, exp)
+        buildGraph(stuff, newScope, theExp +: stack, exp)
 
       case Apply(loc, id, tpe, exp1, exp2) =>
-        val r1 = buildGraph(stuff, scope, theExp :: stack, exp1)
-        if (r1.isDefined) buildGraph(stuff, scope, theExp :: stack, exp2)
+        val r1 = buildGraph(stuff, scope, theExp +: stack, exp1)
+        if (r1.isDefined) buildGraph(stuff, scope, theExp +: stack, exp2)
         else r1
 
       case vexp@Var(loc, id, name, tpe) =>
@@ -305,11 +384,12 @@ object Typer {
         }
 
         map.values.foreach {
-          case hl: HasLetId => stuff.put(hl.id, Depends(hl.id, theExp :: stack, hl, Set.empty, Set.empty))
+          case hl: HasLetId with HasName =>
+            stuff.put(hl.id, Depends(hl.id, hl +: theExp +: stack, hl, Set.empty, Set.empty))
           case _ =>
         }
 
-        reduce(map.map(_._2).toStream.map(v => buildGraph(stuff, newMap, theExp :: stack, v)))
+        reduce(map.map(_._2).toStream.map(v => buildGraph(stuff, newMap, theExp +: stack, v)))
 
     }
   }
