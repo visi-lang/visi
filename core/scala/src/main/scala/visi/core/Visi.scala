@@ -26,7 +26,7 @@ object Visi {
   def compile(src: String): Box[String] = {
     for {
       info <- parseAndType(src)
-    } yield Compiler.compile(Group(info.functions ++ Compiler.builtIn))
+    } yield Compiler.compile(Group(info.functions ++ Compiler.builtIn), info.dependencies)
   }
 
   final case class RunableInfo(functions: Map[FuncName, Expression], types: Map[FuncName, Type], dependencies: Typer.DependencyMap)

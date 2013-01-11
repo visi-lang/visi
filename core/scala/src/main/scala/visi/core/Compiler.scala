@@ -20,8 +20,10 @@ object Compiler {
       |
       |  function getFunc() {
       |    return function() {
+      |      this.$_get = function() {return this.$_old;};
       |      var ret = f();
       |      this.$_get = function() {return ret;}
+      |      this.$_old = ret;
       |      return ret;
       |    };
       |  }
@@ -29,6 +31,15 @@ object Compiler {
       |  this.$_reset = function() {
       |    this.$_get = getFunc()
       |  }
+      |
+      |  this.$_old = 0
+      |}
+      |
+      |function Value(v) {
+      |  this.$_set = function(nv) {v = nv;};
+      |  this.$_get = function() {return v;};
+      |
+      |  this.$_reset = function() {};
       |}
       |
       |function $_cloner(obj) {
@@ -40,10 +51,6 @@ object Compiler {
       |    for(var key in obj)
       |        temp[key] = obj[key];
       |    return temp;
-      |}
-      |
-      |function Var(scope) {
-      |
       |}
       |
       |function Func(compute, args, arity, scope, subfunc) {
@@ -104,6 +111,42 @@ object Compiler {
       |  this.$_reset = function() {}
       |}
       |
+      |
+      |function execute(sources) {
+      |  var sinksToRun = {};
+      |  var lets = {};
+      |  for (i in sources) {
+      |    scope[i].$_set(sources[i]);
+      |    sourceInfo[i] = true;
+      |    var sa = sourceToSink[i];
+      |    for (j in sa) {
+      |      sinksToRun[sa[j]] = true;
+      |    }
+      |
+      |    sa = sourceToLets[i]
+      |    for (j in sa) {
+      |      lets[sa[j]] = true;
+      |    }
+      |  }
+      |
+      |  for (i in sourceInfo) {
+      |    if (!sourceInfo[i]) throw ("Cannot execute because the source '"+i+"' has not been set");
+      |  }
+      |
+      |  for (i in lets) {
+      |    scope[i].$_reset();
+      |  }
+      |
+      |  var ret = {};
+      |
+      |  for (i in sinksToRun) {
+      |    print("RUnning sinl "+i+"\n")
+      |    sinks[i].$_reset();
+      |    ret[i] = sinks[i].$_get();
+      |  }
+      |
+      |  return ret;
+      |}
     """.stripMargin
 
   lazy val builtIn: Map[FuncName, Expression] = Map(
@@ -142,13 +185,43 @@ object Compiler {
 
   )
 
-  def compile(theExp: Expression): String = {
+  def compile(theExp: Expression, depInfo: Typer.DependencyMap): String = {
+
     val sb = new StringBuilder
+
+    val pred = Typer.findAllTopLevelPredicates(depInfo)
+    val deps = Typer.whatDependsOnSource(depInfo, pred)
+    val rec = Typer.findRecursive(pred)
+
+
+    sb.append("var scope = {};\n")
+    sb.append("var sourceInfo = {};\n")
+    sb.append("var sinks = {};\n")
+    sb.append("var sourceToSink = {};\n")
+    sb.append("var sourceToLets = {};\n")
+
+    sb.append("// enumerate the sources... they must all be satisfied to execute\n\n")
+    deps.foreach{
+      case (source, (sinkList, recList)) =>
+        sb.append("sourceInfo["+source.name.name.encJs+"] = false;\n")
+
+        sb.append("sourceToSink["+source.name.name.encJs+"] = [")
+        sb.append(sinkList.map(_.name.name.encJs).mkString(", "))
+        sb.append("];\n")
+
+        sb.append("sourceToLets["+source.name.name.encJs+"] = [")
+        sb.append(recList.map(_.name.name.encJs).mkString(", "))
+        sb.append("];\n")
+
+    }
+
+
+
     compileToJavaScript(theExp, sb)
     sb.toString()
   }
 
-  def compileToJavaScript(theExp: Expression, sb: StringBuilder) {
+  private def compileToJavaScript(theExp: Expression, sb: StringBuilder) {
     theExp match {
       case LetExp(loc, id, FuncName(name), generic, tpe, exp: FuncExp) =>
         sb.append("scope["+name.encJs+"] = ")
@@ -165,11 +238,13 @@ object Compiler {
         compileToJavaScript(exp1, sb)
         compileToJavaScript(exp2, sb)
 
-      case SinkExp(loc, id, name, tpe, exp) =>
+      case SinkExp(loc, id, FuncName(name), tpe, exp) =>
+        sb.append("sinks["+name.encJs+"] = new Thunk(function() { return ")
+        compileToJavaScript(exp, sb)
+        sb.append(".$_get();});\n\n")
 
-
-      case SourceExp(loc, id, name, tpe) =>
-
+      case SourceExp(loc, id, FuncName(name), tpe) =>
+        sb.append("scope["+name.encJs+"] = new Value(false);\n")
 
       case FuncExp(loc, id, FuncName(name), tpe, exp) =>
         val subfunc = exp.isInstanceOf[FuncExp]
@@ -204,7 +279,6 @@ object Compiler {
         sb.append("new Const("+value.toJsString+")")
 
       case Group(map) =>
-        sb.append("var scope = {};\n")
         map.values.foreach(e => compileToJavaScript(e, sb))
     }
 

@@ -74,6 +74,10 @@ class JavaScriptStuffTest  extends Specification {
             |
             |mult y = times x y
             |
+            |?in
+            |
+            |"Out" = in + 1
+            |
             |times a b = a * b
           """.stripMargin)
       } yield {
@@ -105,6 +109,45 @@ class JavaScriptStuffTest  extends Specification {
 
       test must_== Full(3628800)
     }
+
+    "Run sources and find sink values" in {
+      val test =
+        for {
+          script <- Visi.compile(
+            """
+              |?in
+              |
+              |test x = 1
+              |
+              |cnt = cnt + test(in)
+              |
+              |sum = sum + in
+              |
+              |"Out" = in + 1
+              |"Cnt" = cnt
+              |"Sum" = sum
+            """.stripMargin)
+        } yield {
+
+          println(script)
+
+          val engine = mgr.getEngineByName("JavaScript")
+          engine.eval(Compiler.jsLibrary +
+            script)
+
+          List(
+            engine.eval("execute({'in': 4});") match {
+              case e: java.util.Map[Object, Object] => (e.get("Out"), e.get("Cnt"), e.get("Sum"))
+            },
+            engine.eval("execute({'in': 8});") match {
+              case e: java.util.Map[Object, Object] =>  (e.get("Out"), e.get("Cnt"), e.get("Sum"))
+            }
+          )
+        }
+
+      test must_== Full(List((5, 1, 4), (9, 2, 12)))
+    }
+
 
 
   }
