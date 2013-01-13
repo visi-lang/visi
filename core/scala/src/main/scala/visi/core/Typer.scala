@@ -321,8 +321,9 @@ object Typer {
       case InnerLet(loc, tpe, exp1, exp2) =>
         val newScope = exp1 match {
           case le@LetExp(loc, id, name, generic, tpe, exp) =>
+            println("Adding "+name.name)
             scope + (name -> le)
-          case _ => scope
+//          case _ => scope
         }
 
         for {

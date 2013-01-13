@@ -3,6 +3,8 @@ package visi.core
 import org.specs2.mutable.Specification
 import javax.script.ScriptEngineManager
 import net.liftweb.common.Full
+import collection.script.Scriptable
+import sun.org.mozilla.javascript.internal.ScriptableObject
 
 /**
  * Created with IntelliJ IDEA.
@@ -137,10 +139,10 @@ class JavaScriptStuffTest  extends Specification {
 
           List(
             engine.eval("execute({'in': 4});") match {
-              case e: java.util.Map[Object, Object] => (e.get("Out"), e.get("Cnt"), e.get("Sum"))
+              case s: ScriptableObject => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             },
             engine.eval("execute({'in': 8});") match {
-              case e: java.util.Map[Object, Object] =>  (e.get("Out"), e.get("Cnt"), e.get("Sum"))
+              case s: ScriptableObject => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             }
           )
         }

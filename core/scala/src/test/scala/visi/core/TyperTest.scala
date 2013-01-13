@@ -100,6 +100,31 @@ class TyperTest extends Specification {
 
     }
 
+    "Works with inner variable" in {
+      val toTest = Visi.parseAndType(
+        """
+          |// the function
+          |f n =
+          |   fct n = if n == 0 then 1 else n * fct (n - 1)
+          |   qzz rrr = n * 2
+          |   app n fct
+          |
+          |fact n = if n == 0 then 1 else n * fact (n - 1)
+          |
+          |run x = f x
+          |
+          |app v f = f v
+        """.stripMargin)
+
+      List("run" -> testDoubleFunc _).map {
+        case (name, func) =>
+        (for {
+          it <- toTest
+          tpe <- it.types.get(FuncName(name))
+        } yield func(tpe)) must_== Full(true)
+      }
+    }
+
     "Factorial call" in {
       val toTest =
         Visi.parseAndType(

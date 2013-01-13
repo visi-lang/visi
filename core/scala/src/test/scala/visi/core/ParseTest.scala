@@ -219,6 +219,24 @@ class ParseTest extends Specification {
     }
 
 
+    "Works with inner variable" in {
+      VisiParse.code(
+        """
+          |// the function
+          |f n =
+          |   q = n * 2
+          |   fact n = if n == 0 then 1 else n * fact (n - 1)
+          |   app q fact
+          |
+          |fact n = if n == 0 then 1 else n * fact (n - 1)
+          |
+          |run x = f x
+          |
+          |app v f = f v
+        """.stripMargin).map(_.size) must_== Full(4)
+    }
+
+
     "Fenced if/then/else" in {
       VisiParse.code(
         """
