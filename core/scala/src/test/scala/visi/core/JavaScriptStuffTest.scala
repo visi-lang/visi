@@ -191,6 +191,41 @@ class JavaScriptStuffTest  extends Specification {
     }
 
 
+    "Choose" in {
+      val test =
+        for {
+          script <- Visi.compile(
+            """
+              |?num1
+              |?num2
+              |?b
+              |
+              |choose b x y = if b then x else y
+              |
+              |mult = (*)
+              |
+              |"Out" = choose b (+) mult num1 num2
+              |"The Num" = choose b num1 num2
+            """.stripMargin)
+        } yield {
+
+          val engine = mgr.getEngineByName("JavaScript")
+          engine.eval(Compiler.jsLibrary +
+            script)
+
+          List(
+            engine.eval("execute({'num1': 4, 'num2':8, 'b': true});") match {
+              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+            },
+            engine.eval("execute({'num1': 4, 'num2':8, 'b': false});") match {
+              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+            }
+          )
+        }
+
+      test must_== Full(List(12 -> 4, 32 -> 8))
+    }
+
 
   }
 
