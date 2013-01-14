@@ -204,8 +204,10 @@ class JavaScriptStuffTest  extends Specification {
               |
               |mult = (*)
               |
+              |ch = choose b
+              |
               |"Out" = choose b (+) mult num1 num2
-              |"The Num" = choose b num1 num2
+              |"The Num" = ch num1 num2
             """.stripMargin)
         } yield {
 
