@@ -145,9 +145,13 @@ class VisiParse extends Parser  {
 
   private def parenExp: Rule1[Expression] = rule {
     (spaces ~ "(" ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) |
-    (spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) ~~> withContext((r: Expression, op: Expression, ctx) => op) | // FIXME partially apply
-    ((spaces ~ "(" ~ spaces  ~ operator ~ rightExp ~ spaces ~ spaces ~ ")" ~ spaces)) ~~> withContext((op: Expression, r: Expression, ctx) => op) | // FIXME partially apply
-    spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ ")" ~ spaces
+    (spaces ~ "(" ~ spaces ~ rightExp ~ spaces ~ operator ~ spaces ~ ")" ~ spaces) ~~> withContext((r: Expression, op: Expression, ctx) =>
+      Apply(calcLoc(ctx), LetId.make, Type.vendVar, op, r)) |
+    ((spaces ~ "(" ~ spaces  ~ operator ~ rightExp ~ spaces ~ spaces ~ ")" ~ spaces)) ~~> withContext((op: Expression, r: Expression, ctx) =>
+      {
+        val loc = calcLoc(ctx)
+      Apply(loc, LetId.make, Type.vendVar, Apply(loc, LetId.make, Type.vendVar, Var(loc,LetId.make, FuncName("$swapfunc"), Type.vendVar), op), r)
+      }) | spaces ~ "(" ~ spaces ~ thingOnRight ~ spaces ~ ")" ~ spaces
   }
 
   private def operatorExp: Rule1[Expression] = rule("Operator Expression") {
@@ -158,17 +162,23 @@ class VisiParse extends Parser  {
 
   }
 
-  private def rightExp: Rule1[Expression] = {
-    def thing = (
+  private def thingOnRight: Rule1[Expression] = rule("Something on right") {spaces ~ (
       operatorExp |
-      parenExp |
       ifElseExp |
       constExp |
-      funcParamExp | identifier) ~ spaces
+      funcParamExp | parenExp |identifier) ~ spaces}
+
+  private def rightExp: Rule1[Expression] = {
+
+
    rule("Right hand expression") {
-     (EOL ~ INDENT ~ (letExpr | funcExpr) ~ endSpace ~ rightExp ~ zeroOrMore(EOL) ~ DEDENT) ~~> ((a, b) => b) | // FIXME Group them
-     ((letExpr | funcExpr) ~ endSpace ~ rightExp) ~~> ((a, b) => b) | // FIXME Group them
-     (EOL ~ INDENT ~ thing ~ spaces ~ zeroOrMore(EOL) ~ DEDENT ~ spaces) | thing
+     (EOL ~ INDENT ~ (letExpr | funcExpr) ~ endSpace ~ rightExp ~ zeroOrMore(EOL) ~ DEDENT) ~~> withContext((a: Expression, b: Expression, ctx) =>
+     {
+
+       InnerLet(calcLoc(ctx), b.tpe, a, b)}) |
+     ((letExpr | funcExpr) ~ endSpace ~ rightExp) ~~> withContext((a: Expression, b: Expression, ctx) =>
+     {InnerLet(calcLoc(ctx), b.tpe, a, b)}) |
+     (EOL ~ INDENT ~ thingOnRight ~ spaces ~ zeroOrMore(EOL) ~ DEDENT ~ spaces) | thingOnRight
    }
   }
 
@@ -177,7 +187,7 @@ class VisiParse extends Parser  {
   }
 
   private def funcParamExp: Rule1[Expression] = rule("Func Param Exp") {
-    (parenExp | identifier) ~ spaces ~ oneOrMore((parenExp | ifElseExp | identifier | constExp) ~ spaces) ~~>
+    spaces ~ (parenExp | identifier) ~ spaces ~ oneOrMore((parenExp | ifElseExp | identifier | constExp) ~ spaces) ~~>
       withContext((funcExp: Expression, rest: List[Expression], ctx) => {
         val loc = calcLoc(ctx)
         val restWithVars = rest.map(e => e -> Type.vendVar)
@@ -216,13 +226,13 @@ class VisiParse extends Parser  {
     }
   }
 
-  private def letExpr: Rule1[Expression] = rule {
+  private def letExpr: Rule1[LetExp] = rule {
     (identifierStr ~ spaces ~ str("=") ~ spaces ~ rightExp ~ spaces ~ lineFeed )  ~~>
       withContext((name: String, exp: Expression, ctx) => {
         LetExp(calcLoc(ctx), LetId.make, FuncName(name), false, exp.tpe, exp)})
   }
 
-  private def funcExpr: Rule1[Expression] = rule {
+  private def funcExpr: Rule1[LetExp] = rule {
     (identifierStr ~ spaces ~ oneOrMore(identifierStr ~ spaces) ~ str("=") ~ spaces ~ rightExp ~ spaces)  ~~>
       withContext((name: String, params: List[String], exp: Expression, ctx) => {
         val loc = calcLoc(ctx)

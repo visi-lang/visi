@@ -204,6 +204,23 @@ class ParseTest extends Specification {
         """.stripMargin).map(_.size) must_== Full(3)
     }
 
+
+    "Partial Application #1" in {
+      val test =
+        for {
+          funcs <- VisiParse.code(
+            """
+              |res dog = ( divit ) ( frog ) 4
+              |
+              |hog = ( divit ) 44
+            """.stripMargin)
+        } yield {
+          funcs.size
+        }
+
+      test must_== Full(2)
+    }
+
     "Work with an inner function" in {
       VisiParse.code(
         """

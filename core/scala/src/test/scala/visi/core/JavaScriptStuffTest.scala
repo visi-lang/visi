@@ -16,8 +16,6 @@ import sun.org.mozilla.javascript.internal.ScriptableObject
 class JavaScriptStuffTest  extends Specification {
   val mgr = new ScriptEngineManager();
 
-
-
   "JavaScript code" should {
     "Run hello" in {
       runScript(Compiler.jsLibrary +
@@ -112,6 +110,50 @@ class JavaScriptStuffTest  extends Specification {
       test must_== Full(3628800)
     }
 
+    "Partial Application #1" in {
+      val test =
+        for {
+          script <- Visi.compile(
+            """
+              |divit = (1 /)
+              |
+              |id n = n
+              |
+              |apply f n = f n
+              |
+              |res = apply (id divit) 2
+            """.stripMargin)
+        } yield {
+          runScript(
+            Compiler.jsLibrary +
+              script +
+              "\n\nvar frog = scope['res']; frog.$_get();"
+          )
+        }
+
+      test must_== Full(0.5D)
+    }
+
+    "Partial Application #2" in {
+      val test =
+        for {
+          script <- Visi.compile(
+            """
+              |divit = (/ 2)
+              |
+              |res = divit 2
+            """.stripMargin)
+        } yield {
+          runScript(
+            Compiler.jsLibrary +
+              script +
+              "\n\nvar frog = scope['res']; frog.$_get();"
+          )
+        }
+
+      test must_== Full(1)
+    }
+
     "Run sources and find sink values" in {
       val test =
         for {
@@ -130,8 +172,6 @@ class JavaScriptStuffTest  extends Specification {
               |"Sum" = sum
             """.stripMargin)
         } yield {
-
-          println(script)
 
           val engine = mgr.getEngineByName("JavaScript")
           engine.eval(Compiler.jsLibrary +

@@ -15,13 +15,13 @@ object Compiler {
 
   lazy val jsLibrary =
     """
-      |function Thunk(f) {
+      |function Thunk(f, scope) {
       |  this.$_get = getFunc()
       |
       |  function getFunc() {
       |    return function() {
       |      this.$_get = function() {return this.$_old;};
-      |      var ret = f();
+      |      var ret = f(scope);
       |      this.$_get = function() {return ret;}
       |      this.$_old = ret;
       |      return ret;
@@ -30,6 +30,10 @@ object Compiler {
       |
       |  this.$_reset = function() {
       |    this.$_get = getFunc()
+      |  }
+      |
+      |  this.$_apply = function(x) {
+      |    return this.$_get().$_apply(x);
       |  }
       |
       |  this.$_old = 0
@@ -55,7 +59,11 @@ object Compiler {
       |
       |function Func(compute, args, arity, scope, subfunc) {
       |  if (args.length >= arity) {
-      |    this.$_apply = function(ignore) {throw "trying to apply when the arity is complete"};
+      |    this.$_apply = function(param) {
+      |    var got = this.$_get();
+      |    var ret = got.$_apply(param);
+      |    return ret;
+      |    };
       |  } else {
       |    this.$_apply = function(param) {
       |      var a1 = args;
@@ -68,7 +76,7 @@ object Compiler {
       |  }
       |
       |  if (arity > args.length) {
-      |    this.$_get = function() {throw "Trying to get a function"};
+      |    this.$_get = function() {return this;};
       |  } else {
       |    this.$_get = function() {
       |      var ret = compute(scope, args);
@@ -92,9 +100,21 @@ object Compiler {
       |  return args[0].$_get() * args[1].$_get();
       |}
       |
+      |function $_divFunc_core(scope, args) {
+      |  return args[0].$_get() / args[1].$_get();
+      |}
+      |
       |function $_ifelse_core(scope, args) {
       |  if (args[0].$_get()) return args[1].$_get();
       |  return args[2].$_get();
+      |}
+      |
+      |function $_swapfunc_core(scope, args) {
+      |  var ret = new Func(function(zscope, zargs) {
+      |   return args[0].$_apply(zargs[1]).$_apply(zargs[0]).$_get();
+      |  }, [], 2, scope, false);
+      |
+      |  return ret;
       |}
       |
       |function $_concat_core(scope, args) {
@@ -140,7 +160,6 @@ object Compiler {
       |  var ret = {};
       |
       |  for (i in sinksToRun) {
-      |    print("RUnning sinl "+i+"\n")
       |    sinks[i].$_reset();
       |    ret[i] = sinks[i].$_get();
       |  }
@@ -159,6 +178,13 @@ object Compiler {
       val tvar = TVar("ifelseTVar")
       Expression.tFun(TPrim(PrimBool), Expression.tFun(tvar, Expression.tFun(tvar, tvar)))
     }, sb => sb.append("new Func($_ifelse_core, [], 3, scope, false)")),
+    FuncName("$swapfunc") -> BuiltIn(NoSourceLoc, LetId("swapfunc"), FuncName("$swapfunc"),
+    {
+      val tvar1 = TVar("swapfuncVar1")
+      val tvar2 = TVar("swapfuncVar2")
+      val tvar3 = TVar("swapfuncVar3")
+      Expression.tFun(Expression.tFun(tvar1, Expression.tFun(tvar2, tvar3)), Expression.tFun(tvar2, Expression.tFun(tvar1, tvar3)))
+    }, sb => sb.append("new Func($_swapfunc_core, [], 1, scope, false)")),
     FuncName("+") -> BuiltIn(NoSourceLoc, LetId("plus"), FuncName("+"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
@@ -171,6 +197,10 @@ object Compiler {
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
     }, sb => sb.append("new Func($_timesFunc_core, [], 2, scope, false)")),
+    FuncName("/") -> BuiltIn(NoSourceLoc, LetId("div"), FuncName("/"),
+    {
+      Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
+    }, sb => sb.append("new Func($_divFunc_core, [], 2, scope, false)")),
     FuncName("&") -> BuiltIn(NoSourceLoc, LetId("concat"), FuncName("&"),
     {
       Expression.tFun(TPrim(PrimStr), Expression.tFun(TPrim(PrimStr), TPrim(PrimStr)))
@@ -181,6 +211,7 @@ object Compiler {
       val tvar = TVar("equalsTVar")
       Expression.tFun(tvar, Expression.tFun(tvar, TPrim(PrimBool)))
     }, sb => sb.append("new Func($_equals_core, [], 2, scope, false)"))
+
 
 
   )
@@ -229,9 +260,9 @@ object Compiler {
         sb.append(";\n\n")
 
       case LetExp(loc, id, FuncName(name), generic, tpe, exp) =>
-        sb.append("scope["+name.encJs+"] = new Thunk(function() { return ")
+        sb.append("scope["+name.encJs+"] = new Thunk(function(scope) { return ")
         compileToJavaScript(exp, sb)
-        sb.append(".$_get();});\n\n")
+        sb.append(".$_get();}, scope);\n\n")
 
       case InnerLet(loc, tpe, exp1, exp2) =>
         sb.append("var scope = $_cloner(scope);\n") // clone the local scope so we don't mess with the original ref
@@ -239,9 +270,9 @@ object Compiler {
         compileToJavaScript(exp2, sb)
 
       case SinkExp(loc, id, FuncName(name), tpe, exp) =>
-        sb.append("sinks["+name.encJs+"] = new Thunk(function() { return ")
+        sb.append("sinks["+name.encJs+"] = new Thunk(function(scope) { return ")
         compileToJavaScript(exp, sb)
-        sb.append(".$_get();});\n\n")
+        sb.append(".$_get();}, scope);\n\n")
 
       case SourceExp(loc, id, FuncName(name), tpe) =>
         sb.append("scope["+name.encJs+"] = new Value(false);\n")

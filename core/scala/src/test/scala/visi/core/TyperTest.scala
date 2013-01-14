@@ -106,8 +106,11 @@ class TyperTest extends Specification {
           |// the function
           |f n =
           |   fct n = if n == 0 then 1 else n * fct (n - 1)
-          |   qzz rrr = n * 2
-          |   app n fct
+          |   qzz = n * 2
+          |   r = n * 4
+          |   app (qzz) fct
+          |
+          |qzz = 7
           |
           |fact n = if n == 0 then 1 else n * fact (n - 1)
           |
@@ -118,10 +121,73 @@ class TyperTest extends Specification {
 
       List("run" -> testDoubleFunc _).map {
         case (name, func) =>
-        (for {
-          it <- toTest
-          tpe <- it.types.get(FuncName(name))
-        } yield func(tpe)) must_== Full(true)
+          (for {
+            it <- toTest
+            tpe <- it.types.get(FuncName(name))
+          } yield func(tpe)) must_== Full(true)
+      }
+    }
+
+    "Partial application of operators" in {
+      val toTest = Visi.parseAndType(
+        """
+          |// the function
+          |
+          |times = (*)
+          |
+          |run x = times x 44
+          |
+          |app v f = f v
+        """.stripMargin)
+
+      List("run" -> testDoubleFunc _).map {
+        case (name, func) =>
+          (for {
+            it <- toTest
+            tpe <- it.types.get(FuncName(name))
+          } yield func(tpe)) must_== Full(true)
+      }
+    }
+
+    "Partial application of operators #2" in {
+      val toTest = Visi.parseAndType(
+        """
+          |// the function
+          |
+          |times = (* 44)
+          |
+          |run x = times x
+          |
+          |app v f = f v
+        """.stripMargin)
+
+      List("run" -> testDoubleFunc _).map {
+        case (name, func) =>
+          (for {
+            it <- toTest
+            tpe <- it.types.get(FuncName(name))
+          } yield func(tpe)) must_== Full(true)
+      }
+    }
+
+    "Partial application of operators #3" in {
+      val toTest = Visi.parseAndType(
+        """
+          |// the function
+          |
+          |times = (44 *)
+          |
+          |run x = times x
+          |
+          |app v f = f v
+        """.stripMargin)
+
+      List("run" -> testDoubleFunc _).map {
+        case (name, func) =>
+          (for {
+            it <- toTest
+            tpe <- it.types.get(FuncName(name))
+          } yield func(tpe)) must_== Full(true)
       }
     }
 
@@ -229,6 +295,11 @@ class DependencyTest extends Specification {
       Visi.parseAndType(
         """
           |fact n = if n == 0 then 1 else n * fact (n - 1)
+          |
+          |dog n =
+          |  cat q = q * n
+          |  cat 44
+          |
           |res = fact 10
           |good = goodorbad true
           |bad = goodorbad false
