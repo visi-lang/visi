@@ -221,11 +221,18 @@ class JavaScriptStuffTest  extends Specification {
             },
             engine.eval("execute({'num1': 4, 'num2':8, 'b': false});") match {
               case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+            },
+            engine.eval("execute({'num1': 44});") match {
+              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+            },
+            engine.eval("execute({'num2': 2});") match {
+              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
             }
+
           )
         }
 
-      test must_== Full(List(12 -> 4, 32 -> 8))
+      test must_== Full(List(12 -> 4, 32 -> 8, 352 -> 8, 88 -> 2))
     }
 
 
