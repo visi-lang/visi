@@ -12,3 +12,5 @@ Testly.hs
 *.xcuserdatad
 target
 .idea*
+.lein*
+*.iml
