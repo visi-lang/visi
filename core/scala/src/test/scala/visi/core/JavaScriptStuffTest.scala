@@ -3,8 +3,8 @@ package visi.core
 import org.specs2.mutable.Specification
 import javax.script.ScriptEngineManager
 import net.liftweb.common.Full
-import collection.script.Scriptable
-import sun.org.mozilla.javascript.internal.ScriptableObject
+import sun.org.mozilla.javascript.Scriptable
+
 
 /**
  * Created with IntelliJ IDEA.
@@ -179,10 +179,10 @@ class JavaScriptStuffTest  extends Specification {
 
           List(
             engine.eval("execute({'in': 4});") match {
-              case s: ScriptableObject => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
+              case s: Scriptable => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             },
             engine.eval("execute({'in': 8});") match {
-              case s: ScriptableObject => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
+              case s: Scriptable => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             }
           )
         }
@@ -217,16 +217,16 @@ class JavaScriptStuffTest  extends Specification {
 
           List(
             engine.eval("execute({'num1': 4, 'num2':8, 'b': true});") match {
-              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+              case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
             engine.eval("execute({'num1': 4, 'num2':8, 'b': false});") match {
-              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+              case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
             engine.eval("execute({'num1': 44});") match {
-              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+              case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
             engine.eval("execute({'num2': 2});") match {
-              case s: ScriptableObject => (s.get("Out", s), s.get("The Num", s))
+              case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             }
 
           )
