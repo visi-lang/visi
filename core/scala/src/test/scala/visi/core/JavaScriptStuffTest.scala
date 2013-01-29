@@ -3,7 +3,7 @@ package visi.core
 import org.specs2.mutable.Specification
 import javax.script.ScriptEngineManager
 import net.liftweb.common.Full
-import sun.org.mozilla.javascript.Scriptable
+import org.mozilla.javascript.Scriptable
 
 
 /**

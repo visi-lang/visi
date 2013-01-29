@@ -38,6 +38,7 @@ libraryDependencies ++= {
   Seq(
     "org.yaml" % "snakeyaml" % "1.10",
     "junit" % "junit" % "4.7" % "test",
+    "rhino" % "js" % "1.7R2" % "compile",
     "ch.qos.logback" % "logback-classic" % "1.0.6" % "compile" ,
     "org.hoisted" %% "actuarius" % "0.2.5-SNAPSHOT",
     "org.eclipse.jgit" % "org.eclipse.jgit" % "1.3.0.201202151440-r",
