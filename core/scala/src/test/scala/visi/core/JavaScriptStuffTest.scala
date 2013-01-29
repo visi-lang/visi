@@ -3,7 +3,7 @@ package visi.core
 import org.specs2.mutable.Specification
 import javax.script.ScriptEngineManager
 import net.liftweb.common.Full
-import org.mozilla.javascript.Scriptable
+import org.mozilla.javascript.{Context, Scriptable}
 
 
 /**
@@ -173,18 +173,23 @@ class JavaScriptStuffTest  extends Specification {
             """.stripMargin)
         } yield {
 
-          val engine = mgr.getEngineByName("JavaScript")
-          engine.eval(Compiler.jsLibrary +
-            script)
+          val cx = Context.enter()
+          try {
+            val scope = cx.initStandardObjects()
+            cx.evaluateString(scope, Compiler.jsLibrary +
+              script, "test", 1, null)
 
           List(
-            engine.eval("execute({'in': 4});") match {
+            cx.evaluateString(scope, "execute({'in': 4});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             },
-            engine.eval("execute({'in': 8});") match {
+            cx.evaluateString(scope, "execute({'in': 8});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             }
           )
+          } finally {
+            Context.exit()
+          }
         }
 
       test must_== Full(List((5, 1, 4), (9, 2, 12)))
@@ -211,25 +216,30 @@ class JavaScriptStuffTest  extends Specification {
             """.stripMargin)
         } yield {
 
-          val engine = mgr.getEngineByName("JavaScript")
-          engine.eval(Compiler.jsLibrary +
-            script)
+          val cx = Context.enter()
+          try {
+            val scope = cx.initStandardObjects()
+          cx.evaluateString(scope, Compiler.jsLibrary +
+            script, "test", 1, null)
 
           List(
-            engine.eval("execute({'num1': 4, 'num2':8, 'b': true});") match {
+            cx.evaluateString(scope, "execute({'num1': 4, 'num2':8, 'b': true});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
-            engine.eval("execute({'num1': 4, 'num2':8, 'b': false});") match {
+            cx.evaluateString(scope, "execute({'num1': 4, 'num2':8, 'b': false});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
-            engine.eval("execute({'num1': 44});") match {
+            cx.evaluateString(scope, "execute({'num1': 44});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
-            engine.eval("execute({'num2': 2});") match {
+            cx.evaluateString(scope, "execute({'num2': 2});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             }
 
           )
+          } finally {
+            Context.exit()
+          }
         }
 
       test must_== Full(List(12 -> 4, 32 -> 8, 352 -> 8, 88 -> 2))
@@ -239,7 +249,12 @@ class JavaScriptStuffTest  extends Specification {
   }
 
   def runScript(str: String): Any = {
-    val engine = mgr.getEngineByName("JavaScript")
-    engine.eval(str)
+    val cx = Context.enter()
+    try {
+      val scope = cx.initStandardObjects()
+      cx.evaluateString(scope, str, "Test", 1, null)
+    } finally {
+      Context.exit()
+    }
   }
 }
