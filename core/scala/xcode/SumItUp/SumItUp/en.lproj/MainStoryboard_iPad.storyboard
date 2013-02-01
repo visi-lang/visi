@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="2.0" toolsVersion="3084" systemVersion="12C60" targetRuntime="iOS.CocoaTouch.iPad" propertyAccessControl="none" useAutolayout="YES" initialViewController="2">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="2083"/>
+    </dependencies>
+    <scenes>
+        <!--Visi View Controller-->
+        <scene sceneID="4">
+            <objects>
+                <viewController id="2" customClass="VisiViewController" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="5">
+                        <rect key="frame" x="0.0" y="20" width="768" height="1004"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" enabled="NO" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="okx-4Y-MCP">
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits"/>
+                            </textField>
+                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" enabled="NO" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="3B6-tm-MkA">
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits"/>
+                            </textField>
+                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" enabled="NO" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="YHz-4m-Jmd">
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits"/>
+                            </textField>
+                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="BiR-hZ-b1Y">
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="97" id="fmF-BD-tTf"/>
+                                </constraints>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits"/>
+                                <connections>
+                                    <action selector="setTotal:" destination="3" eventType="editingDidEnd" id="OYl-0t-grZ"/>
+                                    <action selector="setTotal:" destination="3" eventType="editingChanged" id="Scw-GQ-zXw"/>
+                                </connections>
+                            </textField>
+                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="X3j-6S-T8U">
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits"/>
+                                <connections>
+                                    <action selector="setTaxrate:" destination="3" eventType="editingChanged" id="c01-2Z-xn3"/>
+                                    <action selector="setTaxrate:" destination="3" eventType="editingDidEnd" id="frV-Zk-U7D"/>
+                                </connections>
+                            </textField>
+                            <webView hidden="YES" userInteractionEnabled="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="p08-cL-KaC">
+                                <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="128" id="P1d-52-68o"/>
+                                    <constraint firstAttribute="width" constant="240" id="j6f-Cb-jas"/>
+                                </constraints>
+                            </webView>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstItem="p08-cL-KaC" firstAttribute="top" secondItem="BiR-hZ-b1Y" secondAttribute="top" type="default" id="66F-E4-2yN"/>
+                            <constraint firstItem="X3j-6S-T8U" firstAttribute="trailing" secondItem="BiR-hZ-b1Y" secondAttribute="trailing" type="default" id="8fj-2n-Ts0"/>
+                            <constraint firstItem="3B6-tm-MkA" firstAttribute="trailing" secondItem="okx-4Y-MCP" secondAttribute="trailing" type="default" id="BHx-SB-Eih"/>
+                            <constraint firstItem="X3j-6S-T8U" firstAttribute="leading" secondItem="BiR-hZ-b1Y" secondAttribute="leading" type="default" id="Igo-r6-fUL"/>
+                            <constraint firstItem="X3j-6S-T8U" firstAttribute="top" secondItem="5" secondAttribute="top" constant="174" id="JiN-f9-t5B"/>
+                            <constraint firstItem="YHz-4m-Jmd" firstAttribute="top" secondItem="3B6-tm-MkA" secondAttribute="bottom" constant="8" symbolic="YES" type="default" id="Sqf-cp-b02"/>
+                            <constraint firstItem="okx-4Y-MCP" firstAttribute="leading" secondItem="X3j-6S-T8U" secondAttribute="leading" type="default" id="UIQ-8x-2vt"/>
+                            <constraint firstItem="YHz-4m-Jmd" firstAttribute="trailing" secondItem="3B6-tm-MkA" secondAttribute="trailing" type="default" id="URy-Uq-tkE"/>
+                            <constraint firstItem="okx-4Y-MCP" firstAttribute="top" secondItem="5" secondAttribute="top" constant="305" id="UT2-Wz-kdo"/>
+                            <constraint firstItem="BiR-hZ-b1Y" firstAttribute="leading" secondItem="5" secondAttribute="leading" constant="143" id="efo-Bu-ubz"/>
+                            <constraint firstItem="p08-cL-KaC" firstAttribute="leading" secondItem="5" secondAttribute="leading" constant="330" id="g1e-21-bYy"/>
+                            <constraint firstItem="BiR-hZ-b1Y" firstAttribute="top" secondItem="5" secondAttribute="top" constant="67" id="g55-5s-jqq"/>
+                            <constraint firstItem="3B6-tm-MkA" firstAttribute="leading" secondItem="okx-4Y-MCP" secondAttribute="leading" type="default" id="nbo-0m-XBC"/>
+                            <constraint firstItem="3B6-tm-MkA" firstAttribute="top" secondItem="okx-4Y-MCP" secondAttribute="bottom" constant="8" symbolic="YES" type="default" id="qbd-xI-L4k"/>
+                            <constraint firstItem="YHz-4m-Jmd" firstAttribute="leading" secondItem="3B6-tm-MkA" secondAttribute="leading" type="default" id="yGM-oJ-7eH"/>
+                            <constraint firstItem="okx-4Y-MCP" firstAttribute="trailing" secondItem="X3j-6S-T8U" secondAttribute="trailing" type="default" id="zHd-Mx-6pM"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="subtotal" destination="okx-4Y-MCP" id="dNR-ec-GQl"/>
+                        <outlet property="tax" destination="3B6-tm-MkA" id="QuF-KO-juC"/>
+                        <outlet property="theTotal" destination="YHz-4m-Jmd" id="G4j-Cl-V9W"/>
+                        <outlet property="total" destination="okx-4Y-MCP" id="oda-Pr-Pjl"/>
+                        <outlet property="webview" destination="p08-cL-KaC" id="aPh-ib-dz3"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="3" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="28" y="-102"/>
+        </scene>
+    </scenes>
+    <classes>
+        <class className="CalcIt" superclassName="UIViewController">
+            <source key="sourceIdentifier" type="project" relativePath="./Classes/CalcIt.h"/>
+            <relationships>
+                <relationship kind="action" name="setName:"/>
+                <relationship kind="action" name="setTaxrate:"/>
+                <relationship kind="action" name="setTotal:"/>
+                <relationship kind="outlet" name="subtotal"/>
+                <relationship kind="outlet" name="tax"/>
+                <relationship kind="outlet" name="theTotal"/>
+                <relationship kind="outlet" name="webview"/>
+            </relationships>
+        </class>
+        <class className="NSLayoutConstraint" superclassName="NSObject">
+            <source key="sourceIdentifier" type="project" relativePath="./Classes/NSLayoutConstraint.h"/>
+        </class>
+        <class className="VisiViewController" superclassName="CalcIt">
+            <source key="sourceIdentifier" type="project" relativePath="./Classes/VisiViewController.h"/>
+        </class>
+    </classes>
+    <simulatedMetricsContainer key="defaultSimulatedMetrics">
+        <simulatedStatusBarMetrics key="statusBar" statusBarStyle="blackTranslucent"/>
+        <simulatedOrientationMetrics key="orientation"/>
+        <simulatedScreenMetrics key="destination"/>
+    </simulatedMetricsContainer>
+</document>

@@ -1,0 +1,10 @@
+?sales
+?taxRate
+
+subtotal = sales
+tax = subtotal * taxRate
+total = subtotal + tax
+
+"Tax" = tax
+"Subtotal" = subtotal
+"Total" = total
