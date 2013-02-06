@@ -14,3 +14,6 @@ target
 .idea*
 .lein*
 *.iml
+
+demo.h
+demo.m

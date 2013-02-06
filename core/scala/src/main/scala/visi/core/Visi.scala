@@ -7,14 +7,37 @@ import com.sun.org.apache.xalan.internal.xsltc.compiler.util.BooleanType
  * The main access to Visi
  */
 object Visi {
-
-
-
-  def parseAndType(src: String): Box[RunableInfo] = {
+  def parseAndType(src: String): Box[RunnableInfo] = {
     for {
       parsed <- VisiParse.code(src)
       (typed, graph) <- Typer.infer(Compiler.builtIn ++ parsed)
-    } yield RunableInfo(parsed, typed, graph)
+    } yield {
+      val p2 = parsed.map {
+        case (n, e: HasLetId) => n -> e.updateType(typed(e.id))
+        case x => x
+      }
+      val sources: List[SourceExp] = p2.values.collect{
+        case s: SourceExp => s
+      }.toList
+
+      val sinks: List[SinkExp] = p2.values.collect{
+        case s: SinkExp => s
+      }.toList
+
+      RunnableInfo(p2, typed, graph, sources, sinks)
+    }
+  }
+
+  /**
+   * Parses the incoming Visi program into JavaScript
+   * @param src The source code
+   *
+   * @return the executable JavaScript
+   */
+  def compileWithRunnableInfo(src: String): Box[(String, RunnableInfo)] = {
+    for {
+      info <- parseAndType(src)
+    } yield Compiler.compile(Group(info.functions ++ Compiler.builtIn), info.dependencies) -> info
   }
 
   /**
@@ -29,6 +52,8 @@ object Visi {
     } yield Compiler.compile(Group(info.functions ++ Compiler.builtIn), info.dependencies)
   }
 
-  final case class RunableInfo(functions: Map[FuncName, Expression], types: Map[FuncName, Type], dependencies: Typer.DependencyMap)
+  final case class RunnableInfo(functions: Map[FuncName, Expression], types: Map[LetId, Type],
+                                dependencies: Typer.DependencyMap, sources: List[SourceExp],
+                                 sinks: List[SinkExp])
 }
 

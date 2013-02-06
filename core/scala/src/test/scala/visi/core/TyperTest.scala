@@ -18,7 +18,7 @@ class TyperTest extends Specification {
           |choose b x y = if b then x else y
           |awombat = choose true 1 2
           |aslug = choose false "dog" "cat"
-          |""".stripMargin).flatMap(x => (x.types.get(FuncName("choose")): Box[Type]) ?~ "Choose not found") match {
+          |""".stripMargin).flatMap(x => (x.functions.get(FuncName("choose")).map(_.tpe): Box[Type]) ?~ "Choose not found") match {
         case Full(TOper(Expression.FuncOperName, List(TPrim(PrimBool),
         TOper(Expression.FuncOperName, List(TVar(x), TOper(Expression.FuncOperName, List(TVar(y), TVar(z)))))))) if
         x == y && y == z => true must_== true
@@ -35,7 +35,7 @@ class TyperTest extends Specification {
           |n = choose2 true true true
           |x = choose true 1 2
           |y = choose false "hi" "dude"
-          |""".stripMargin).flatMap(x => (x.types.get(FuncName("choose")): Box[Type]) ?~ "Choose not found") match {
+          |""".stripMargin).flatMap(x => (x.functions.get(FuncName("choose")).map(_.tpe): Box[Type]) ?~ "Choose not found") match {
         case Full(TOper(Expression.FuncOperName, List(TPrim(PrimBool),
         TOper(Expression.FuncOperName, List(TVar(x), TOper(Expression.FuncOperName, List(TVar(y), TVar(z)))))))) if
         x == y && y == z => true must_== true
@@ -49,7 +49,7 @@ class TyperTest extends Specification {
       Visi.parseAndType(
         """
           |add x y = x + y
-          |""".stripMargin).flatMap(x => (x.types.get(FuncName("add")): Box[Type]) ?~ "Add not found") match {
+          |""".stripMargin).flatMap(x => (x.functions.get(FuncName("add")).map(_.tpe): Box[Type]) ?~ "Add not found") match {
         case Full(TOper(Expression.FuncOperName, List(TPrim(PrimDouble),
         TOper(Expression.FuncOperName, List(TPrim(PrimDouble), TPrim(PrimDouble)))))) => true must_== true
         case bad =>
@@ -94,7 +94,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
           it <- toTest
-          tpe <- it.types.get(FuncName(name))
+          tpe <- it.functions.get(FuncName(name)).map(_.tpe)
         } yield func(tpe)) must_== Full(true)
       }
 
@@ -123,7 +123,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.types.get(FuncName(name))
+            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -144,7 +144,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.types.get(FuncName(name))
+            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -165,7 +165,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.types.get(FuncName(name))
+            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -186,7 +186,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.types.get(FuncName(name))
+            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -204,7 +204,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.types.get(FuncName(name))
+            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -224,7 +224,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.types.get(FuncName(name))
+            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -246,7 +246,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.types.get(FuncName(name))
+            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -260,8 +260,11 @@ class TyperTest extends Specification {
   }
   private def testIsString(t: Type): Boolean = t == TPrim(PrimStr)
   private def testIsDouble(t: Type): Boolean = t == TPrim(PrimDouble)
-  private def testDoubleFunc(t: Type): Boolean =
-    t == Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble))
+  private def testDoubleFunc(t: Type): Boolean = {
+    val ret = t == Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble))
+    if (!ret) {println("test "+t)}
+    ret
+  }
   private def testStrFunc(t: Type): Boolean =
     t == Expression.tFun(TPrim(PrimStr), TPrim(PrimStr))
 
@@ -283,7 +286,7 @@ class DependencyTest extends Specification {
           |""".stripMargin)
 
     toTest.map{
-      case Visi.RunableInfo(a, b, c) =>
+      case Visi.RunnableInfo(a, b, c, _, _) =>
       val pred = Typer.findAllTopLevelPredicates(c)
       val rec = Typer.findRecursive(pred)
       rec.length
@@ -308,7 +311,7 @@ class DependencyTest extends Specification {
           |""".stripMargin)
 
     toTest.map{
-      case Visi.RunableInfo(a, b, c) =>
+      case Visi.RunnableInfo(a, b, c, _, _) =>
         val pred = Typer.findAllTopLevelPredicates(c)
         val rec = Typer.findRecursive(pred)
         rec.length
@@ -331,7 +334,7 @@ class DependencyTest extends Specification {
           |""".stripMargin)
 
     toTest.map{
-      case Visi.RunableInfo(a, b, c) =>
+      case Visi.RunnableInfo(a, b, c, _, _) =>
         val pred = Typer.findAllTopLevelPredicates(c)
         val rec = Typer.findRecursive(pred)
         rec.length
@@ -361,7 +364,7 @@ class DependencyTest extends Specification {
 
     val res =
       toTest.map{
-      case Visi.RunableInfo(a, b, c) =>
+      case Visi.RunnableInfo(a, b, c, _, _) =>
         val pred = Typer.findAllTopLevelPredicates(c)
         val deps = Typer.whatDependsOnSource(c, pred)
 

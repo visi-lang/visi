@@ -7,14 +7,12 @@
 //
 
 #import "VisiViewController.h"
-#import "CalcIt.h"
 
 @implementation VisiViewController
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    printf("My yak is full\n");
     
 	// Do any additional setup after loading the view, typically from a nib.
 }

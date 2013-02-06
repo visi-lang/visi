@@ -180,10 +180,10 @@ class JavaScriptStuffTest  extends Specification {
               script, "test", 1, null)
 
           List(
-            cx.evaluateString(scope, "execute({'in': 4});", "test", 1, null) match {
+            cx.evaluateString(scope, "$_exec({'in': 4});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             },
-            cx.evaluateString(scope, "execute({'in': 8});", "test", 1, null) match {
+            cx.evaluateString(scope, "$_exec({'in': 8});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("Cnt", s), s.get("Sum", s))
             }
           )
@@ -223,16 +223,16 @@ class JavaScriptStuffTest  extends Specification {
             script, "test", 1, null)
 
           List(
-            cx.evaluateString(scope, "execute({'num1': 4, 'num2':8, 'b': true});", "test", 1, null) match {
+            cx.evaluateString(scope, "$_exec({'num1': 4, 'num2':8, 'b': true});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
-            cx.evaluateString(scope, "execute({'num1': 4, 'num2':8, 'b': false});", "test", 1, null) match {
+            cx.evaluateString(scope, "$_exec({'num1': 4, 'num2':8, 'b': false});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
-            cx.evaluateString(scope, "execute({'num1': 44});", "test", 1, null) match {
+            cx.evaluateString(scope, "$_exec({'num1': 44});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             },
-            cx.evaluateString(scope, "execute({'num2': 2});", "test", 1, null) match {
+            cx.evaluateString(scope, "$_exec({'num2': 2});", "test", 1, null) match {
               case s: Scriptable => (s.get("Out", s), s.get("The Num", s))
             }
 

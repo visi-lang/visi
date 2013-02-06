@@ -35,7 +35,7 @@ object Typer {
     Map(in.keys().toList.map(k => k -> in.get(k)) :_*)
   }
 
-  def infer(in: Map[FuncName, Expression]): Box[(Map[FuncName, Type], DependencyMap)] = {
+  def infer(in: Map[FuncName, Expression]): Box[(Map[LetId, Type], DependencyMap)] = {
     val graph = new LetMap
 
     implicit val stuff = new ConcurrentHashMap[Type, TypeAliasInfo]()
@@ -44,13 +44,22 @@ object Typer {
       one <- buildGraph(graph, Map.empty, Nil, Group(in)) ?~ "Hmmmm..."
       two <- buildTypes(Set.empty, Map.empty, Nil, Group(in))
       three <- buildTypes(Set.empty, Map.empty, Nil, Group(in)) // FIXME deal with recursive references
+      four <- buildTypes(Set.empty, Map.empty, Nil, Group(in)) // FIXME deal with recursive references
+      five <- buildTypes(Set.empty, Map.empty, Nil, Group(in)) // FIXME deal with recursive references
+      six <- buildTypes(Set.empty, Map.empty, Nil, Group(in)) // FIXME deal with recursive references
     } yield {
-      val newScope = in.foldLeft[Map[FuncName, Type]](Map.empty) {
-        case (sc, (_, se: SinkExp)) => sc
-        case (sc, (n, e2)) =>
-          sc + (n -> prune(e2.tpe))
+      val rm: DependencyMap = graph
+      val ret = (rm.map {
+        case (n, d) => n -> d.copy(what = d.what.updateType(prune(d.what.tpe)))
+      })
+      val newScope = in.foldLeft[Map[LetId, Type]](Map.empty) {
+        case (sc, (n, e2: HasLetId)) =>
+          sc + (e2.id -> prune(e2.tpe))
+        case (sc, _) => sc
       }
-      newScope -> graph
+
+
+      newScope -> ret
     }
   }
 
@@ -319,7 +328,7 @@ object Typer {
         } yield res
 
       case InnerLet(loc, tpe, exp1, exp2) =>
-        val newScope = exp1 match {
+        val newScope = (exp1: @unchecked) match {
           case le@LetExp(loc, id, name, generic, tpe, exp) =>
             scope + (name -> le)
         }
@@ -376,12 +385,14 @@ object Typer {
         Full(prune(tpe))
 
       case Group(map) =>
-        val newScope = map.foldLeft(scope) {
+        val (newScope, newNongen) = map.foldLeft((scope, nongen)) {
           case (sc, (_, se: SinkExp)) => sc
-          case (sc, (n, e2)) => sc + (n -> e2)
+
+          case ((sc, ng), (n, e2: SourceExp)) => (sc + (n -> e2)) -> (ng + e2.tpe)
+          case ((sc, ng), (n, e2)) => (sc + (n -> e2)) -> ng
         }
 
-        reduce(map.values.toStream.map(v => buildTypes(nongen, newScope, stack, v)))
+        reduce(map.values.toStream.map(v => buildTypes(newNongen, newScope, stack, v)))
 
     }
   }
@@ -394,7 +405,7 @@ object Typer {
         buildGraph(stuff, newMap, theExp +: stack, exp)
 
       case InnerLet(loc, tpe, exp1, exp2) =>
-        val newScope = exp1 match {
+        val newScope = (exp1: @unchecked) match {
           case le@LetExp(loc, id, name, generic, tpe, exp) =>
             scope + (name -> le)
         }

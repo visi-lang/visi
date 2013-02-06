@@ -1,8 +1,9 @@
 ?sales
+?nonTaxable
 ?taxRate
 
-subtotal = sales
-tax = subtotal * taxRate
+subtotal = sales + nonTaxable
+tax = sales * taxRate
 total = subtotal + tax
 
 "Tax" = tax

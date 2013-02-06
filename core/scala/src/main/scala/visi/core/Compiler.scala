@@ -131,8 +131,20 @@ object Compiler {
       |  this.$_reset = function() {}
       |}
       |
+      |function $_exec_str(sources) {
+      |  var res = null;
       |
-      |function execute(sources) {
+      |  try {
+      |    res = {success: $_exec(sources)};
+      |  } catch (e) {
+      |    res = {failure: e};
+      |  }
+      |
+      |  return JSON.stringify(res);
+      |
+      |}
+      |
+      |function $_exec(sources) {
       |  var sinksToRun = {};
       |  var lets = {};
       |  for (i in sources) {

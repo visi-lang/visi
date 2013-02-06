@@ -7,8 +7,8 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "CalcIt.h"
+#import "demo.h"
 
-@interface VisiViewController : CalcIt
+@interface VisiViewController : demo
 
 @end

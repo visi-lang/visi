@@ -73,6 +73,7 @@ final case class SourceFromURL(src: String, loc: SourceSpan) extends SourceLoc
 sealed trait Expression {
   def loc: SourceLoc
   def tpe: Type
+  def updateType(nt: Type): Expression
 }
 
 sealed trait HasName extends Expression {
@@ -85,16 +86,26 @@ sealed trait HasLetId extends Expression {
 
 final case class LetExp(loc: SourceLoc, id: LetId, name: FuncName, generic: CanBeGeneric, tpe: Type, exp: Expression) extends Expression with HasLetId with HasName {
   override def toString = "Let "+name.name+" ("+tpe+") -> "+exp
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
 }
 
 final case class InnerLet(loc: SourceLoc,
-                           tpe: Type, exp1: Expression, exp2: Expression) extends Expression
+                           tpe: Type, exp1: Expression, exp2: Expression) extends Expression {
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
+
+}
 final case class SinkExp(loc: SourceLoc,
-                          id: LetId, name: FuncName, tpe: Type, exp: Expression) extends Expression with HasLetId with HasName
+                          id: LetId, name: FuncName, tpe: Type, exp: Expression) extends Expression with HasLetId with HasName {
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
+
+}
+
 final case class SourceExp(loc: SourceLoc,
                             id: LetId,
                             name: FuncName,
-                            tpe: Type) extends Expression with HasLetId with HasName
+                            tpe: Type) extends Expression with HasLetId with HasName {
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
+}
 /*
 final case class InvokeMethod(loc: SourceLoc,
                                id: LetId,
@@ -108,6 +119,7 @@ final case class FuncExp(loc: SourceLoc,
                          tpe: Type,
                          exp: Expression) extends Expression with HasLetId {
   override def toString = "Func "+name.name+" ("+tpe+") -> "+exp
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
 }
 
 final case class Apply(loc: SourceLoc,
@@ -116,15 +128,25 @@ final case class Apply(loc: SourceLoc,
                         exp1: Expression,
                         exp2: Expression) extends Expression with HasLetId {
   override def toString = "Apply("+tpe+" ["+exp1+"] ["+exp2+"])"
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
 }
+
 final case class Var(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type) extends Expression with HasLetId {
   override def toString = "Var "+name.name+" "+tpe
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
 }
-final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: StringBuilder => Unit) extends Expression with HasLetId with HasName
-final case class ValueConst(loc: SourceLoc, value: Value, tpe: Type) extends Expression
+final case class BuiltIn(loc: SourceLoc, id: LetId, name: FuncName, tpe: Type, func: StringBuilder => Unit) extends Expression with HasLetId with HasName {
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
+
+}
+final case class ValueConst(loc: SourceLoc, value: Value, tpe: Type) extends Expression {
+  def updateType(nt: Type): Expression = this.copy(tpe = nt)
+
+}
 final case class Group(map: Map[FuncName, Expression]) extends Expression {
   def loc: SourceLoc = sys.error("No Sourceloc for Group")
   def tpe: Type = sys.error("No type for Group")
+  def updateType(nt: Type): Expression = sys.error("No type for Group")
 }
 
 

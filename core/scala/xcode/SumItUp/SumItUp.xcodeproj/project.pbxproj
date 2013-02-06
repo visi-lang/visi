@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DE28E56616C1F9950016F323 /* demo.visi in Resources */ = {isa = PBXBuildFile; fileRef = DE28E56516C1F9950016F323 /* demo.visi */; };
+		DE28E57016C2071C0016F323 /* demo.m in Sources */ = {isa = PBXBuildFile; fileRef = DE28E56F16C2071C0016F323 /* demo.m */; };
 		DEB5911F16B8772400EB6F9F /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DEB5911E16B8772400EB6F9F /* UIKit.framework */; };
 		DEB5912116B8772400EB6F9F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DEB5912016B8772400EB6F9F /* Foundation.framework */; };
 		DEB5912316B8772400EB6F9F /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DEB5912216B8772400EB6F9F /* CoreGraphics.framework */; };
@@ -19,10 +21,22 @@
 		DEB5913816B8772400EB6F9F /* MainStoryboard_iPhone.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = DEB5913616B8772400EB6F9F /* MainStoryboard_iPhone.storyboard */; };
 		DEB5913B16B8772400EB6F9F /* MainStoryboard_iPad.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = DEB5913916B8772400EB6F9F /* MainStoryboard_iPad.storyboard */; };
 		DEB5913E16B8772400EB6F9F /* VisiViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = DEB5913D16B8772400EB6F9F /* VisiViewController.m */; };
-		DEB5914616B8840B00EB6F9F /* CalcIt.m in Sources */ = {isa = PBXBuildFile; fileRef = DEB5914516B8840B00EB6F9F /* CalcIt.m */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		DE28E56C16C1FC3A0016F323 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DEB5911316B8772400EB6F9F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DE28E56816C1FC260016F323;
+			remoteInfo = Visi;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		DE28E56516C1F9950016F323 /* demo.visi */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = demo.visi; sourceTree = "<group>"; };
+		DE28E56E16C2071C0016F323 /* demo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = demo.h; path = SumItUp/demo.h; sourceTree = "<group>"; };
+		DE28E56F16C2071C0016F323 /* demo.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = demo.m; path = SumItUp/demo.m; sourceTree = "<group>"; };
 		DEB5911B16B8772400EB6F9F /* SumItUp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SumItUp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DEB5911E16B8772400EB6F9F /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		DEB5912016B8772400EB6F9F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -40,8 +54,6 @@
 		DEB5913A16B8772400EB6F9F /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/MainStoryboard_iPad.storyboard; sourceTree = "<group>"; };
 		DEB5913C16B8772400EB6F9F /* VisiViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VisiViewController.h; sourceTree = "<group>"; };
 		DEB5913D16B8772400EB6F9F /* VisiViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VisiViewController.m; sourceTree = "<group>"; };
-		DEB5914416B8840B00EB6F9F /* CalcIt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CalcIt.h; sourceTree = "<group>"; };
-		DEB5914516B8840B00EB6F9F /* CalcIt.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CalcIt.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +73,8 @@
 		DEB5911216B8772400EB6F9F = {
 			isa = PBXGroup;
 			children = (
+				DE28E56E16C2071C0016F323 /* demo.h */,
+				DE28E56F16C2071C0016F323 /* demo.m */,
 				DEB5912416B8772400EB6F9F /* SumItUp */,
 				DEB5911D16B8772400EB6F9F /* Frameworks */,
 				DEB5911C16B8772400EB6F9F /* Products */,
@@ -95,8 +109,7 @@
 				DEB5913C16B8772400EB6F9F /* VisiViewController.h */,
 				DEB5913D16B8772400EB6F9F /* VisiViewController.m */,
 				DEB5912516B8772400EB6F9F /* Supporting Files */,
-				DEB5914416B8840B00EB6F9F /* CalcIt.h */,
-				DEB5914516B8840B00EB6F9F /* CalcIt.m */,
+				DE28E56516C1F9950016F323 /* demo.visi */,
 			);
 			path = SumItUp;
 			sourceTree = "<group>";
@@ -117,6 +130,23 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXLegacyTarget section */
+		DE28E56816C1FC260016F323 /* Visi */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "-jar /Users/dpp/proj/visi/core/scala/target/visi.jar $(ACTION)";
+			buildConfigurationList = DE28E56916C1FC260016F323 /* Build configuration list for PBXLegacyTarget "Visi" */;
+			buildPhases = (
+			);
+			buildToolPath = java;
+			buildWorkingDirectory = /Users/dpp/proj/visi/core/scala/xcode/SumItUp/SumItUp;
+			dependencies = (
+			);
+			name = Visi;
+			passBuildSettingsInEnvironment = 1;
+			productName = Visi;
+		};
+/* End PBXLegacyTarget section */
+
 /* Begin PBXNativeTarget section */
 		DEB5911A16B8772400EB6F9F /* SumItUp */ = {
 			isa = PBXNativeTarget;
@@ -129,6 +159,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				DE28E56D16C1FC3A0016F323 /* PBXTargetDependency */,
 			);
 			name = SumItUp;
 			productName = SumItUp;
@@ -157,6 +188,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				DE28E56816C1FC260016F323 /* Visi */,
 				DEB5911A16B8772400EB6F9F /* SumItUp */,
 			);
 		};
@@ -173,6 +205,7 @@
 				DEB5913516B8772400EB6F9F /* Default-568h@2x.png in Resources */,
 				DEB5913816B8772400EB6F9F /* MainStoryboard_iPhone.storyboard in Resources */,
 				DEB5913B16B8772400EB6F9F /* MainStoryboard_iPad.storyboard in Resources */,
+				DE28E56616C1F9950016F323 /* demo.visi in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,11 +219,19 @@
 				DEB5912B16B8772400EB6F9F /* main.m in Sources */,
 				DEB5912F16B8772400EB6F9F /* VisiAppDelegate.m in Sources */,
 				DEB5913E16B8772400EB6F9F /* VisiViewController.m in Sources */,
-				DEB5914616B8840B00EB6F9F /* CalcIt.m in Sources */,
+				DE28E57016C2071C0016F323 /* demo.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DE28E56D16C1FC3A0016F323 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DE28E56816C1FC260016F323 /* Visi */;
+			targetProxy = DE28E56C16C1FC3A0016F323 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		DEB5912716B8772400EB6F9F /* InfoPlist.strings */ = {
@@ -220,6 +261,40 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		DE28E56A16C1FC260016F323 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				DEBUGGING_SYMBOLS = YES;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				New_Setting = "";
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		DE28E56B16C1FC260016F323 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				New_Setting = "";
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 		DEB5913F16B8772400EB6F9F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -303,6 +378,14 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		DE28E56916C1FC260016F323 /* Build configuration list for PBXLegacyTarget "Visi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DE28E56A16C1FC260016F323 /* Debug */,
+				DE28E56B16C1FC260016F323 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
 		DEB5911616B8772400EB6F9F /* Build configuration list for PBXProject "SumItUp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -319,6 +402,7 @@
 				DEB5914316B8772400EB6F9F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
