@@ -118,11 +118,11 @@ object ObjCCompiler {
     def action: String = in.tpe match {
       case TPrim(PrimDouble) => "id value = [[NSNumber alloc] initWithDouble:[[sender text] doubleValue]];\n"
       case TPrim(PrimStr) => "id value = [sender text];\n"
-      case TPrim(PrimBool) => "id value = [[NSNumber alloc] initWithBool:[sender state]];\n"
+      case TPrim(PrimBool) => "id value = [[NSNumber alloc] initWithBool:((UISwitch *)sender).on];\n"
 
       case tpe =>
-        println("The type is "+tpe+" for "+in)
-        sys.error("I hate yaks")
+        System.err.println("Cannot autogenerate ObjC control for type "+tpe)
+        sys.error("Cannot autogenerate ObjC control for type "+tpe)
         "id value = @\"error\";\n"
     }
 

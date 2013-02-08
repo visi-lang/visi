@@ -2,6 +2,7 @@ package visi.core
 
 import org.specs2.mutable.Specification
 import net.liftweb.common.{Box, Full}
+import visi.core.Visi.RunnableInfo
 
 /**
  * Created with IntelliJ IDEA.
@@ -98,6 +99,78 @@ class TyperTest extends Specification {
         } yield func(tpe)) must_== Full(true)
       }
 
+    }
+
+    "Some choose stuff" in {
+      val toTest =
+      Visi.parseAndType(
+        """
+          |Define our inputs:
+          |
+          |```
+          |?number
+          |?n2
+          |
+          |?str
+          |
+          |?choice
+          |
+          |```
+          |
+          |
+          |Business logic
+          |```
+          |choose b x y = if b then x else y
+          |
+          |a1 x = 1
+          |
+          |sum = sum + number
+          |
+          |theLen = len str
+          |
+          |cnt = cnt + (a1 number)
+          |
+          |```
+          |
+          |
+          |And here are the results:
+          |
+          |```
+          |"Mult" = number / n2
+          |"Add" = number + n2
+          |
+          |"Funky" = choose choice (+) (*) number n2
+          |
+          |"Monkey" = choose choice number n2
+          |
+          |"Choicer" = choice
+          |
+          |"Sum" = sum
+          |
+          |"Cnt" = cnt
+          |
+          |"Ave" = sum / cnt
+          |
+          |"Str" = str
+          |
+          |```
+          |
+          |
+          |
+        """.stripMargin)
+
+      toTest.map{
+        case RunnableInfo(_, _, _, sources, sinks) =>
+          sources.filter(_.name.name == "choice").map(_.tpe) must_== List(TPrim(PrimBool))
+          sources.filter(_.name.name == "str").map(_.tpe) must_== List(TPrim(PrimStr))
+          sinks.filter(_.name.name == "Monkey").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name.name == "Ave").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name.name == "Sum").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name.name == "Cnt").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name.name == "Choicer").map(_.tpe) must_== List(TPrim(PrimBool))
+          sinks.filter(_.name.name == "Str").map(_.tpe) must_== List(TPrim(PrimStr))
+        true
+      } must_== Full(true)
     }
 
     "Works with inner variable" in {

@@ -100,6 +100,10 @@ object Compiler {
       |  return args[0].$_get() * args[1].$_get();
       |}
       |
+      |function $_len_core(scope, args) {
+      |  return args[0].$_get().length;
+      |}
+      |
       |function $_divFunc_core(scope, args) {
       |  return args[0].$_get() / args[1].$_get();
       |}
@@ -144,6 +148,8 @@ object Compiler {
       |
       |}
       |
+      |var $_doneOne = false;
+      |
       |function $_exec(sources) {
       |  var sinksToRun = {};
       |  var lets = {};
@@ -171,10 +177,14 @@ object Compiler {
       |
       |  var ret = {};
       |
+      |  if ($_doneOne) sinksToRun = sinks;
+      |
       |  for (i in sinksToRun) {
       |    sinks[i].$_reset();
       |    ret[i] = sinks[i].$_get();
       |  }
+      |
+      |  $_doneOne = true;
       |
       |  return ret;
       |}
@@ -217,6 +227,11 @@ object Compiler {
     {
       Expression.tFun(TPrim(PrimStr), Expression.tFun(TPrim(PrimStr), TPrim(PrimStr)))
     }, sb => sb.append("new Func($_concat_core, [], 2, scope, false)")),
+
+    FuncName("len") -> BuiltIn(NoSourceLoc, LetId("len"), FuncName("len"),
+    {
+      Expression.tFun(TPrim(PrimStr), TPrim(PrimDouble))
+    }, sb => sb.append("new Func($_len_core, [], 1, scope, false)")),
 
     FuncName("==") -> BuiltIn(NoSourceLoc, LetId("equals"), FuncName("=="),
     {
