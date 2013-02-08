@@ -171,13 +171,15 @@ object Compiler {
       |    if (!sourceInfo[i]) throw ("Cannot execute because the source '"+i+"' has not been set");
       |  }
       |
+      |  if (!$_doneOne) sinksToRun = sinks;
+      |
       |  for (i in lets) {
       |    scope[i].$_reset();
       |  }
       |
       |  var ret = {};
       |
-      |  if ($_doneOne) sinksToRun = sinks;
+      |
       |
       |  for (i in sinksToRun) {
       |    sinks[i].$_reset();
