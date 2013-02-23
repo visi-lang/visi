@@ -52,7 +52,7 @@ object Visi {
     } yield Compiler.compile(Group(info.functions ++ Compiler.builtIn), info.dependencies)
   }
 
-  final case class RunnableInfo(functions: Map[FuncName, Expression], types: Map[LetId, Type],
+  final case class RunnableInfo(functions: Map[String, Expression], types: Map[LetId, Type],
                                 dependencies: Typer.DependencyMap, sources: List[SourceExp],
                                  sinks: List[SinkExp])
 }

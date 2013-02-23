@@ -9,8 +9,8 @@ package visi.core
  */
 object ObjCCompiler {
 
-  def validSymbol(in: FuncName): String = {
-    val str = in.name
+  def validSymbol(in: String): String = {
+    val str = in
     val len = str.length
     val ret = new StringBuffer(len + 10)
 
@@ -130,7 +130,7 @@ object ObjCCompiler {
     ("""- (IBAction)set_"""+validSymbol(in.name)+""":(id)sender {
       """+action+"""
       |    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
-      |    [dict setObject:value forKey:@"""+('"' + in.name.name + '"')+"""];
+      |    [dict setObject:value forKey:@"""+('"' + in.name + '"')+"""];
       |    [self compute: dict];
       |}
       |""").stripMargin

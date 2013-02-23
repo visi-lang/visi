@@ -71,9 +71,9 @@ class ParseTest extends Specification {
       VisiParse.code(
         """
           |"bar" = 55
-        """.stripMargin).flatMap(_.get(FuncName("bar"))) match {
+        """.stripMargin).flatMap(_.get("bar")) match {
         case Full(SinkExp(_,
-        _, FuncName("bar"), TPrim(PrimDouble),ValueConst(_,DoubleValue(55.0),TPrim(PrimDouble)))) => true must_== true
+        _, "bar", TPrim(PrimDouble),ValueConst(_,DoubleValue(55.0),TPrim(PrimDouble)))) => true must_== true
         case _ => true must_!= true
       }
     }
@@ -127,6 +127,19 @@ class ParseTest extends Specification {
           |"bar" = dog
           |
           |dog = len foo
+        """.stripMargin).map(_.size) must_== Full(3)
+    }
+
+    "parse source and sink and exp with Bool def" in {
+      VisiParse.code(
+        """
+          |?foo
+          |
+          |"bar" = dog
+          |
+          |dog = len foo
+          |
+          |struct Bool = True | False
         """.stripMargin).map(_.size) must_== Full(3)
     }
 

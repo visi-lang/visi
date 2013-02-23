@@ -19,7 +19,7 @@ class TyperTest extends Specification {
           |choose b x y = if b then x else y
           |awombat = choose true 1 2
           |aslug = choose false "dog" "cat"
-          |""".stripMargin).flatMap(x => (x.functions.get(FuncName("choose")).map(_.tpe): Box[Type]) ?~ "Choose not found") match {
+          |""".stripMargin).flatMap(x => (x.functions.get("choose").map(_.tpe): Box[Type]) ?~ "Choose not found") match {
         case Full(TOper(Expression.FuncOperName, List(TPrim(PrimBool),
         TOper(Expression.FuncOperName, List(TVar(x), TOper(Expression.FuncOperName, List(TVar(y), TVar(z)))))))) if
         x == y && y == z => true must_== true
@@ -36,7 +36,7 @@ class TyperTest extends Specification {
           |n = choose2 true true true
           |x = choose true 1 2
           |y = choose false "hi" "dude"
-          |""".stripMargin).flatMap(x => (x.functions.get(FuncName("choose")).map(_.tpe): Box[Type]) ?~ "Choose not found") match {
+          |""".stripMargin).flatMap(x => (x.functions.get("choose").map(_.tpe): Box[Type]) ?~ "Choose not found") match {
         case Full(TOper(Expression.FuncOperName, List(TPrim(PrimBool),
         TOper(Expression.FuncOperName, List(TVar(x), TOper(Expression.FuncOperName, List(TVar(y), TVar(z)))))))) if
         x == y && y == z => true must_== true
@@ -50,7 +50,7 @@ class TyperTest extends Specification {
       Visi.parseAndType(
         """
           |add x y = x + y
-          |""".stripMargin).flatMap(x => (x.functions.get(FuncName("add")).map(_.tpe): Box[Type]) ?~ "Add not found") match {
+          |""".stripMargin).flatMap(x => (x.functions.get("add").map(_.tpe): Box[Type]) ?~ "Add not found") match {
         case Full(TOper(Expression.FuncOperName, List(TPrim(PrimDouble),
         TOper(Expression.FuncOperName, List(TPrim(PrimDouble), TPrim(PrimDouble)))))) => true must_== true
         case bad =>
@@ -95,7 +95,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
           it <- toTest
-          tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+          tpe <- it.functions.get(name).map(_.tpe)
         } yield func(tpe)) must_== Full(true)
       }
 
@@ -161,14 +161,14 @@ class TyperTest extends Specification {
 
       toTest.map{
         case RunnableInfo(_, _, _, sources, sinks) =>
-          sources.filter(_.name.name == "choice").map(_.tpe) must_== List(TPrim(PrimBool))
-          sources.filter(_.name.name == "str").map(_.tpe) must_== List(TPrim(PrimStr))
-          sinks.filter(_.name.name == "Monkey").map(_.tpe) must_== List(TPrim(PrimDouble))
-          sinks.filter(_.name.name == "Ave").map(_.tpe) must_== List(TPrim(PrimDouble))
-          sinks.filter(_.name.name == "Sum").map(_.tpe) must_== List(TPrim(PrimDouble))
-          sinks.filter(_.name.name == "Cnt").map(_.tpe) must_== List(TPrim(PrimDouble))
-          sinks.filter(_.name.name == "Choicer").map(_.tpe) must_== List(TPrim(PrimBool))
-          sinks.filter(_.name.name == "Str").map(_.tpe) must_== List(TPrim(PrimStr))
+          sources.filter(_.name == "choice").map(_.tpe) must_== List(TPrim(PrimBool))
+          sources.filter(_.name == "str").map(_.tpe) must_== List(TPrim(PrimStr))
+          sinks.filter(_.name == "Monkey").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name == "Ave").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name == "Sum").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name == "Cnt").map(_.tpe) must_== List(TPrim(PrimDouble))
+          sinks.filter(_.name == "Choicer").map(_.tpe) must_== List(TPrim(PrimBool))
+          sinks.filter(_.name == "Str").map(_.tpe) must_== List(TPrim(PrimStr))
         true
       } must_== Full(true)
     }
@@ -196,7 +196,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+            tpe <- it.functions.get(name).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -217,7 +217,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+            tpe <- it.functions.get(name).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -238,7 +238,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+            tpe <- it.functions.get(name).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -259,7 +259,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+            tpe <- it.functions.get(name).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -277,7 +277,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+            tpe <- it.functions.get(name).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -297,7 +297,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+            tpe <- it.functions.get(name).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -319,7 +319,7 @@ class TyperTest extends Specification {
         case (name, func) =>
           (for {
             it <- toTest
-            tpe <- it.functions.get(FuncName(name)).map(_.tpe)
+            tpe <- it.functions.get(name).map(_.tpe)
           } yield func(tpe)) must_== Full(true)
       }
     }
@@ -447,7 +447,7 @@ class DependencyTest extends Specification {
     res.map(_.length) must_== Full(2)
     val lst = res.toList.flatMap{
       _.map{
-      case (s, (snk, le)) => (s.name.name, (snk.map(_.name.name).sorted, le.map(_.name.name).sorted))
+      case (s, (snk, le)) => (s.name, (snk.map(_.name).sorted, le.map(_.name).sorted))
       }
     }
 

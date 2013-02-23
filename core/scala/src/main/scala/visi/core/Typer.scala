@@ -16,7 +16,6 @@ object Typer {
 
   private type TypePtr = Ref[Type]
 
-  // private type VarScope = Map[FuncName, Expression]
   private case class CurState(refs: ConcurrentHashMap[Type, TypePtr])
 
   case class Depends(whatId: LetId, stack: List[Expression], what: Expression, dependants: Set[LetId], predicates: Set[LetId]) {
@@ -35,7 +34,7 @@ object Typer {
     Map(in.keys().toList.map(k => k -> in.get(k)) :_*)
   }
 
-  def infer(in: Map[FuncName, Expression]): Box[(Map[LetId, Type], DependencyMap)] = {
+  def infer(in: Map[String, Expression]): Box[(Map[LetId, Type], DependencyMap)] = {
     val graph = new LetMap
 
     implicit val stuff = new ConcurrentHashMap[Type, TypeAliasInfo]()
@@ -372,7 +371,7 @@ object Typer {
 
       case vexp@Var(loc, id, name, tpe) =>
         for {
-          target1 <- scope.get(name) ?~ ("Unable to find function " + name.name) ~> theExp
+          target1 <- scope.get(name) ?~ ("Unable to find function " + name) ~> theExp
           pruned = prune(target1.tpe)
           targetType = fresh(pruned, new ConcurrentHashMap[Type, Type](), nongen)
           ret <- unify(tpe, targetType, stack)
@@ -435,7 +434,7 @@ object Typer {
       case vexp@Var(loc, id, name, tpe) =>
         if (!stuff.containsKey(id)) stuff.put(id, Depends(id, stack, theExp, Set.empty, Set.empty))
         for {
-          target1 <- scope.get(name) ?~ ("Unable to find function " + name.name) ~> theExp
+          target1 <- scope.get(name) ?~ ("Unable to find function " + name) ~> theExp
           target <- Full(target1).asA[HasLetId]
         } yield {
           crossRef(stuff, vexp, target)

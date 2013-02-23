@@ -192,50 +192,50 @@ object Compiler {
       |}
     """.stripMargin
 
-  lazy val builtIn: Map[FuncName, Expression] = Map(
-    FuncName("true") -> BuiltIn(NoSourceLoc, LetId("true"), FuncName("true"), TPrim(PrimBool),
+  lazy val builtIn: Map[String, Expression] = Map(
+    ("true") -> BuiltIn(NoSourceLoc, LetId("true"), ("true"), TPrim(PrimBool),
       sb => sb.append("new Const(true)")),
-    FuncName("false") -> BuiltIn(NoSourceLoc, LetId("false"), FuncName("false"), TPrim(PrimBool),
+    ("false") -> BuiltIn(NoSourceLoc, LetId("false"), ("false"), TPrim(PrimBool),
       sb => sb.append("new Const(false)")),
-    FuncName("$ifelse") -> BuiltIn(NoSourceLoc, LetId("ifelse"), FuncName("$ifelse"),
+    ("$ifelse") -> BuiltIn(NoSourceLoc, LetId("ifelse"), ("$ifelse"),
     {
       val tvar = TVar("ifelseTVar")
       Expression.tFun(TPrim(PrimBool), Expression.tFun(tvar, Expression.tFun(tvar, tvar)))
     }, sb => sb.append("new Func($_ifelse_core, [], 3, scope, false)")),
-    FuncName("$swapfunc") -> BuiltIn(NoSourceLoc, LetId("swapfunc"), FuncName("$swapfunc"),
+    ("$swapfunc") -> BuiltIn(NoSourceLoc, LetId("swapfunc"), ("$swapfunc"),
     {
       val tvar1 = TVar("swapfuncVar1")
       val tvar2 = TVar("swapfuncVar2")
       val tvar3 = TVar("swapfuncVar3")
       Expression.tFun(Expression.tFun(tvar1, Expression.tFun(tvar2, tvar3)), Expression.tFun(tvar2, Expression.tFun(tvar1, tvar3)))
     }, sb => sb.append("new Func($_swapfunc_core, [], 1, scope, false)")),
-    FuncName("+") -> BuiltIn(NoSourceLoc, LetId("plus"), FuncName("+"),
+    ("+") -> BuiltIn(NoSourceLoc, LetId("plus"), ("+"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
     }, sb => sb.append("new Func($_plusFunc_core, [], 2, scope, false)")),
-    FuncName("-") -> BuiltIn(NoSourceLoc, LetId("minus"), FuncName("-"),
+    ("-") -> BuiltIn(NoSourceLoc, LetId("minus"), ("-"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
     }, sb => sb.append("new Func($_minusFunc_core, [], 2, scope, false)")),
-    FuncName("*") -> BuiltIn(NoSourceLoc, LetId("times"), FuncName("*"),
+    ("*") -> BuiltIn(NoSourceLoc, LetId("times"), ("*"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
     }, sb => sb.append("new Func($_timesFunc_core, [], 2, scope, false)")),
-    FuncName("/") -> BuiltIn(NoSourceLoc, LetId("div"), FuncName("/"),
+    ("/") -> BuiltIn(NoSourceLoc, LetId("div"), ("/"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
     }, sb => sb.append("new Func($_divFunc_core, [], 2, scope, false)")),
-    FuncName("&") -> BuiltIn(NoSourceLoc, LetId("concat"), FuncName("&"),
+    ("&") -> BuiltIn(NoSourceLoc, LetId("concat"), ("&"),
     {
       Expression.tFun(TPrim(PrimStr), Expression.tFun(TPrim(PrimStr), TPrim(PrimStr)))
     }, sb => sb.append("new Func($_concat_core, [], 2, scope, false)")),
 
-    FuncName("len") -> BuiltIn(NoSourceLoc, LetId("len"), FuncName("len"),
+    ("len") -> BuiltIn(NoSourceLoc, LetId("len"), ("len"),
     {
       Expression.tFun(TPrim(PrimStr), TPrim(PrimDouble))
     }, sb => sb.append("new Func($_len_core, [], 1, scope, false)")),
 
-    FuncName("==") -> BuiltIn(NoSourceLoc, LetId("equals"), FuncName("=="),
+    ("==") -> BuiltIn(NoSourceLoc, LetId("equals"), ("=="),
     {
       val tvar = TVar("equalsTVar")
       Expression.tFun(tvar, Expression.tFun(tvar, TPrim(PrimBool)))
@@ -263,14 +263,14 @@ object Compiler {
     sb.append("// enumerate the sources... they must all be satisfied to execute\n\n")
     deps.foreach{
       case (source, (sinkList, recList)) =>
-        sb.append("sourceInfo["+source.name.name.encJs+"] = false;\n")
+        sb.append("sourceInfo["+source.name.encJs+"] = false;\n")
 
-        sb.append("sourceToSink["+source.name.name.encJs+"] = [")
-        sb.append(sinkList.map(_.name.name.encJs).mkString(", "))
+        sb.append("sourceToSink["+source.name.encJs+"] = [")
+        sb.append(sinkList.map(_.name.encJs).mkString(", "))
         sb.append("];\n")
 
-        sb.append("sourceToLets["+source.name.name.encJs+"] = [")
-        sb.append(recList.map(_.name.name.encJs).mkString(", "))
+        sb.append("sourceToLets["+source.name.encJs+"] = [")
+        sb.append(recList.map(_.name.encJs).mkString(", "))
         sb.append("];\n")
 
     }
@@ -283,12 +283,12 @@ object Compiler {
 
   private def compileToJavaScript(theExp: Expression, sb: StringBuilder) {
     theExp match {
-      case LetExp(loc, id, FuncName(name), generic, tpe, exp: FuncExp) =>
+      case LetExp(loc, id, (name), generic, tpe, exp: FuncExp) =>
         sb.append("scope["+name.encJs+"] = ")
         compileToJavaScript(exp, sb)
         sb.append(";\n\n")
 
-      case LetExp(loc, id, FuncName(name), generic, tpe, exp) =>
+      case LetExp(loc, id, (name), generic, tpe, exp) =>
         sb.append("scope["+name.encJs+"] = new Thunk(function(scope) { return ")
         compileToJavaScript(exp, sb)
         sb.append(".$_get();}, scope);\n\n")
@@ -298,15 +298,15 @@ object Compiler {
         compileToJavaScript(exp1, sb)
         compileToJavaScript(exp2, sb)
 
-      case SinkExp(loc, id, FuncName(name), tpe, exp) =>
+      case SinkExp(loc, id, (name), tpe, exp) =>
         sb.append("sinks["+name.encJs+"] = new Thunk(function(scope) { return ")
         compileToJavaScript(exp, sb)
         sb.append(".$_get();}, scope);\n\n")
 
-      case SourceExp(loc, id, FuncName(name), tpe) =>
+      case SourceExp(loc, id, (name), tpe) =>
         sb.append("scope["+name.encJs+"] = new Value(false);\n")
 
-      case FuncExp(loc, id, FuncName(name), tpe, exp) =>
+      case FuncExp(loc, id, (name), tpe, exp) =>
         val subfunc = exp.isInstanceOf[FuncExp]
         sb.append("new Func(")
         sb.append("function(zscope, zargs) {\n")
@@ -326,10 +326,10 @@ object Compiler {
         sb.append(")")
 
 
-      case vexp@Var(loc, id, FuncName(name), tpe) =>
+      case vexp@Var(loc, id, (name), tpe) =>
         sb.append("scope["+name.encJs+"]")
 
-      case BuiltIn(loc, id, FuncName(name), tpe, func) =>
+      case BuiltIn(loc, id, (name), tpe, func) =>
         sb.append("scope["+name.encJs+"] = ")
         func(sb)
         sb.append(";\n\n")
