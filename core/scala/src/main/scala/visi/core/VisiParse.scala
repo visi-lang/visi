@@ -95,11 +95,11 @@ class VisiParse extends Parser {
     })
   }
 
-  private def structParams: Rule1[List[String]] = rule {
-    spaces ~ identifierStr ~ spaces ~ ":" ~ paramType 
+  private def structParams: Rule1[StructField] = rule {
+    spaces ~ identifierStr ~ spaces ~ ":" ~ paramType ~~> ((f, nt) => StructField(f, nt))
   }
 
-  private def paramType: Rule1[List[String]] = rule {oneOrMore(spaces ~ (identifierStr | structName))}
+  private def paramType: Rule1[NominalType] = rule {oneOrMore(spaces ~ (identifierStr | structName)) ~~> (a => NominalType(a.head, a.tail))}
 
   private def structElem: Rule1[StructSum] = rule {
     (spaces ~ structName ~ spaces ~ "(" ~ spaces ~ structParams ~ spaces ~ ")" ~ spaces ~~> ((structName: String, params) => StructSingleton(structName))) |

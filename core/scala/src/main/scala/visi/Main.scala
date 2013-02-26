@@ -12,7 +12,7 @@ object Main {
   def main(argv: Array[String]) {
     val argl = argv.toList
 
-    argl match {
+    (argl: @unchecked) match {
       case "clean" :: _ =>
       case Nil =>
         val f = new File(".")
