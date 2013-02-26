@@ -172,10 +172,11 @@ final case class BoolValue(value: Boolean) extends Value{type T = Boolean
  *
  * @param loc the location in the source where the struct is defined
  * @param name the name of the data structure
+ * @param typeParams the list of type parameters for this struct
  * @param fields the fields that are available on all sum subtypes of this struct
  * @param sums if the struct is a sum-type, then the sums and the fields describe the sums
  */
-final case class Struct(loc: SourceLoc, name: String, fields: List[StructField], sums: List[StructSum]) extends ExpressionOrStruct with HasName
+final case class Struct(loc: SourceLoc, name: String, typeParams: List[String], fields: List[StructField], sums: List[StructSum]) extends ExpressionOrStruct with HasName
 
 /**
  * Information about a field
@@ -188,7 +189,7 @@ final case class StructField(name: String, nominalType: NominalType)
  * The nominal type
  * @param name the name of the type (e.g., Number, String)
  */
-final case class NominalType(name: String)
+final case class NominalType(name: String, params: List[String])
 
 /**
  * A description of a sum type

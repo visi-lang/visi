@@ -87,12 +87,28 @@ class VisiParse extends Parser {
   private def structDef: Rule1[Struct] = rule {endSpace ~ "struct" ~ (sumStruct) ~ endSpace}
 
   private def sumStruct: Rule1[Struct] = rule {
-    spaces ~ structName ~ spaces ~ "=" ~ spaces ~ structName ~
-      zeroOrMore(spaces ~ "|" ~ spaces ~ structName) ~~> withContext((structName: String, first: String, rest: List[String], ctx) => {
+    spaces ~ structName ~ typeParams ~ spaces ~ "=" ~ spaces ~ structElem ~
+      zeroOrMore(spaces ~ "|" ~ spaces ~ structElem) ~~> withContext((structName: String, params: List[String], first: StructSum, rest: List[StructSum], ctx) => {
       val loc = calcLoc(ctx)
 
-      Struct(loc, structName, Nil, (first :: rest).map(s => StructSingleton(s)))
+      Struct(loc, structName, params, Nil, (first :: rest))
     })
+  }
+
+  private def structParams: Rule1[List[String]] = rule {
+    spaces ~ identifierStr ~ spaces ~ ":" ~ paramType 
+  }
+
+  private def paramType: Rule1[List[String]] = rule {oneOrMore(spaces ~ (identifierStr | structName))}
+
+  private def structElem: Rule1[StructSum] = rule {
+    (spaces ~ structName ~ spaces ~ "(" ~ spaces ~ structParams ~ spaces ~ ")" ~ spaces ~~> ((structName: String, params) => StructSingleton(structName))) |
+    structName ~~> ((s: String) => StructSingleton(s))
+  }
+
+
+  private def typeParams: Rule1[List[String]] = rule {
+    zeroOrMore(spaces ~ identifierStr)
   }
 
   private def structName: Rule1[String] = rule {
