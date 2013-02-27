@@ -105,7 +105,7 @@ object Typer {
         // ignore the Let expressions that take parameters
       case (k@LetExp(_, letId, _, _, _, exp: FuncExp), set) =>
 
-        // this must be a parameterless let expression
+        // this must be a parameterless let expressionOrStruct
       case (k@LetExp(_, letId, _, _, _, _), set) =>
         set.map(info(_).what).foreach {
           case e: SourceExp => ret.put(e, getOrCreate(e) match {

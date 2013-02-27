@@ -1,6 +1,6 @@
 package visi.core
 
-import net.liftweb.common.{ParamFailure, Empty, Box}
+import net.liftweb.common.{Full, ParamFailure, Empty, Box}
 import org.parboiled.scala._
 import net.liftweb.util.Helpers
 import org.parboiled.Context
@@ -19,7 +19,7 @@ object VisiParse extends VisiParse
  */
 class VisiParse extends Parser {
 
-  def code(str: String, showStuff: Boolean = false): Box[Map[String, Expression]] = synchronized {
+  def code(str: String, showStuff: Boolean = false): Box[(Map[String, Expression], List[Struct])] = synchronized {
     // turn the CRLR or CR stuff into LF
     val s = str.replace("\r\n", "\n").replace("\r", "\n")
 
@@ -52,11 +52,11 @@ class VisiParse extends Parser {
 
     if (res.matched) {
       res.result.map {
-        lst =>
-          Map(lst.flatMap {
-            case hn: HasName with Expression => List(hn.name -> hn)
-            case _ => Nil
-          }: _*)
+       r2 =>
+         Map(r2.flatMap {
+           case Left(hn: HasName with Expression) => List(hn.name -> hn)
+           case _ => Nil
+         }: _*) -> r2.collect{case Right(s) => s}
       }
     } else {
       val stuff = res.parseErrors.collect {
@@ -75,14 +75,15 @@ class VisiParse extends Parser {
 
   }
 
-  private def expressions: Rule1[List[ExpressionOrStruct]] = rule("Top level") {
-    (fencedExpressions | oneOrMore(expression)) ~ endSpace ~ EOI
+  private def expressions: Rule1[List[Either[Expression, Struct]]] = rule("Top level") {
+    (fencedExpressions | oneOrMore(expressionOrStruct)) ~ endSpace ~ EOI
   }
 
   private def endSpace: Rule0 = zeroOrMore(EOL | " " | "\t" | comment)
 
-  private def expression: Rule1[ExpressionOrStruct] =
-    endSpace ~ (structDef | letExpr | funcExpr | source | sink) ~ endSpace
+  private def expressionOrStruct: Rule1[Either[Expression, Struct]] =
+    (endSpace ~ ((structDef ~~> (x => Right(x))) |
+      ((letExpr | funcExpr | source | sink) ~~> (x => Left(x)))) ~ endSpace)
 
   private def structDef: Rule1[Struct] = rule {endSpace ~ "struct" ~ (sumStruct) ~ endSpace}
 
@@ -116,8 +117,8 @@ class VisiParse extends Parser {
       ((s: String) => s)) ~~> ((s: String, s2: String) => s + s2)
   }
 
-  private def fencedExpressions: Rule1[List[ExpressionOrStruct]] =
-    oneOrMore(notInFence ~ fence ~ zeroOrMore(spaces ~ expression ~ spaces) ~ fence ~ notInFence) ~~> (x => x.flatten)
+  private def fencedExpressions: Rule1[List[Either[Expression, Struct]]] =
+    oneOrMore(notInFence ~ fence ~ zeroOrMore(spaces ~ expressionOrStruct ~ spaces) ~ fence ~ notInFence) ~~> (x => x.flatten)
 
 
   private def fence: Rule0 = colZero ~ "```" ~ zeroOrMore(!EOL ~ AnyChar) ~ (EOL | EOI)
@@ -233,7 +234,7 @@ class VisiParse extends Parser {
   private def rightExp: Rule1[Expression] = {
 
 
-    rule("Right hand expression") {
+    rule("Right hand expressionOrStruct") {
       (EOL ~ INDENT ~ (letExpr | funcExpr) ~ endSpace ~ rightExp ~ zeroOrMore(EOL) ~ DEDENT) ~~> withContext((a: Expression, b: Expression, ctx) => {
 
         InnerLet(calcLoc(ctx), b.tpe, a, b)

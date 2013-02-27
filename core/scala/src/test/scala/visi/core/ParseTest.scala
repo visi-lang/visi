@@ -71,7 +71,7 @@ class ParseTest extends Specification {
       VisiParse.code(
         """
           |"bar" = 55
-        """.stripMargin).flatMap(_.get("bar")) match {
+        """.stripMargin).flatMap(_._1.get("bar")) match {
         case Full(SinkExp(_,
         _, "bar", TPrim(PrimDouble),ValueConst(_,DoubleValue(55.0),TPrim(PrimDouble)))) => true must_== true
         case _ => true must_!= true
@@ -97,7 +97,7 @@ class ParseTest extends Specification {
           |"bar" = 99
           |
           |dog = 123
-        """.stripMargin).map(_.size) must_== Full(3)
+        """.stripMargin).map(_._1.size) must_== Full(3)
     }
 
 
@@ -127,7 +127,7 @@ class ParseTest extends Specification {
           |"bar" = dog
           |
           |dog = len foo
-        """.stripMargin).map(_.size) must_== Full(3)
+        """.stripMargin).map(_._1.size) must_== Full(3)
     }
 
     "parse source and sink and exp with Bool def" in {
@@ -140,14 +140,14 @@ class ParseTest extends Specification {
           |dog = len foo
           |
           |struct Bool = True | False
-        """.stripMargin).map(_.size) must_== Full(3)
+        """.stripMargin).map(_._1.size) must_== Full(3)
     }
 
     "parse a function with parameters" in {
       VisiParse.code(
         """
           |foo bar = len bar
-        """.stripMargin).map(_.size) must_== Full(1)
+        """.stripMargin).map(_._1.size) must_== Full(1)
     }
 
     "Don't parse something with cruft at the end" in {
@@ -175,7 +175,7 @@ class ParseTest extends Specification {
           |
           |
           |
-        """.stripMargin).map(_.size) must_== Full(1)
+        """.stripMargin).map(_._1.size) must_== Full(1)
     }
 
     "Multiline if then else" in {
@@ -189,7 +189,7 @@ class ParseTest extends Specification {
           |  else
           |    "bar"
           |
-        """.stripMargin).map(_.size) must_== Full(1)
+        """.stripMargin).map(_._1.size) must_== Full(1)
     }
 
     "parse source and sink and exp in something that's somewhat complex inside Markdown" in {
@@ -214,14 +214,14 @@ class ParseTest extends Specification {
           |dog = len foo
           |```
           |
-        """.stripMargin).map(_.size) must_== Full(3)
+        """.stripMargin).map(_._1.size) must_== Full(3)
     }
 
 
     "Partial Application #1" in {
       val test =
         for {
-          funcs <- VisiParse.code(
+          (funcs, _) <- VisiParse.code(
             """
               |res dog = ( divit ) ( frog ) 4
               |
@@ -245,7 +245,7 @@ class ParseTest extends Specification {
           |fact n = if n == 0 then 1 else n * fact (n - 1)
           |
           |
-        """.stripMargin).map(_.size) must_== Full(2)
+        """.stripMargin).map(_._1.size) must_== Full(2)
     }
 
 
@@ -263,7 +263,7 @@ class ParseTest extends Specification {
           |run x = f x
           |
           |app v f = f v
-        """.stripMargin).map(_.size) must_== Full(4)
+        """.stripMargin).map(_._1.size) must_== Full(4)
     }
 
 
@@ -299,7 +299,7 @@ class ParseTest extends Specification {
           |```
           |
           |
-        """.stripMargin).map(_.size) must_== Full(5)
+        """.stripMargin).map(_._1.size) must_== Full(5)
     }
 
 

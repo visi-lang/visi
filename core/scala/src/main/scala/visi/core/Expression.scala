@@ -65,20 +65,16 @@ final case object NoSourceLoc extends SourceLoc
 final case class BuiltInSource(src: String, loc: SourceSpan) extends SourceLoc
 final case class SourceFromURL(src: String, loc: SourceSpan) extends SourceLoc
 
-sealed trait ExpressionOrStruct
-
-
-
 /**
- * An expression
+ * An expressionOrStruct
  */
-sealed trait Expression extends ExpressionOrStruct {
+sealed trait Expression {
   def loc: SourceLoc
   def tpe: Type
   def updateType(nt: Type): Expression
 }
 
-sealed trait HasName extends ExpressionOrStruct {
+sealed trait HasName {
   def name: String
 }
 
@@ -176,7 +172,7 @@ final case class BoolValue(value: Boolean) extends Value{type T = Boolean
  * @param fields the fields that are available on all sum subtypes of this struct
  * @param sums if the struct is a sum-type, then the sums and the fields describe the sums
  */
-final case class Struct(loc: SourceLoc, name: String, typeParams: List[String], fields: List[StructField], sums: List[StructSum]) extends ExpressionOrStruct with HasName
+final case class Struct(loc: SourceLoc, name: String, typeParams: List[String], fields: List[StructField], sums: List[StructSum]) extends HasName
 
 /**
  * Information about a field

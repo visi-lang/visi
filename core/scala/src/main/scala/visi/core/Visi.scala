@@ -9,7 +9,7 @@ import com.sun.org.apache.xalan.internal.xsltc.compiler.util.BooleanType
 object Visi {
   def parseAndType(src: String): Box[RunnableInfo] = {
     for {
-      parsed <- VisiParse.code(src)
+      (parsed, structs) <- VisiParse.code(src)
       (typed, graph) <- Typer.infer(Compiler.builtIn ++ parsed)
     } yield {
       val p2 = parsed.map {
