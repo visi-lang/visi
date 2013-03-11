@@ -88,7 +88,7 @@ class VisiParse extends Parser {
   private def structDef: Rule1[Struct] = rule {endSpace ~ "struct" ~ (sumStruct) ~ endSpace}
 
   private def sumStruct: Rule1[Struct] = rule {
-    spaces ~ structName ~ typeParams ~ spaces ~ "=" ~ spaces ~ structElem ~
+    spaces ~ structName ~ spaces ~ typeParams ~ spaces ~ "=" ~ spaces ~ structElem ~
       zeroOrMore(spaces ~ "|" ~ spaces ~ structElem) ~~> withContext((structName: String, params: List[String], first: StructSum, rest: List[StructSum], ctx) => {
       val loc = calcLoc(ctx)
 
@@ -97,13 +97,13 @@ class VisiParse extends Parser {
   }
 
   private def structParams: Rule1[StructField] = rule {
-    spaces ~ identifierStr ~ spaces ~ ":" ~ paramType ~~> ((f, nt) => StructField(f, nt))
+    (spaces ~ identifierStr ~ spaces ~ ":" ~ paramType) ~~> ((f, nt) => StructField(f, nt))
   }
 
   private def paramType: Rule1[NominalType] = rule {oneOrMore(spaces ~ (identifierStr | structName)) ~~> (a => NominalType(a.head, a.tail))}
 
   private def structElem: Rule1[StructSum] = rule {
-    (spaces ~ structName ~ spaces ~ "(" ~ spaces ~ structParams ~ spaces ~ ")" ~ spaces ~~> ((structName: String, params) => StructSingleton(structName))) |
+    (spaces ~ structName ~ spaces ~ "(" ~ spaces ~ ((structParams ~ spaces) ~ zeroOrMore("," ~ spaces ~ structParams ~ spaces) ~~> ((a, b) => a :: b)) ~ ")" ~ spaces ~~> ((structName: String, params) => StructSingleton(structName))) |
     structName ~~> ((s: String) => StructSingleton(s))
   }
 
