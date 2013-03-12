@@ -15,8 +15,8 @@ object Compiler {
 
   lazy val jsLibrary =
     """
-      |function Thunk(f, scope) {
-      |  this.$_get = getFunc()
+      |this.Thunk = function(f, scope) {
+      |
       |
       |  function getFunc() {
       |    return function() {
@@ -28,6 +28,8 @@ object Compiler {
       |    };
       |  }
       |
+      |  this.$_get = getFunc()
+      |
       |  this.$_reset = function() {
       |    this.$_get = getFunc()
       |  }
@@ -37,16 +39,20 @@ object Compiler {
       |  }
       |
       |  this.$_old = 0
-      |}
+      |};
       |
-      |function Value(v) {
+      |var thunkFunc = this.Thunk;
+      |
+      |this.Value = function(v) {
       |  this.$_set = function(nv) {v = nv;};
       |  this.$_get = function() {return v;};
       |
       |  this.$_reset = function() {};
-      |}
+      |};
       |
-      |function $_cloner(obj) {
+      |var valueFunc = this.Value;
+      |
+      |this.$_cloner = function(obj) {
       |    if(obj == null || typeof(obj) != 'object')
       |        return obj;
       |
@@ -55,9 +61,9 @@ object Compiler {
       |    for(var key in obj)
       |        temp[key] = obj[key];
       |    return temp;
-      |}
+      |};
       |
-      |function Func(compute, args, arity, scope, subfunc) {
+      |this.Func = function(compute, args, arity, scope, subfunc) {
       |  if (args.length >= arity) {
       |    this.$_apply = function(param) {
       |    var got = this.$_get();
@@ -68,10 +74,10 @@ object Compiler {
       |    this.$_apply = function(param) {
       |      var a1 = args;
       |      var a2 = [];
-      |      for (i in a1) a2.push(a1[i]);
+      |      for (var i in a1) a2.push(a1[i]);
       |      a2.push(param);
       |      if (subfunc) return compute(scope, a2);
-      |      return new Func(compute, a2, arity, scope, false);
+      |      return new funcFunc(compute, a2, arity, scope, false);
       |    }
       |  }
       |
@@ -86,160 +92,163 @@ object Compiler {
       |  }
       |
       |  this.$_reset = function() {};
-      |}
+      |};
       |
-      |function $_plusFunc_core(scope, args) {
+      |var funcFunc = this.Func;
+      |
+      |this.$_plusFunc_core = function(scope, args) {
       |  return args[0].$_get() + args[1].$_get();
-      |}
+      |};
       |
-      |function $_minusFunc_core(scope, args) {
+      |this.$_minusFunc_core = function(scope, args) {
       |  return args[0].$_get() - args[1].$_get();
-      |}
+      |};
       |
-      |function $_timesFunc_core(scope, args) {
+      |this.$_timesFunc_core = function(scope, args) {
       |  return args[0].$_get() * args[1].$_get();
-      |}
+      |};
       |
-      |function $_len_core(scope, args) {
+      |this.$_len_core = function(scope, args) {
       |  return args[0].$_get().length;
-      |}
+      |};
       |
-      |function $_divFunc_core(scope, args) {
+      |this.$_divFunc_core = function(scope, args) {
       |  return args[0].$_get() / args[1].$_get();
-      |}
+      |};
       |
-      |function $_ifelse_core(scope, args) {
+      |this.$_ifelse_core = function(scope, args) {
       |  if (args[0].$_get()) return args[1].$_get();
       |  return args[2].$_get();
-      |}
+      |};
       |
-      |function $_swapfunc_core(scope, args) {
-      |  var ret = new Func(function(zscope, zargs) {
+      |this.$_swapfunc_core = function(scope, args) {
+      |  var ret = new funcFunc(function(zscope, zargs) {
       |   return args[0].$_apply(zargs[1]).$_apply(zargs[0]).$_get();
       |  }, [], 2, scope, false);
       |
       |  return ret;
-      |}
+      |};
       |
-      |function $_concat_core(scope, args) {
+      |this.$_concat_core = function(scope, args) {
       |  return args[0].$_get() + args[1].$_get();
-      |}
+      |};
       |
-      |function $_equals_core(scope, args) {
+      |this.$_equals_core = function(scope, args) {
       |  return args[0].$_get() == args[1].$_get();
-      |}
+      |};
       |
       |
-      |function Const(v) {
+      |this.Const = function(v) {
       |  this.$_get = function() {return v;}
       |  this.$_reset = function() {}
-      |}
+      |};
       |
-      |function $_exec_str(sources) {
-      |  var res = null;
+      |var constFunc = this.Const;
       |
+      |this.$_exec_str = function(sources) {
+      |  return JSON.stringify(this.$_exec_maybe(sources));
+      |};
+      |
+      |this.$_exec_maybe = function(sources) {
       |  try {
-      |    res = {success: $_exec(sources)};
+      |    return {success: this.$_exec(sources)};
       |  } catch (e) {
-      |    res = {failure: e};
+      |    return {failure: e};
       |  }
+      |};
       |
-      |  return JSON.stringify(res);
+      |this.$_doneOne = false;
       |
-      |}
-      |
-      |var $_doneOne = false;
-      |
-      |function $_exec(sources) {
+      |this.$_exec = function(sources) {
       |  var sinksToRun = {};
       |  var lets = {};
-      |  for (i in sources) {
-      |    scope[i].$_set(sources[i]);
-      |    sourceInfo[i] = true;
-      |    var sa = sourceToSink[i];
-      |    for (j in sa) {
+      |  for (var i in sources) {
+      |    this.scope[i].$_set(sources[i]);
+      |    this.sourceInfo[i] = true;
+      |    var sa = this.sourceToSink[i];
+      |    for (var j in sa) {
       |      sinksToRun[sa[j]] = true;
       |    }
       |
-      |    sa = sourceToLets[i]
-      |    for (j in sa) {
+      |    sa = this.sourceToLets[i]
+      |    for (var j in sa) {
       |      lets[sa[j]] = true;
       |    }
       |  }
       |
-      |  for (i in sourceInfo) {
-      |    if (!sourceInfo[i]) throw ("Cannot execute because the source '"+i+"' has not been set");
+      |  for (var i in this.sourceInfo) {
+      |    if (!this.sourceInfo[i]) throw ("Cannot execute because the source '"+i+"' has not been set");
       |  }
       |
-      |  if (!$_doneOne) sinksToRun = sinks;
+      |  if (!this.$_doneOne) sinksToRun = this.sinks;
       |
-      |  for (i in lets) {
-      |    scope[i].$_reset();
+      |  for (var i in lets) {
+      |    this.scope[i].$_reset();
       |  }
       |
       |  var ret = {};
       |
       |
       |
-      |  for (i in sinksToRun) {
-      |    sinks[i].$_reset();
-      |    ret[i] = sinks[i].$_get();
+      |  for (var i in sinksToRun) {
+      |    this.sinks[i].$_reset();
+      |    ret[i] = this.sinks[i].$_get();
       |  }
       |
-      |  $_doneOne = true;
+      |  this.$_doneOne = true;
       |
       |  return ret;
-      |}
+      |};
     """.stripMargin
 
   lazy val builtIn: Map[String, Expression] = Map(
     ("true") -> BuiltIn(NoSourceLoc, LetId("true"), ("true"), TPrim(PrimBool),
-      sb => sb.append("new Const(true)")),
+      sb => sb.append("new constFunc(true)")),
     ("false") -> BuiltIn(NoSourceLoc, LetId("false"), ("false"), TPrim(PrimBool),
-      sb => sb.append("new Const(false)")),
+      sb => sb.append("new constFunc(false)")),
     ("$ifelse") -> BuiltIn(NoSourceLoc, LetId("ifelse"), ("$ifelse"),
     {
       val tvar = TVar("ifelseTVar")
       Expression.tFun(TPrim(PrimBool), Expression.tFun(tvar, Expression.tFun(tvar, tvar)))
-    }, sb => sb.append("new Func($_ifelse_core, [], 3, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_ifelse_core, [], 3, scope, false)")),
     ("$swapfunc") -> BuiltIn(NoSourceLoc, LetId("swapfunc"), ("$swapfunc"),
     {
       val tvar1 = TVar("swapfuncVar1")
       val tvar2 = TVar("swapfuncVar2")
       val tvar3 = TVar("swapfuncVar3")
       Expression.tFun(Expression.tFun(tvar1, Expression.tFun(tvar2, tvar3)), Expression.tFun(tvar2, Expression.tFun(tvar1, tvar3)))
-    }, sb => sb.append("new Func($_swapfunc_core, [], 1, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_swapfunc_core, [], 1, scope, false)")),
     ("+") -> BuiltIn(NoSourceLoc, LetId("plus"), ("+"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
-    }, sb => sb.append("new Func($_plusFunc_core, [], 2, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_plusFunc_core, [], 2, scope, false)")),
     ("-") -> BuiltIn(NoSourceLoc, LetId("minus"), ("-"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
-    }, sb => sb.append("new Func($_minusFunc_core, [], 2, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_minusFunc_core, [], 2, scope, false)")),
     ("*") -> BuiltIn(NoSourceLoc, LetId("times"), ("*"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
-    }, sb => sb.append("new Func($_timesFunc_core, [], 2, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_timesFunc_core, [], 2, scope, false)")),
     ("/") -> BuiltIn(NoSourceLoc, LetId("div"), ("/"),
     {
       Expression.tFun(TPrim(PrimDouble), Expression.tFun(TPrim(PrimDouble), TPrim(PrimDouble)))
-    }, sb => sb.append("new Func($_divFunc_core, [], 2, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_divFunc_core, [], 2, scope, false)")),
     ("&") -> BuiltIn(NoSourceLoc, LetId("concat"), ("&"),
     {
       Expression.tFun(TPrim(PrimStr), Expression.tFun(TPrim(PrimStr), TPrim(PrimStr)))
-    }, sb => sb.append("new Func($_concat_core, [], 2, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_concat_core, [], 2, scope, false)")),
 
     ("len") -> BuiltIn(NoSourceLoc, LetId("len"), ("len"),
     {
       Expression.tFun(TPrim(PrimStr), TPrim(PrimDouble))
-    }, sb => sb.append("new Func($_len_core, [], 1, scope, false)")),
+    }, sb => sb.append("new funcFunc(this.$_len_core, [], 1, scope, false)")),
 
     ("==") -> BuiltIn(NoSourceLoc, LetId("equals"), ("=="),
     {
       val tvar = TVar("equalsTVar")
       Expression.tFun(tvar, Expression.tFun(tvar, TPrim(PrimBool)))
-    }, sb => sb.append("new Func($_equals_core, [], 2, scope, false)"))
+    }, sb => sb.append("new funcFunc(this.$_equals_core, [], 2, scope, false)"))
 
 
 
@@ -254,22 +263,23 @@ object Compiler {
     val rec = Typer.findRecursive(pred)
 
 
-    sb.append("var scope = {};\n")
-    sb.append("var sourceInfo = {};\n")
-    sb.append("var sinks = {};\n")
-    sb.append("var sourceToSink = {};\n")
-    sb.append("var sourceToLets = {};\n")
+    sb.append("this.scope = {};\n")
+    sb.append("var scope = this.scope;\n")
+    sb.append("this.sourceInfo = {};\n")
+    sb.append("this.sinks = {};\n")
+    sb.append("this.sourceToSink = {};\n")
+    sb.append("this.sourceToLets = {};\n")
 
     sb.append("// enumerate the sources... they must all be satisfied to execute\n\n")
     deps.foreach{
       case (source, (sinkList, recList)) =>
-        sb.append("sourceInfo["+source.name.encJs+"] = false;\n")
+        sb.append("this.sourceInfo["+source.name.encJs+"] = false;\n")
 
-        sb.append("sourceToSink["+source.name.encJs+"] = [")
+        sb.append("this.sourceToSink["+source.name.encJs+"] = [")
         sb.append(sinkList.map(_.name.encJs).mkString(", "))
         sb.append("];\n")
 
-        sb.append("sourceToLets["+source.name.encJs+"] = [")
+        sb.append("this.sourceToLets["+source.name.encJs+"] = [")
         sb.append(recList.map(_.name.encJs).mkString(", "))
         sb.append("];\n")
 
@@ -289,7 +299,7 @@ object Compiler {
         sb.append(";\n\n")
 
       case LetExp(loc, id, (name), generic, tpe, exp) =>
-        sb.append("scope["+name.encJs+"] = new Thunk(function(scope) { return ")
+        sb.append("scope["+name.encJs+"] = new thunkFunc(function(scope) { return ")
         compileToJavaScript(exp, sb)
         sb.append(".$_get();}, scope);\n\n")
 
@@ -299,16 +309,16 @@ object Compiler {
         compileToJavaScript(exp2, sb)
 
       case SinkExp(loc, id, (name), tpe, exp) =>
-        sb.append("sinks["+name.encJs+"] = new Thunk(function(scope) { return ")
+        sb.append("this.sinks["+name.encJs+"] = new thunkFunc(function(scope) { return ")
         compileToJavaScript(exp, sb)
         sb.append(".$_get();}, scope);\n\n")
 
       case SourceExp(loc, id, (name), tpe) =>
-        sb.append("scope["+name.encJs+"] = new Value(false);\n")
+        sb.append("scope["+name.encJs+"] = new valueFunc(false);\n")
 
       case FuncExp(loc, id, (name), tpe, exp) =>
         val subfunc = exp.isInstanceOf[FuncExp]
-        sb.append("new Func(")
+        sb.append("new funcFunc(")
         sb.append("function(zscope, zargs) {\n")
         sb.append("var scope = $_cloner(zscope);\n")
         sb.append("scope["+name.encJs+"] = zargs[0];\n")
@@ -336,7 +346,7 @@ object Compiler {
 
 
       case ValueConst(loc: SourceLoc, value: Value, tpe: Type) =>
-        sb.append("new Const("+value.toJsString+")")
+        sb.append("new constFunc("+value.toJsString+")")
 
       case Group(map) =>
         map.values.foreach(e => compileToJavaScript(e, sb))

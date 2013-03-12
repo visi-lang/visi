@@ -28,7 +28,7 @@ version := "0.1.1-SNAPSHOT"
 // crossScalaVersions in ThisBuild    := Seq("2.9.2") 
 
 libraryDependencies ++= {
-  val liftVersion = "2.5-SNAPSHOT"
+  val liftVersion = "3.0-SNAPSHOT"
   Seq(
     "net.liftweb" %% "lift-util" % liftVersion % "compile",
     "net.liftweb" %% "lift-json-ext" % liftVersion % "compile")
