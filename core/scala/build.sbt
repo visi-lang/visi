@@ -23,7 +23,7 @@ resolvers += "Scala" at "https://oss.sonatype.org/content/groups/scala-tools/"
 
 resolvers += "Java.net Maven2 Repository" at "http://download.java.net/maven/2/"
 
-version := "0.1.1-SNAPSHOT"
+version := "0.1.2-SNAPSHOT"
 
 // crossScalaVersions in ThisBuild    := Seq("2.9.2") 
 
